@@ -1,5 +1,3 @@
-import React from 'react'
-
 const Auth = () => {
     return (
         <section className="min-h-screen bg-linear-to-l from-purple-500 to-indigo-600 flex items-center justify-center">
@@ -7,4 +5,5 @@ const Auth = () => {
         </section>
     )
 }
+
 export default Auth
