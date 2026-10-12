@@ -1,11 +1,13 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { use, useState, type FormEvent, type ReactNode } from 'react'
 import { Eye, EyeOff, Mail } from 'lucide-react'
+import axios from 'axios'
 
 type AuthMode = 'login' | 'register'
 
 type FormProps = {
     onSwitch: () => void
     onSubmit: (event: FormEvent<HTMLFormElement>) => void
+    isSubmitting: boolean
 }
 
 type InputFieldProps = {
@@ -145,7 +147,7 @@ const PasswordField = ({
     )
 }
 
-const FormLogin = ({ onSwitch, onSubmit }: FormProps) => (
+const FormLogin = ({ onSwitch, onSubmit, isSubmitting, }: FormProps) => (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-6 sm:gap-8">
         <header className="flex w-full flex-col items-start gap-2">
             <h1 className="text-3xl font-extrabold tracking-tight text-[#5571ff] sm:text-[2.7rem]">
@@ -183,8 +185,11 @@ const FormLogin = ({ onSwitch, onSubmit }: FormProps) => (
         </div>
 
         <div className="flex w-full flex-col gap-4">
-            <button type="submit" className="auth-submit">
-                LOGIN
+            <button 
+                type="submit" 
+                className="auth-submit"
+                disabled={isSubmitting}>
+                {isSubmitting ? 'LOGGING ACCOUNT' : 'LOGIN'}
             </button>
 
             <p className="text-center text-xs text-[#333333]">
@@ -201,7 +206,7 @@ const FormLogin = ({ onSwitch, onSubmit }: FormProps) => (
     </form>
 )
 
-const FormRegister = ({ onSwitch, onSubmit }: FormProps) => (
+const FormRegister = ({ onSwitch, onSubmit, isSubmitting }: FormProps) => (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-5 sm:gap-6">
         <header className="flex w-full flex-col items-start gap-2">
             <h1 className="text-3xl font-extrabold tracking-tight text-[#5571ff] sm:text-[2.7rem]">
@@ -255,8 +260,11 @@ const FormRegister = ({ onSwitch, onSubmit }: FormProps) => (
         </div>
 
         <div className="flex w-full flex-col gap-4">
-            <button type="submit" className="auth-submit">
-                CREATE ACCOUNT
+            <button 
+                type="submit" 
+                className="auth-submit"
+                disabled={isSubmitting}>
+                {isSubmitting ? 'CREATING ACCOUNT' : 'CREATE ACCOUNT'}
             </button>
 
             <p className="text-center text-xs text-[#333333]">
@@ -275,17 +283,90 @@ const FormRegister = ({ onSwitch, onSubmit }: FormProps) => (
 
 const Auth = () => {
     const [mode, setMode] = useState<AuthMode>('login')
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [feedback, setFeedback] = useState('')
+    const [feedbackType, setFeedbackType] = useState<'success' | 'error'> ('error')
 
     const isRegistering = mode === 'register'
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
+        setFeedback('')
+
+        const form = event.currentTarget
+        const formData = new FormData(form)
+        const email = String(formData.get('email') || '').trim()
+        const password = String(formData.get('password') || '')
+
+        setIsSubmitting(true)
+
+        try {
+            if (mode === 'login') {
+                const response = await axios.post(
+                    'http://127.0.0.1:8000/api/login',
+                    {
+                        email,
+                        password,
+                    },
+                )
+
+                localStorage.setItem('auth_token', response.data.token)
+                localStorage.setItem('auth_user', JSON.stringify(response.data.user))
+
+                setFeedback('Login successful!')
+                setFeedbackType('success')
+                return
+            }
+
+            const firstname = String(formData.get('firstName') || '').trim()
+            const lastname = String(formData.get('lastName') || '').trim()
+            const passwordConfirm = String(formData.get('passwordConfirm') || '')
+
+            if (password !== passwordConfirm) {
+                setFeedback('Passwords do not match.')
+                setFeedbackType('error')
+                return
+            }
+
+            const response = await axios.post(
+                'http://127.0.0.1:8000/api/register',
+                {
+                    firstname,
+                    lastname,
+                    email,
+                    password,
+                },
+            )
+
+            setFeedback(response.data.message || 'Account registered successfully!')
+            setFeedbackType('success')
+            form.reset()
+        } catch (error) {
+            const responseData = axios.isAxiosError(error)
+                ? error.response?.data
+                : null
+
+            const validationErrors = responseData?.errors
+            const firstValidationError = validationErrors
+                ? Object.values(validationErrors).flat()[0]
+                : null
+
+            setFeedback(
+                typeof firstValidationError === 'string'
+                    ? firstValidationError
+                    : responseData?.message || 'Request failed. Please try again.',
+            )
+            setFeedbackType('error')
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     const switchForm = () => {
         setMode((currentMode) =>
             currentMode === 'login' ? 'register' : 'login',
         )
+        setFeedback('')
     }
 
     return (
@@ -301,15 +382,29 @@ const Auth = () => {
                             : 'auth-fade-in-left'
                     }`}
                 >
+                    {feedback && (
+                        <p
+                            role="status"
+                            className={`mb-4 rounded-lg p-3 text-sm ${
+                                feedbackType === 'success'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-red-100 text-red-700'
+                            }`}
+                        >
+                            {feedback}
+                        </p>
+                    )}
                     {isRegistering ? (
                         <FormRegister
                             onSwitch={switchForm}
                             onSubmit={handleSubmit}
+                            isSubmitting={isSubmitting}
                         />
                     ) : (
                         <FormLogin
                             onSwitch={switchForm}
                             onSubmit={handleSubmit}
+                            isSubmitting={isSubmitting}
                         />
                     )}
                 </div>
