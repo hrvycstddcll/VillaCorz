@@ -1,11 +1,14 @@
 import Auth from './assets/components/auth/Auth'
+import HomePage from './assets/components/pages/HomePage'
+import Navbar from './assets/components/ui/Navbar'
 
-const App = () => {
+function App() {
   return (
-    <main>
-
+    <>
+      <Navbar />
+      <HomePage />
       <Auth />
-    </main>
+    </>
   )
 }
 

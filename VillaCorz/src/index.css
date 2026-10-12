@@ -1,1 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+
+
+@theme {
+  --font-brittany: "Brittany", cursive;
+  --font-poppins: "Poppins", sans-serif;
+}
+
+@font-face {
+  font-family: "Brittany";
+  src: url("./assets/fonts/BrittanySignature.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@property --s {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@layer components {
+  .directional-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    isolation: isolate;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    border-color: color-mix(
+      in oklab,
+      var(--btn-border, currentColor) calc((1 - var(--s)) * 100%),
+      var(--btn-fill, #006dfc) calc(var(--s) * 100%)
+    );
+    transition: --s 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .directional-button:focus-visible {
+    --s: 1;
+    outline: 2px solid var(--btn-fill, #006dfc);
+    outline-offset: 4px;
+  }
+
+  .directional-button__fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: var(--btn-fill, #006dfc);
+    pointer-events: none;
+    will-change: transform, scale;
+    translate: calc(var(--x, 0) * 1px - 50%) calc(var(--y, 0) * 1px - 50%);
+    scale: var(--s, 0);
+  }
+
+  .directional-button__content {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--btn-text, currentColor);
+    color: color-mix(
+      in oklab,
+      var(--btn-text, currentColor) calc((1 - var(--s)) * 100%),
+      var(--btn-hover-text, #ffffff) calc(var(--s) * 100%)
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .directional-button {
+    transition: none;
+  }
+}

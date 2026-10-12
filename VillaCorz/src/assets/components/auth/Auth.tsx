@@ -13,7 +13,7 @@ const AuthCenterCollage = () => (
     <img
         src={collageImage}
         alt="VillaCorz beach getaway photo collage"
-        className="absolute left-[-33%] top-[-7%] z-10 h-[100%] w-[158%] max-w-none object-contain object-top"
+        className="absolute left-[-33%] top-[-7%] z-10 h-full w-[158%] max-w-none object-contain object-top"
     />
 )
 
@@ -22,7 +22,7 @@ const AuthFooter = () => (
         src={footerImage}
         alt=""
         aria-hidden="true"
-        className="absolute bottom-0 left-0 z-20 h-[14%] w-full object-fill"
+        className="absolute bottom-0 left-0 z-20 h-[12%] w-full object-fill"
     />
 )
 
@@ -82,9 +82,8 @@ const Auth = () => {
                 `}</style>
                 <div
                     key={mode}
-                    className={`w-full max-w-[430px] ${
-                        isRegistering ? 'auth-slide-from-right' : 'auth-slide-from-left'
-                    }`}
+                    className={`w-full max-w-[430px] ${isRegistering ? 'auth-slide-from-right' : 'auth-slide-from-left'
+                        }`}
                 >
                     <header className="mb-7">
                         <h1 className="text-3xl font-extrabold tracking-tight text-[#5571ff] sm:text-[2.7rem]">
