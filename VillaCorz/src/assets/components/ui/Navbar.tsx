@@ -5,7 +5,9 @@ import {
     type CSSProperties,
 } from 'react'
 import logoSvg from '../../VillaCorz-SVGLogo.svg?raw'
+import { Menu, X } from 'lucide-react'
 import DirectionalButton from './DirectionalButton'
+import GooeyNav, { type GooeyNavItem } from './GooeyNav'
 
 const triangleColor = '#000000'
 const textColor = '#000000'
@@ -23,6 +25,16 @@ const navLinks = [
     { name: "Testimonials", href: "#testimonials" },
 ]
 
+const gooeyLinks: GooeyNavItem[] = navLinks.map(({ name, href }) => ({
+    label: name,
+    href,
+}))
+
+const gooeyListClassName = 'hidden items-center gap-1 lg:flex xl:gap-2'
+
+const gooeyLinkClassName =
+    'inline-flex items-center rounded-lg px-3 py-2 text-sm font-poppins uppercase tracking-[0.2em] text-gray-600 transition-colors hover:text-black focus-visible:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006dfc]/60 focus-visible:ring-offset-2'
+
 const notchBackground: CSSProperties = {
     backgroundImage:
         "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M 0 0 L 20 0 C 8.954 0 0 8.954 0 20 Z' fill='%23ffffff'/%3E%3C/svg%3E\")",
@@ -32,6 +44,7 @@ const notchBackground: CSSProperties = {
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false)
+    const [activeIndex, setActiveIndex] = useState(0)
     const toggleRef = useRef<HTMLButtonElement>(null)
     const panelRef = useRef<HTMLDivElement>(null)
 
@@ -102,18 +115,16 @@ const Navbar = () => {
                     />
 
                     <div className="flex items-center gap-6">
-                        <ul className="hidden items-center gap-6 lg:flex xl:gap-8">
-                            {navLinks.map((link) => (
-                                <li key={link.name}>
-                                    <a
-                                        href={link.href}
-                                        className="rounded-sm px-1 py-1 text-sm font-poppins uppercase tracking-[0.2em] text-gray-600 transition-colors hover:text-black focus-visible:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]/60 focus-visible:ring-offset-2"
-                                    >
-                                        {link.name}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
+                        <GooeyNav
+                            items={gooeyLinks}
+                            activeIndex={activeIndex}
+                            onChange={(index) => setActiveIndex(index)}
+                            color="#006dfc"
+                            hoverColor="rgba(0, 109, 252, 0.14)"
+                            className="hidden lg:block"
+                            listClassName={gooeyListClassName}
+                            linkClassName={gooeyLinkClassName}
+                        />
 
                         <button
                             ref={toggleRef}
@@ -124,21 +135,11 @@ const Navbar = () => {
                             onClick={() => setIsOpen((open) => !open)}
                             className="inline-flex h-11 w-11 -mr-1.5 items-center justify-center rounded-xl border border-black/10 bg-black/[0.02] text-black transition hover:bg-black/5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]/60 focus-visible:ring-offset-2 lg:hidden"
                         >
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-6 w-6"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                aria-hidden="true"
-                            >
-                                {isOpen ? (
-                                    <path d="M6 6l12 12M18 6L6 18" />
-                                ) : (
-                                    <path d="M4 7h16M4 12h16M4 17h16" />
-                                )}
-                            </svg>
+                            {isOpen ? (
+                                <X className="h-6 w-6" aria-hidden="true" />
+                            ) : (
+                                <Menu className="h-6 w-6" aria-hidden="true" />
+                            )}
                         </button>
                     </div>
 
@@ -155,10 +156,9 @@ const Navbar = () => {
                 </div>
 
                 <DirectionalButton
-                    type="button"
-                    fillColor={buttonColor}
-                    style={{ backgroundColor: buttonColor }}
-                    className="absolute right-0 top-1/2 hidden -translate-y-1/2 px-5 py-2.5 text-xs font-semibold tracking-wide text-white transition hover:brightness-110 lg:inline-flex"
+                    fillColor="#ffffff"
+                    textColor="#006dfc"
+                    className="absolute bg-[#006dfc] font-poppins text-white right-0 top-1/2 hidden -translate-y-1/2 px-5 py-2.5 text-xs font-semibold tracking-wide lg:inline-flex"
                 >
                     LOGIN
                 </DirectionalButton>

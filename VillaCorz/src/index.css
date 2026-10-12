@@ -147,7 +147,7 @@
   }
 
   .auth-submit {
-    @apply mt-1 h-12 w-full rounded-lg bg-[#0866e8] text-sm font-bold text-white shadow-lg transition hover:bg-[#0757c7] focus:outline-none focus:ring-4 focus:ring-blue-200;
+    @apply mt-1 h-12 w-full bg-[#0866e8] text-sm font-bold text-white shadow-lg transition hover:bg-[#0757c7] focus:outline-none focus:ring-4 focus:ring-blue-200;
   }
 
   .auth-fade-in-right {

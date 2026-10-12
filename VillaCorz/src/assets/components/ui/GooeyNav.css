@@ -1,0 +1,35 @@
+.gooey-nav__stage {
+    position: relative;
+    max-width: 100%;
+}
+
+.gooey-nav__canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+.gooey-nav__fallback {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: none;
+    border-radius: 14px;
+    background: var(--gooey-nav-pill, #006dfc);
+    pointer-events: none;
+}
+
+.gooey-nav__list--active {
+    position: absolute;
+    inset: 0;
+    color: var(--gooey-nav-active-ink, #ffffff);
+    visibility: hidden;
+    clip-path: inset(100%);
+    pointer-events: none;
+}
+
+.gooey-nav__list--active a,
+.gooey-nav__list--active span {
+    color: inherit;
+}
