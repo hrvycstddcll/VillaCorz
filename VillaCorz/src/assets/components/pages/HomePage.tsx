@@ -98,13 +98,9 @@ const HomePage = () => {
                         className="flex w-full items-center justify-center gap-3 sm:gap-4 mb-8"
                         data-hero
                     >
-                        <span className="h-px w-8 bg-linear-to-r from-transparent to-white/60 sm:w-12" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#006dfc]" />
                         <p className="text-center text-xs font-semibold uppercase tracking-[0.35em] text-white/90 sm:text-sm">
                             Welcome to
                         </p>
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#006dfc]" />
-                        <span className="h-px w-8 bg-linear-to-l from-transparent to-white/60 sm:w-12" />
                     </div>
 
                     <h1
