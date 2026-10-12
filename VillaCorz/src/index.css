@@ -21,6 +21,28 @@
   initial-value: 0;
 }
 
+@keyframes auth-slide-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes auth-slide-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @layer components {
   .directional-button {
     position: relative;
@@ -73,10 +95,23 @@
       var(--btn-hover-text, #ffffff) calc(var(--s) * 100%)
     );
   }
+
+  .auth-slide-from-right {
+    animation: auth-slide-from-right 280ms ease-out both;
+  }
+
+  .auth-slide-from-left {
+    animation: auth-slide-from-left 280ms ease-out both;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .directional-button {
     transition: none;
+  }
+
+  .auth-slide-from-right,
+  .auth-slide-from-left {
+    animation: none;
   }
 }

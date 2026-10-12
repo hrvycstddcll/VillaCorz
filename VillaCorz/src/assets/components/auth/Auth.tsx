@@ -9,22 +9,6 @@ const collageImage =
 const footerImage =
     'https://res.cloudinary.com/ql4hruc3/image/upload/v1791785594/footer.png'
 
-const AuthCenterCollage = () => (
-    <img
-        src={collageImage}
-        alt="VillaCorz beach getaway photo collage"
-        className="absolute left-[-33%] top-[-7%] z-10 h-full w-[158%] max-w-none object-contain object-top"
-    />
-)
-
-const AuthFooter = () => (
-    <img
-        src={footerImage}
-        alt=""
-        aria-hidden="true"
-        className="absolute bottom-0 left-0 z-20 h-[12%] w-full object-fill"
-    />
-)
 
 const AuthLeftPanel = () => (
     <aside className="relative hidden h-screen min-h-screen w-[55%] flex-none overflow-hidden bg-white lg:block">
@@ -33,7 +17,11 @@ const AuthLeftPanel = () => (
             alt="VillaCorz logo"
             className="absolute left-5 top-5 z-30 size-25 rounded-full object-contain"
         />
-        <AuthCenterCollage />
+        <img
+            src={collageImage}
+            alt="VillaCorz beach getaway photo collage"
+            className="absolute left-[-33%] top-[-7%] z-10 h-full w-[158%] max-w-none object-contain object-top"
+        />
         <div className="absolute bottom-[16%] left-[3%] z-20 w-[52%] text-[#111111]">
             <h1 className="text-[clamp(1.6rem,3.2vw,3rem)] font-extrabold leading-[0.95] tracking-tight">
                 YOUR
@@ -48,13 +36,63 @@ const AuthLeftPanel = () => (
                 Gather. Celebrate. Create memories.
             </p>
         </div>
-        <AuthFooter />
+        <img
+            src={footerImage}
+            alt=""
+            aria-hidden="true"
+            className="absolute bottom-0 left-0 z-20 h-[12%] w-full object-fill"
+        />
     </aside>
+)
+
+const hide = () => (
+    <svg
+        className="size-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        aria-hidden="true"
+    >
+        <path d="M3 3l18 18" />
+        <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+        <path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c5 0 8.5 4.5 9.5 7-.4 1-1.2 2.2-2.3 3.3" />
+        <path d="M6.2 6.2C3.8 7.6 2.4 10 2 12c1 2.5 4.5 7 10 7 1.1 0 2.1-.2 3-.5" />
+    </svg>
+)
+
+const unhide = () => (
+    <svg
+        className="size-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        aria-hidden="true"
+    >
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+        <circle cx="12" cy="12" r="3" />
+    </svg>
+)
+
+const mail = () => (
+    <svg
+        className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[#333333]"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        aria-hidden="true"
+    >
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m4 7 8 6 8-6" />
+    </svg>
 )
 
 const Auth = () => {
     const [mode, setMode] = useState<AuthMode>('login')
     const [showPassword, setShowPassword] = useState(false)
+    const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
     const isRegistering = mode === 'register'
 
     const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -65,21 +103,6 @@ const Auth = () => {
         <main className="flex min-h-screen flex-col lg:flex-row">
             <AuthLeftPanel />
             <section className="flex min-h-screen w-full min-w-0 items-center justify-center bg-[#f7f7f7] px-5 py-10 sm:px-8 lg:w-[45%] lg:flex-none lg:px-8">
-                <style>{`
-                    @keyframes auth-slide-from-right {
-                        from { opacity: 0; transform: translateX(20px); }
-                        to { opacity: 1; transform: translateX(0); }
-                    }
-                    @keyframes auth-slide-from-left {
-                        from { opacity: 0; transform: translateX(-20px); }
-                        to { opacity: 1; transform: translateX(0); }
-                    }
-                    .auth-slide-from-right { animation: auth-slide-from-right 280ms ease-out both; }
-                    .auth-slide-from-left { animation: auth-slide-from-left 280ms ease-out both; }
-                    @media (prefers-reduced-motion: reduce) {
-                        .auth-slide-from-right, .auth-slide-from-left { animation: none; }
-                    }
-                `}</style>
                 <div
                     key={mode}
                     className={`w-full max-w-[430px] ${isRegistering ? 'auth-slide-from-right' : 'auth-slide-from-left'
@@ -95,7 +118,8 @@ const Auth = () => {
                                 : 'Log in to manage your stay at Villa Corz.'}
                         </p>
                     </header>
-
+                    
+                    {/* Register Form */}
                     <form className="space-y-4" onSubmit={handleSubmit}>
                         {isRegistering && (
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -135,6 +159,7 @@ const Auth = () => {
                             </div>
                         )}
 
+                        {/* Login Form */}
                         <div className="relative">
                             <input
                                 id="email"
@@ -149,21 +174,9 @@ const Auth = () => {
                                 htmlFor="email"
                                 className="absolute left-3 top-0 -translate-y-1/2 bg-[#f7f7f7] px-1 text-[11px] text-[#222222] transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-0 peer-focus:text-[11px]"
                             >
-                                {isRegistering ? 'Email Address' : 'E-MAIL'}
+                                Email Address
                             </label>
-                            {!isRegistering && (
-                                <svg
-                                    className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[#333333]"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.8"
-                                    aria-hidden="true"
-                                >
-                                    <rect x="3" y="5" width="18" height="14" rx="2" />
-                                    <path d="m4 7 8 6 8-6" />
-                                </svg>
-                            )}
+                            {mail()}
                         </div>
 
                         <div className="relative">
@@ -180,7 +193,7 @@ const Auth = () => {
                                 htmlFor="password"
                                 className="absolute left-3 top-0 -translate-y-1/2 bg-[#f7f7f7] px-1 text-[11px] text-[#222222] transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm peer-focus:top-0 peer-focus:text-[11px]"
                             >
-                                {isRegistering ? 'Password' : 'PASSWORD'}
+                                Password
                             </label>
                             <button
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555555]"
@@ -188,28 +201,7 @@ const Auth = () => {
                                 type="button"
                                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                             >
-                                <svg
-                                    className="size-5"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.8"
-                                    aria-hidden="true"
-                                >
-                                    {showPassword ? (
-                                        <>
-                                            <path d="M3 3l18 18" />
-                                            <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
-                                            <path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c5 0 8.5 4.5 9.5 7-.4 1-1.2 2.2-2.3 3.3" />
-                                            <path d="M6.2 6.2C3.8 7.6 2.4 10 2 12c1 2.5 4.5 7 10 7 1.1 0 2.1-.2 3-.5" />
-                                        </>
-                                    ) : (
-                                        <>
-                                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-                                            <circle cx="12" cy="12" r="3" />
-                                        </>
-                                    )}
-                                </svg>
+                                {showPassword ? hide() : unhide()}
                             </button>
                         </div>
 
@@ -222,7 +214,7 @@ const Auth = () => {
                                     name="confirmPassword"
                                     placeholder=" "
                                     required
-                                    type="password"
+                                    type={showPasswordConfirm ? 'text' : 'password'}
                                 />
                                 <label
                                     htmlFor="confirmPassword"
@@ -230,6 +222,14 @@ const Auth = () => {
                                 >
                                     Confirm Password
                                 </label>
+                                <button
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555555]"
+                                    onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                                    type="button"
+                                    aria-label={showPasswordConfirm ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPasswordConfirm ? hide() : unhide()}
+                                </button>
                             </div>
                         )}
 
