@@ -4,10 +4,12 @@ import {
     useState,
     type CSSProperties,
 } from 'react'
+import { useNavigate } from 'react-router-dom'
 import logoSvg from '../../VillaCorz-SVGLogo.svg?raw'
 import { Menu, X } from 'lucide-react'
 import DirectionalButton from './DirectionalButton'
 import GooeyNav, { type GooeyNavItem } from './GooeyNav'
+import { useAuth } from '../../../services/AuthContext'
 
 const triangleColor = '#000000'
 const textColor = '#000000'
@@ -43,6 +45,8 @@ const notchBackground: CSSProperties = {
 }
 
 const Navbar = () => {
+    const navigate = useNavigate()
+    const { user, loading, logout } = useAuth()
     const [isOpen, setIsOpen] = useState(false)
     const [activeIndex, setActiveIndex] = useState(0)
     const toggleRef = useRef<HTMLButtonElement>(null)
@@ -86,6 +90,16 @@ const Navbar = () => {
             document.body.style.overflow = previousOverflow
         }
     }, [isOpen])
+
+    const handleLogout = async () => {
+    try {
+        await logout()
+        setIsOpen(false)
+        navigate('/')
+    } catch {
+        alert('Unable to log out. Please try again.')
+    }
+}
 
     return (
         <nav aria-label="Primary" className="fixed inset-x-0 top-0 z-50 w-full px-6">
@@ -155,13 +169,27 @@ const Navbar = () => {
                     />
                 </div>
 
-                <DirectionalButton
-                    fillColor="#ffffff"
-                    textColor="#006dfc"
-                    className="absolute bg-[#006dfc] font-poppins text-white right-0 top-1/2 hidden -translate-y-1/2 px-5 py-2.5 text-xs font-semibold tracking-wide lg:inline-flex"
-                >
-                    LOGIN
-                </DirectionalButton>
+                {!loading && (
+                    user ? (
+                        <DirectionalButton
+                            fillColor="#ffffff"
+                            textColor="#006dfc"
+                            onClick={handleLogout}
+                            className="absolute right-0 top-1/2 hidden -translate-y-1/2 bg-[#006dfc] px-5 py-2.5 font-poppins text-xs font-semibold tracking-wide text-white lg:inline-flex"
+                        >
+                            LOGOUT
+                        </DirectionalButton>
+                    ) : (
+                        <DirectionalButton
+                            fillColor="#ffffff"
+                            textColor="#006dfc"
+                            onClick={() => navigate('/auth?mode=login')}
+                            className="absolute right-0 top-1/2 hidden -translate-y-1/2 bg-[#006dfc] px-5 py-2.5 font-poppins text-xs font-semibold tracking-wide text-white lg:inline-flex"
+                        >
+                            LOGIN
+                        </DirectionalButton>
+                    )
+                )}
 
                 <div
                     ref={panelRef}
@@ -190,15 +218,32 @@ const Navbar = () => {
                         </ul>
 
                         <div className="px-1 pb-1 pt-2">
-                            <DirectionalButton
-                                type="button"
-                                fillColor={buttonColor}
-                                style={{ backgroundColor: buttonColor }}
-                                onClick={() => setIsOpen(false)}
-                                className="w-full px-5 py-3.5 text-sm font-semibold tracking-wide text-white transition hover:brightness-110"
-                            >
-                                LOGIN
-                            </DirectionalButton>
+                            {!loading && (
+                                user ? (
+                                    <DirectionalButton
+                                        type="button"
+                                        fillColor={buttonColor}
+                                        style={{ backgroundColor: buttonColor }}
+                                        onClick={handleLogout}
+                                        className="w-full px-5 py-3.5 text-sm font-semibold tracking-wide text-white transition hover:brightness-110"
+                                    >
+                                        LOGOUT
+                                    </DirectionalButton>
+                                ) : (
+                                    <DirectionalButton
+                                        type="button"
+                                        fillColor={buttonColor}
+                                        style={{ backgroundColor: buttonColor }}
+                                        onClick={() => {
+                                            setIsOpen(false)
+                                            navigate('/auth?mode=login')
+                                        }}
+                                        className="w-full px-5 py-3.5 text-sm font-semibold tracking-wide text-white transition hover:brightness-110"
+                                    >
+                                        LOGIN
+                                    </DirectionalButton>
+                                )
+                            )}
                         </div>
                     </div>
                 </div>

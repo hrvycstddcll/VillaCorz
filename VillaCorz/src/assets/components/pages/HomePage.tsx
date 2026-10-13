@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import DirectionalButton from '../ui/DirectionalButton'
+import { useAuth } from '../../../services/AuthContext'
 
 const backgroundVideo =
     'https://res.cloudinary.com/ql4hruc3/video/upload/q_auto:good,w_1920,c_limit/v1791730522/home-background.mp4'
@@ -8,6 +10,8 @@ const backgroundPoster =
     'https://res.cloudinary.com/ql4hruc3/video/upload/so_0,w_1920,c_limit/v1791730522/home-background.jpg'
 
 const HomePage = () => {
+    const { user } = useAuth()
+    const navigate = useNavigate()
     const [prefersReducedMotion, setPrefersReducedMotion] = useState(
         () =>
             typeof window !== 'undefined' &&
@@ -99,7 +103,10 @@ const HomePage = () => {
                         data-hero
                     >
                         <p className="text-center text-xs font-semibold uppercase tracking-[0.35em] text-white/90 sm:text-sm">
-                            Welcome to
+                            {user
+                            ? `Welcome, ${user.firstname} ${user.lastname} to`
+                            : 'Welcome to'
+                            }
                         </p>
                     </div>
 
@@ -140,6 +147,7 @@ const HomePage = () => {
                     <DirectionalButton
                         fillColor="#006dfc"
                         textColor="#ffffff"
+                        onClick={() => navigate('/auth?mode=register')}
                         className="w-full max-w-xs border-2 border-white bg-white px-4 py-3 font-poppins font-bold text-[#006dfc] sm:w-auto sm:px-8 sm:py-4"
                     >
                         GET STARTED

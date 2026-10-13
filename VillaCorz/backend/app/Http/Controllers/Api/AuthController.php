@@ -27,31 +27,11 @@ class AuthController extends Controller
             'role' => 'customer',
         ]);
 
+        Auth::login($user);
+        $request->session()->regenerate();
+
         return response()->json([
             'message' => 'Account registered successfully.',
-            'user' => $user,
-        ], 201);
-    }
-
-    public function login(Request $request) {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string|min:8'
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'message' => 'Invalid email or password.',
-            ], 401);
-        }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-        
-        return response()->json([
-            'message' => 'Login successful.',
-            'token' => $token,
             'user' => [
                 'id' => $user->id,
                 'firstname' => $user->firstname,
@@ -59,6 +39,45 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
             ],
+        ], 201);
+    }
+
+    public function login(Request $request) {
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string|min:8'
+        ]);
+
+        if (!Auth::attempt($credentials)) {
+            throw ValidationException::withMessages([
+                'email' => 'Invalid email or password.',
+            ]);
+        }
+
+        $request->session()->regenerate();
+
+        $user = Auth::user();
+        
+        return response()->json([
+            'message' => 'Login successful.',
+            'user' => [
+                'id' => $user->id,
+                'firstname' => $user->firstname,
+                'lastname' => $user->lastname,
+                'email' => $user->email,
+                'role' => $user->role,
+            ],
+        ]);
+    }
+
+    public function logout(Request $request) {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()->json([
+            'message' => 'Logout successful.',
         ]);
     }
 }

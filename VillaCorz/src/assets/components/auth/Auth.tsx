@@ -1,4 +1,6 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../../../services/AuthContext'
 import axios from 'axios'
 import { Mail } from 'lucide-react'
 import { login, register } from '../../../services/authService'
@@ -220,7 +222,13 @@ const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType
 )
 
 const Auth = () => {
-    const [mode, setMode] = useState<AuthMode>('login')
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams()
+    const {setUser} = useAuth()
+
+    const mode: AuthMode =
+        searchParams.get('mode') === 'register' ? 'register' : 'login'
+
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [feedback, setFeedback] = useState('')
     const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('error')
@@ -242,11 +250,8 @@ const Auth = () => {
             if (mode === 'login') {
                 const response = await login(email, password)
 
-                localStorage.setItem('auth_token', response.data.token)
-                localStorage.setItem('auth_user', JSON.stringify(response.data.user))
-
-                setFeedback('Login successful!')
-                setFeedbackType('success')
+                setUser(response.data.user)
+                navigate('/')
                 return
             }
 
@@ -260,16 +265,11 @@ const Auth = () => {
                 return
             }
 
-            const response = await register(
-                firstname,
-                lastname,
-                email,
-                password,
-            )
+            const response = await register(firstname, lastname, email, password)
 
-            setFeedback(response.data.message || 'Account registered successfully!')
-            setFeedbackType('success')
-            form.reset()
+            setUser(response.data.user)
+            navigate('/')
+
         } catch (error) {
             const data = axios.isAxiosError(error)
                 ? error.response?.data as {
@@ -294,9 +294,9 @@ const Auth = () => {
     }
 
     const switchForm = () => {
-        setMode((currentMode) =>
-            currentMode === 'login' ? 'register' : 'login',
-        )
+        setSearchParams({
+            mode: mode === 'login' ? 'register' : 'login',
+        })
         setFeedback('')
     }
 
