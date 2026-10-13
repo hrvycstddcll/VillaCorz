@@ -1,6 +1,9 @@
-import { use, useState, type FormEvent, type ReactNode } from 'react'
-import { Eye, EyeOff, Mail } from 'lucide-react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import axios from 'axios'
+import { Mail } from 'lucide-react'
+import { login, register } from '../../../services/authService'
+import PasswordField from '../ui/PasswordField'
+import InputField from '../ui/InputField'
 
 type AuthMode = 'login' | 'register'
 
@@ -8,16 +11,8 @@ type FormProps = {
     onSwitch: () => void
     onSubmit: (event: FormEvent<HTMLFormElement>) => void
     isSubmitting: boolean
-}
-
-type InputFieldProps = {
-    id: string
-    name: string
-    label: string
-    type?: 'text' | 'email'
-    autoComplete: string
-    maxLength?: number
-    icon?: ReactNode
+    feedback: string
+    feedbackType: 'success' | 'error'
 }
 
 const logo =
@@ -68,86 +63,7 @@ const AuthLeftPanel = () => (
     </aside>
 )
 
-const InputField = ({
-    id,
-    name,
-    label,
-    type = 'text',
-    autoComplete,
-    maxLength = 55,
-    icon,
-}: InputFieldProps) => (
-    <div className="input-float w-full">
-        <input
-            id={id}
-            name={name}
-            type={type}
-            placeholder=" "
-            required
-            maxLength={maxLength}
-            autoComplete={autoComplete}
-            className={`input-focus ${icon ? 'pr-12' : ''}`}
-        />
-
-        <label className="input-float-label" htmlFor={id}>
-            {label}
-        </label>
-
-        {icon && (
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#333333]">
-                {icon}
-            </span>
-        )}
-    </div>
-)
-
-const PasswordField = ({
-    id,
-    name,
-    label,
-    autoComplete,
-}: {
-    id: string
-    name: string
-    label: string
-    autoComplete: string
-}) => {
-    const [showPassword, setShowPassword] = useState(false)
-
-    return (
-        <div className="input-float w-full">
-            <input
-                id={id}
-                name={name}
-                type={showPassword ? 'text' : 'password'}
-                placeholder=" "
-                required
-                maxLength={20}
-                autoComplete={autoComplete}
-                className="input-focus pr-12"
-            />
-
-            <label className="input-float-label" htmlFor={id}>
-                {label}
-            </label>
-
-            <button
-                type="button"
-                onClick={() => setShowPassword((current) => !current)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555555] transition hover:text-[#0866e8]"
-            >
-                {showPassword ? (
-                    <EyeOff className="size-5" />
-                ) : (
-                    <Eye className="size-5" />
-                )}
-            </button>
-        </div>
-    )
-}
-
-const FormLogin = ({ onSwitch, onSubmit, isSubmitting, }: FormProps) => (
+const FormLogin = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType }: FormProps) => (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-6 sm:gap-8">
         <header className="flex w-full flex-col items-start gap-2">
             <h1 className="text-3xl font-extrabold tracking-tight text-[#5571ff] sm:text-[2.7rem]">
@@ -176,6 +92,17 @@ const FormLogin = ({ onSwitch, onSubmit, isSubmitting, }: FormProps) => (
                 autoComplete="current-password"
             />
 
+            <p
+                role={feedbackType === 'error' ? 'alert' : 'status'}
+                className={`pb-2 min-h-[2rem] text-sm ${
+                    feedbackType === 'success'
+                        ? 'text-green-800'
+                        : 'text-red-700'
+                }`}
+            >
+                {feedback}
+            </p>
+
             <button
                 type="button"
                 className="self-end text-sm text-gray-500 transition hover:text-[#0866e8]"
@@ -189,7 +116,7 @@ const FormLogin = ({ onSwitch, onSubmit, isSubmitting, }: FormProps) => (
                 type="submit" 
                 className="auth-submit"
                 disabled={isSubmitting}>
-                {isSubmitting ? 'LOGGING ACCOUNT' : 'LOGIN'}
+                {isSubmitting ? 'LOGGING IN' : 'LOGIN'}
             </button>
 
             <p className="text-center text-xs text-[#333333]">
@@ -206,7 +133,7 @@ const FormLogin = ({ onSwitch, onSubmit, isSubmitting, }: FormProps) => (
     </form>
 )
 
-const FormRegister = ({ onSwitch, onSubmit, isSubmitting }: FormProps) => (
+const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType}: FormProps) => (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-5 sm:gap-6">
         <header className="flex w-full flex-col items-start gap-2">
             <h1 className="text-3xl font-extrabold tracking-tight text-[#5571ff] sm:text-[2.7rem]">
@@ -259,6 +186,17 @@ const FormRegister = ({ onSwitch, onSubmit, isSubmitting }: FormProps) => (
             />
         </div>
 
+        <p
+            role={feedbackType === 'error' ? 'alert' : 'status'}
+            className={`pb-2 min-h-[2rem] text-sm ${
+                feedbackType === 'success'
+                    ? 'text-green-800'
+                    : 'text-red-700'
+            }`}
+        >
+            {feedback}
+        </p>
+
         <div className="flex w-full flex-col gap-4">
             <button 
                 type="submit" 
@@ -285,7 +223,7 @@ const Auth = () => {
     const [mode, setMode] = useState<AuthMode>('login')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [feedback, setFeedback] = useState('')
-    const [feedbackType, setFeedbackType] = useState<'success' | 'error'> ('error')
+    const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('error')
 
     const isRegistering = mode === 'register'
 
@@ -302,13 +240,7 @@ const Auth = () => {
 
         try {
             if (mode === 'login') {
-                const response = await axios.post(
-                    'http://127.0.0.1:8000/api/login',
-                    {
-                        email,
-                        password,
-                    },
-                )
+                const response = await login(email, password)
 
                 localStorage.setItem('auth_token', response.data.token)
                 localStorage.setItem('auth_user', JSON.stringify(response.data.user))
@@ -328,34 +260,33 @@ const Auth = () => {
                 return
             }
 
-            const response = await axios.post(
-                'http://127.0.0.1:8000/api/register',
-                {
-                    firstname,
-                    lastname,
-                    email,
-                    password,
-                },
+            const response = await register(
+                firstname,
+                lastname,
+                email,
+                password,
             )
 
             setFeedback(response.data.message || 'Account registered successfully!')
             setFeedbackType('success')
             form.reset()
         } catch (error) {
-            const responseData = axios.isAxiosError(error)
-                ? error.response?.data
-                : null
+            const data = axios.isAxiosError(error)
+                ? error.response?.data as {
+                    message?: string
+                    errors?: Record<string, string[]>
+                } | undefined
+                : undefined
 
-            const validationErrors = responseData?.errors
-            const firstValidationError = validationErrors
-                ? Object.values(validationErrors).flat()[0]
-                : null
+            const validationError = Object.values(data?.errors ?? {}).flat()[0]
 
             setFeedback(
-                typeof firstValidationError === 'string'
-                    ? firstValidationError
-                    : responseData?.message || 'Request failed. Please try again.',
+                validationError ||
+                (!data && axios.isAxiosError(error) && !error.response
+                    ? 'Unable to connect to the server. Please try again.'
+                    : data?.message || 'Something went wrong. Please try again.')
             )
+
             setFeedbackType('error')
         } finally {
             setIsSubmitting(false)
@@ -381,30 +312,22 @@ const Auth = () => {
                             ? 'auth-fade-in-right'
                             : 'auth-fade-in-left'
                     }`}
-                >
-                    {feedback && (
-                        <p
-                            role="status"
-                            className={`mb-4 rounded-lg p-3 text-sm ${
-                                feedbackType === 'success'
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-red-100 text-red-700'
-                            }`}
-                        >
-                            {feedback}
-                        </p>
-                    )}
+                > 
                     {isRegistering ? (
                         <FormRegister
                             onSwitch={switchForm}
                             onSubmit={handleSubmit}
                             isSubmitting={isSubmitting}
+                            feedback={feedback}
+                            feedbackType={feedbackType}
                         />
                     ) : (
                         <FormLogin
                             onSwitch={switchForm}
                             onSubmit={handleSubmit}
                             isSubmitting={isSubmitting}
+                            feedback={feedback}
+                            feedbackType={feedbackType}
                         />
                     )}
                 </div>
