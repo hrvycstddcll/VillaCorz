@@ -10,6 +10,7 @@ import { Menu, X } from 'lucide-react'
 import DirectionalButton from './DirectionalButton'
 import GooeyNav, { type GooeyNavItem } from './GooeyNav'
 import { useAuth } from '../../../services/AuthContext'
+import LogoutModal from './LogoutModal'
 
 const triangleColor = '#000000'
 const textColor = '#000000'
@@ -51,6 +52,7 @@ const Navbar = () => {
     const [activeIndex, setActiveIndex] = useState(0)
     const toggleRef = useRef<HTMLButtonElement>(null)
     const panelRef = useRef<HTMLDivElement>(null)
+    const [showLogoutModal, setShowLogoutModal] = useState(false)
 
     useEffect(() => {
         const desktop = window.matchMedia('(min-width: 1024px)')
@@ -174,7 +176,8 @@ const Navbar = () => {
                         <DirectionalButton
                             fillColor="#ffffff"
                             textColor="#006dfc"
-                            onClick={handleLogout}
+                            //onClick={handleLogout}
+                            onClick={() => setShowLogoutModal(true)}
                             className="absolute right-0 top-1/2 hidden -translate-y-1/2 bg-[#006dfc] px-5 py-2.5 font-poppins text-xs font-semibold tracking-wide text-white lg:inline-flex"
                         >
                             LOGOUT
@@ -248,6 +251,12 @@ const Navbar = () => {
                     </div>
                 </div>
             </div>
+            {showLogoutModal && user && (
+                <LogoutModal
+                    onCancel={() => setShowLogoutModal(false)}
+                    onConfirm={handleLogout}
+                />
+            )}
         </nav>
     )
 }

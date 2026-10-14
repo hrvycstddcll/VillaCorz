@@ -46,7 +46,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     useEffect(() => {
-        refreshUser()
+        const init = async () => {
+            try {
+                await refreshUser()
+            } catch {
+                // ignore
+            }
+        }
+        void init()
     }, [])
 
     return (

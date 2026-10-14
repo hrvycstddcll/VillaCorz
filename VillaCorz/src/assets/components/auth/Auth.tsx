@@ -330,6 +330,13 @@ const Auth = () => {
                             feedbackType={feedbackType}
                         />
                     )}
+                    <button
+                        type="button"
+                        onClick={() => navigate('/')}
+                        className="w-full text-sm text-gray-500 transition hover:text-[#0866e8]"
+                    >
+                        Continue browsing without an account
+                    </button>
                 </div>
             </section>
         </main>
