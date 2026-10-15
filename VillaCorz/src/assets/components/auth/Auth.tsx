@@ -6,6 +6,7 @@ import { Mail } from 'lucide-react'
 import { login, register } from '../../../services/authService'
 import PasswordField from '../ui/PasswordField'
 import InputField from '../ui/InputField'
+import VerificationModal from './VerificationModal'
 
 type AuthMode = 'login' | 'register'
 
@@ -232,6 +233,11 @@ const Auth = () => {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [feedback, setFeedback] = useState('')
     const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('error')
+    const [verification, setVerification] = useState<{
+        registrationId: string
+        email: string
+        expiresIn: number
+    } | null>(null)
 
     const isRegistering = mode === 'register'
 
@@ -267,8 +273,12 @@ const Auth = () => {
 
             const response = await register(firstname, lastname, email, password)
 
-            setUser(response.data.user)
-            navigate('/')
+            setFeedback('')
+            setVerification({
+                registrationId: String(response.data.registration_id),
+                email,
+                expiresIn: Number(response.data.expires_in) || 600,
+            })
 
         } catch (error) {
             const data = axios.isAxiosError(error)
@@ -339,6 +349,20 @@ const Auth = () => {
                     </button>
                 </div>
             </section>
+
+            {verification && (
+                <VerificationModal
+                    email={verification.email}
+                    registrationId={verification.registrationId}
+                    expiresIn={verification.expiresIn}
+                    onVerified={(user) => {
+                        setUser(user)
+                        setVerification(null)
+                        navigate('/')
+                    }}
+                    onClose={() => setVerification(null)}
+                />
+            )}
         </main>
     )
 }

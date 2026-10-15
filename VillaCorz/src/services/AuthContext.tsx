@@ -6,14 +6,7 @@ import {
     type ReactNode,
 } from 'react'
 import { getUser, logout } from './authService'
-
-type User = {
-    id: number
-    firstname: string
-    lastname: string
-    email: string
-    role: string
-}
+import type { User } from './types'
 
 type AuthContextType = {
     user: User | null

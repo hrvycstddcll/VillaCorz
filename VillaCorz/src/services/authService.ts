@@ -37,6 +37,23 @@ export const register = async (
     })
 }
 
+export const verifyOtp = async (registrationId: string, otp: string) => {
+    await csrf()
+
+    return api.post('/verify-otp', {
+        registration_id: registrationId,
+        otp,
+    })
+}
+
+export const resendOtp = async (registrationId: string) => {
+    await csrf()
+
+    return api.post('/resend-otp', {
+        registration_id: registrationId,
+    })
+}
+
 export const getUser = () => {
     return api.get('/user')
 }
