@@ -42,14 +42,13 @@ class AuthController extends Controller
         Cache::put($attemptsKey, 0, now()->addMinutes(10));
 
         try {
-            Mail::raw(
-                "Your VillaCorz verification code is: {$otp}\n\n"
-                . "This code expires in 10 minutes. Do not share it with anyone.",
-                function ($message) use ($validated) {
-                    $message->to($validated['email'])
-                        ->subject('VillaCorz Email Verification');
-                }
-            );
+            Mail::send('emails.verify-otp', [
+                'otp' => $otp,
+                'firstname' => $validated['firstname'],
+            ], function ($message) use ($validated) {
+                $message->to($validated['email'])
+                    ->subject('VillaCorz Email Verification');
+            });
         } catch (Throwable $exception) {
             report($exception);
 
@@ -187,14 +186,13 @@ class AuthController extends Controller
         Cache::put($attemptsKey, 0, now()->addMinutes(10));
 
         try {
-            Mail::raw(
-                "Your VillaCorz verification code is: {$otp}\n\n"
-                . "This code expires in 10 minutes. Do not share it with anyone.",
-                function ($message) use ($pending) {
-                    $message->to($pending['email'])
-                        ->subject('VillaCorz Email Verification');
-                }
-            );
+            Mail::send('emails.verify-otp', [
+                'otp' => $otp,
+                'firstname' => $pending['firstname'],
+            ], function ($message) use ($pending) {
+                $message->to($pending['email'])
+                    ->subject('VillaCorz Email Verification');
+            });
         } catch (Throwable $exception) {
             report($exception);
 

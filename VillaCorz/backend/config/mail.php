@@ -65,6 +65,11 @@ return [
             'transport' => 'resend',
         ],
 
+        // HTTPS API mailer (works on networks that block outbound SMTP ports).
+        'brevo' => [
+            'transport' => 'brevo',
+        ],
+
         'sendmail' => [
             'transport' => 'sendmail',
             'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
