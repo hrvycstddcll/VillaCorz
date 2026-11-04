@@ -5,9 +5,9 @@ import DirectionalButton from '../ui/DirectionalButton'
 import { useAuth } from '../../../services/AuthContext'
 
 const backgroundVideo =
-    'https://res.cloudinary.com/ql4hruc3/video/upload/q_auto:good,w_1920,c_limit/v1791730522/home-background.mp4'
+    'https://res.cloudinary.com/ql4hruc3/video/upload/q_auto:good,w_1280,c_limit/v1791730522/home-background.mp4'
 const backgroundPoster =
-    'https://res.cloudinary.com/ql4hruc3/video/upload/so_0,w_1920,c_limit/v1791730522/home-background.jpg'
+    'https://res.cloudinary.com/ql4hruc3/video/upload/so_0,w_1280,c_limit/v1791730522/home-background.jpg'
 
 const HomePage = () => {
     const { user } = useAuth()
@@ -124,7 +124,7 @@ const HomePage = () => {
                         <p className="text-center font-poppins text-[clamp(1.125rem,4vw,1.875rem)] uppercase leading-snug text-white tracking-[0.15em]">
                             Your Cozy Getaway by the Sea.
                         </p>
-                        <p className="mt-3 max-w-[550px] text-center font-poppins text-xs leading-relaxed text-white/85 sm:text-sm">
+                        <p className="mt-3 max-w-137.5 text-center font-poppins text-xs leading-relaxed text-white/85 sm:text-sm">
                             Gather, celebrate, and create unforgettable memories
                             where the tide sets the pace and the shore is always
                             just steps away.

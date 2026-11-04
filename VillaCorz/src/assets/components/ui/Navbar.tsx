@@ -12,13 +12,9 @@ import GooeyNav, { type GooeyNavItem } from './GooeyNav'
 import { useAuth } from '../../../services/AuthContext'
 import LogoutModal from './LogoutModal'
 
-const triangleColor = '#000000'
-const textColor = '#000000'
 const buttonColor = '#3d8bff'
 
 const logoMarkup = logoSvg
-    .replaceAll('#4075b6', triangleColor)
-    .replaceAll('#3d8bff', textColor)
 
 const navLinks = [
     { name: "Home", href: "#home" },
@@ -117,15 +113,20 @@ const Navbar = () => {
 
             <div className="relative">
                 <div
-                    className={`relative mx-auto flex w-[70vw] max-lg:w-[calc(100vw-3rem)] items-center justify-between gap-4 bg-white px-4 py-2.5 transition-[border-radius,box-shadow] duration-200 sm:px-6 lg:max-w-[calc(100vw-12rem)] lg:shadow-none ${
+                    className={`transition-[filter] duration-200 motion-reduce:transition-none ${
                         isOpen
-                            ? 'rounded-b-none shadow-none'
-                            : 'rounded-b-[18px] shadow-[0_10px_30px_-14px_rgba(0,0,0,0.4)]'
+                            ? 'drop-shadow-[0_2px_20px_rgba(0,0,0,0.35)]'
+                            : 'drop-shadow-[0_5px_15px_rgba(0,0,0,0.38)]'
                     }`}
                 >
+                    <div
+                        className={`relative mx-auto flex w-[70vw] max-lg:w-[calc(100vw-3rem)] items-center justify-between gap-4 bg-white px-4 py-2.5 transition-[border-radius] duration-200 sm:px-6 lg:max-w-[calc(100vw-12rem)] ${
+                            isOpen ? 'rounded-b-none' : 'rounded-b-[18px]'
+                        }`}
+                    >
                     <a
                         href="#home"
-                        className="flex h-10 w-auto shrink-0 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]/60 focus-visible:ring-offset-2 [&>svg]:h-full [&>svg]:w-auto"
+                        className="flex h-8 w-auto shrink-0 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]/60 focus-visible:ring-offset-2 sm:h-9 lg:h-10 [&>svg]:h-full [&>svg]:w-auto"
                         aria-label="VillaCorz Beach House"
                         dangerouslySetInnerHTML={{ __html: logoMarkup }}
                     />
@@ -169,6 +170,7 @@ const Navbar = () => {
                         style={notchBackground}
                         className="pointer-events-none absolute -left-5 top-0 h-5 w-5 rotate-90"
                     />
+                    </div>
                 </div>
 
                 {!loading && (
