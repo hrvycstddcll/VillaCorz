@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import Dashboard from './assets/components/pages/Dashboard'
 import HomePage from './assets/components/pages/HomePage'
 import AboutUs from './assets/components/pages/AboutUs'
 import Services from './assets/components/pages/Services'
@@ -17,6 +18,14 @@ function AppRoutes() {
     }
     return (
         <Routes>
+            <Route
+                path="/dashboard"
+                element={
+                    <>
+                        <Dashboard />
+                    </>
+                }
+            />
             <Route
                 path="/services"
                 element={

@@ -12,6 +12,21 @@ const backgroundPoster =
 const HomePage = () => {
     const { user } = useAuth()
     const navigate = useNavigate()
+    const isAdmin = user?.role === 'admin'
+    const primaryButton = !user
+        ? {
+            label: 'GET STARTED',
+            destination: '/auth?mode=register',
+        }
+        : isAdmin
+        ? {
+                label: 'GO TO DASHBOARD',
+                destination: '/dashboard',
+            }
+        : {
+                label: 'VIEW SERVICES',
+                destination: '/services',
+            }
     const [prefersReducedMotion, setPrefersReducedMotion] = useState(
         () =>
             typeof window !== 'undefined' &&
@@ -148,10 +163,10 @@ const HomePage = () => {
                     <DirectionalButton
                         fillColor="#006dfc"
                         textColor="#ffffff"
-                        onClick={() => navigate('/auth?mode=register')}
+                        onClick={() => navigate(primaryButton.destination)}
                         className="w-full max-w-xs border-2 border-white bg-white px-4 py-3 font-poppins font-bold text-[#006dfc] sm:w-auto sm:px-8 sm:py-4"
                     >
-                        GET STARTED
+                        {primaryButton.label}
                     </DirectionalButton>
                 </div>
             </div>

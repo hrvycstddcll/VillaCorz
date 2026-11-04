@@ -18,10 +18,11 @@ const logoMarkup = logoSvg
 
 const navLinks = [
     { name: "Home", href: "#home" },
-    { name: "Services", href: "/services" },
-    { name: "Contact", href: "/#contact" },
     { name: "About Us", href: "/#about" },
+    { name: "Services", href: "/services" },
     { name: "Testimonials", href: "/#testimonials" },
+    { name: "Gallery", href: "/#gallery" },
+    { name: "Contact", href: "/#contact" },
 ]
 
 const gooeyLinks: GooeyNavItem[] = navLinks.map(({ name, href }) => ({

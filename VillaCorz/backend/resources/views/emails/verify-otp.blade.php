@@ -4,6 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify Your Email - VillaCorz</title>
+    <style>
+        @keyframes otp-digit-reveal {
+            from { opacity: 0; transform: translateY(-8px) scale(0.94); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .otp-digit-cell {
+            padding: 0 3px;
+        }
+
+        .otp-digit-box {
+            width: 34px !important;
+            height: 46px !important;
+            box-sizing: border-box;
+            animation: otp-digit-reveal 0.55s ease-out both;
+        }
+
+        @media only screen and (max-width: 360px) {
+            .otp-digit-cell {
+                padding: 0 2px !important;
+            }
+
+            .otp-digit-box {
+                width: 28px !important;
+                height: 40px !important;
+            }
+        }
+    </style>
 </head>
 <body style="margin:0; padding:0; background-color:#eef2f9; font-family:'Segoe UI', Arial, Helvetica, sans-serif; color:#1f2937; -webkit-font-smoothing:antialiased;">
 
@@ -69,10 +97,10 @@
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                                             <tr>
                                                 @for ($i = 0; $i < 6; $i++)
-                                                    <td align="center" valign="middle" style="padding:0 4px;">
-                                                        <table role="presentation" width="42" height="50" cellspacing="0" cellpadding="0" border="0" style="width:42px; height:50px; background-color:#ffffff; border:1.5px solid #c5daff; border-radius:10px; box-shadow:0 1px 4px rgba(0,109,252,0.08);">
+                                                    <td class="otp-digit-cell" align="center" valign="middle">
+                                                        <table class="otp-digit-box" role="presentation" width="34" height="46" cellspacing="0" cellpadding="0" border="0" style="width:34px; height:46px; background-color:#ffffff; border:1px solid #c5daff; border-radius:9px; box-shadow:0 1px 4px rgba(0,109,252,0.08); animation-delay:{{ $i * 0.05 }}s;">
                                                             <tr>
-                                                                <td align="center" valign="middle" style="height:50px; color:#006DFC; font-size:24px; line-height:1; font-weight:700; letter-spacing:0;">
+                                                                <td align="center" valign="middle" style="height:46px; color:#006DFC; font-size:22px; line-height:1; font-weight:700; letter-spacing:0;">
                                                                     {{ $otp[$i] ?? '' }}
                                                                 </td>
                                                             </tr>

@@ -221,13 +221,20 @@ const AboutUs = () => {
         const context = gsap.context(() => {
             if (!section || !wm || prefersReducedMotion) return
 
-            ScrollTrigger.create({
-                trigger: '[data-about-panel]',
-                start: 'top top',
-                end: 'bottom top',
-                pin: '[data-about-watermark]',
-                pinSpacing: false,
-            })
+            gsap.fromTo(
+                '[data-about-headline]',
+                { clipPath: 'inset(0% 0% 100% 0%)' },
+                {
+                    clipPath: 'inset(0% 0% 0% 0%)',
+                    ease: 'none',
+                    scrollTrigger: {
+                        trigger: '[data-about-panel]',
+                        start: 'top center',
+                        end: 'top 10%',
+                        scrub: 0.6,
+                    },
+                },
+            )
 
             gsap.fromTo(
                 '[data-about-photo]',
@@ -263,40 +270,33 @@ const AboutUs = () => {
             )
 
             const pos = { x: 0, y: 0, r: 0 }
-            const apply = () => {
-                wm.style.setProperty('--mx', `${pos.x}px`)
-                wm.style.setProperty('--my', `${pos.y}px`)
-                wm.style.setProperty('--r', `${pos.r}px`)
-            }
-
             const xTo = gsap.quickTo(pos, 'x', {
                 duration: 0.15,
                 ease: 'power2.out',
-                onUpdate: apply,
+                onUpdate: () => wm.style.setProperty('--mx', `${pos.x}px`),
             })
             const yTo = gsap.quickTo(pos, 'y', {
                 duration: 0.15,
                 ease: 'power2.out',
-                onUpdate: apply,
+                onUpdate: () => wm.style.setProperty('--my', `${pos.y}px`),
             })
             const rTo = gsap.quickTo(pos, 'r', {
                 duration: 0.3,
                 ease: 'power2.out',
-                onUpdate: apply,
+                onUpdate: () => wm.style.setProperty('--r', `${pos.r}px`),
             })
 
-            let rect = wm.getBoundingClientRect()
-            const refreshRect = () => {
-                rect = wm.getBoundingClientRect()
+            const updatePosition = (clientX: number, clientY: number) => {
+                const rect = wm.getBoundingClientRect()
+                xTo(clientX - rect.left)
+                yTo(clientY - rect.top)
             }
-            window.addEventListener('scroll', refreshRect, { passive: true })
-            window.addEventListener('resize', refreshRect)
 
+            let pointer: { x: number; y: number } | null = null
             const track = (event: PointerEvent) => {
-                xTo(event.clientX - rect.left)
-                yTo(event.clientY - rect.top)
+                pointer = { x: event.clientX, y: event.clientY }
+                updatePosition(pointer.x, pointer.y)
             }
-
             const onPointerEnter = (event: PointerEvent) => {
                 track(event)
                 rTo(160)
@@ -304,18 +304,24 @@ const AboutUs = () => {
 
             const onPointerMove = (event: PointerEvent) => track(event)
 
-            const onPointerLeave = () => rTo(0)
+            const onPointerLeave = () => {
+                pointer = null
+                rTo(0)
+            }
+            const onScroll = () => {
+                if (pointer) updatePosition(pointer.x, pointer.y)
+            }
 
             section.addEventListener('pointerenter', onPointerEnter)
             section.addEventListener('pointermove', onPointerMove)
             section.addEventListener('pointerleave', onPointerLeave)
+            window.addEventListener('scroll', onScroll, { passive: true })
 
             teardown = () => {
                 section.removeEventListener('pointerenter', onPointerEnter)
                 section.removeEventListener('pointermove', onPointerMove)
                 section.removeEventListener('pointerleave', onPointerLeave)
-                window.removeEventListener('scroll', refreshRect)
-                window.removeEventListener('resize', refreshRect)
+                window.removeEventListener('scroll', onScroll)
             }
         }, rootRef)
 
@@ -345,66 +351,60 @@ const AboutUs = () => {
         >
             <style>{tiltStyles}</style>
             <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0"
+            >
+                <div
+                    data-about-watermark
+                    className="relative h-full min-h-svh w-full overflow-hidden opacity-10"
+                    style={{
+                        maskImage:
+                            'radial-gradient(circle var(--r, 0px) at var(--mx, 50%) var(--my, 50%), #000 0%, #000 55%, transparent 100%)',
+                        WebkitMaskImage:
+                            'radial-gradient(circle var(--r, 0px) at var(--mx, 50%) var(--my, 50%), #000 0%, #000 55%, transparent 100%)',
+                        maskRepeat: 'no-repeat',
+                        WebkitMaskRepeat: 'no-repeat',
+                        willChange: 'mask-image',
+                    }}
+                >
+                    <svg
+                        aria-hidden="true"
+                        className="absolute inset-0 h-full w-full"
+                    >
+                        <defs>
+                            <pattern
+                                id="vc-logo-tiles"
+                                width="208"
+                                height="80"
+                                patternUnits="userSpaceOnUse"
+                            >
+                                <image
+                                    href={logoUrl}
+                                    x="16"
+                                    y="15"
+                                    width="176"
+                                    height="50"
+                                    preserveAspectRatio="xMidYMid meet"
+                                />
+                            </pattern>
+                        </defs>
+                        <rect
+                            width="100%"
+                            height="100%"
+                            fill="url(#vc-logo-tiles)"
+                        />
+                    </svg>
+                </div>
+            </div>
+            <div
                 data-about-panel
                 className="relative flex min-h-svh w-full items-center overflow-hidden"
             >
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0"
-                >
-                    <div
-                        data-about-watermark
-                        className="relative h-svh w-full overflow-hidden opacity-10"
-                        style={{
-                            maskImage:
-                                'radial-gradient(circle var(--r, 0px) at var(--mx, 50%) var(--my, 50%), #000 0%, #000 55%, transparent 100%)',
-                            WebkitMaskImage:
-                                'radial-gradient(circle var(--r, 0px) at var(--mx, 50%) var(--my, 50%), #000 0%, #000 55%, transparent 100%)',
-                            maskRepeat: 'no-repeat',
-                            WebkitMaskRepeat: 'no-repeat',
-                            willChange: 'mask-image',
-                        }}
-                    >
-                        <svg
-                            aria-hidden="true"
-                            className="absolute inset-0 h-full w-full"
-                        >
-                            <defs>
-                                <pattern
-                                    id="vc-logo-tiles"
-                                    width="208"
-                                    height="80"
-                                    patternUnits="userSpaceOnUse"
-                                >
-                                    <image
-                                        href={logoUrl}
-                                        x="16"
-                                        y="15"
-                                        width="176"
-                                        height="50"
-                                        preserveAspectRatio="xMidYMid meet"
-                                    />
-                                </pattern>
-                            </defs>
-                            <rect
-                                width="100%"
-                                height="100%"
-                                fill="url(#vc-logo-tiles)"
-                            />
-                        </svg>
-
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <img
-                                src={logoUrl}
-                                alt=""
-                                className="w-[min(90vw,70rem)]"
-                            />
-                        </div>
-                    </div>
-                </div>
-
                 <div className="relative z-10 mx-auto w-full max-w-7xl px-5 py-24 sm:px-8">
-                    <h2 className="font-serif text-[clamp(2.5rem,9vw,8rem)] leading-[0.92] tracking-tight text-black">
+                    <h2
+                        data-about-headline
+                        className="font-serif text-[clamp(2.5rem,9vw,8rem)] leading-[0.92] tracking-tight text-black"
+                    >
                         <span className="block">Your</span>
                         <span className="block pl-[14%] sm:pl-[20%]">Beach house,</span>
                         <span className="block pl-[4%] font-instrument italic text-[#006dfc] sm:pl-[8%]">
@@ -467,8 +467,8 @@ const AboutUs = () => {
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
                 >
-                    <div className="absolute left-1/2 top-12 h-72 w-[42rem] -translate-x-1/2 rounded-full bg-[#006dfc]/12 blur-3xl" />
-                    <div className="absolute right-8 bottom-4 h-52 w-72 rounded-full bg-[#006dfc]/10 blur-3xl" />
+                    <div className="absolute left-1/2 top-12 h-56 w-[min(85vw,30rem)] -translate-x-1/2 rounded-full bg-[#006dfc]/8 blur-2xl" />
+                    <div className="absolute right-8 bottom-4 h-40 w-56 rounded-full bg-[#006dfc]/6 blur-2xl" />
                 </div>
 
                 <div className='flex justify-center items-center py-[1.5rem]'>
