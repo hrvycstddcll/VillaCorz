@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuth } from '../../../services/AuthContext'
+import { useAuth } from '../../../services/useAuth'
 import axios from 'axios'
 import { Mail } from 'lucide-react'
 import { login, register } from '../../../services/authService'
@@ -97,11 +97,10 @@ const FormLogin = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType }:
 
             <p
                 role={feedbackType === 'error' ? 'alert' : 'status'}
-                className={`pb-2 min-h-[2rem] text-sm ${
-                    feedbackType === 'success'
+                className={`pb-2 min-h-[2rem] text-sm ${feedbackType === 'success'
                         ? 'text-green-800'
                         : 'text-red-700'
-                }`}
+                    }`}
             >
                 {feedback}
             </p>
@@ -115,8 +114,8 @@ const FormLogin = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType }:
         </div>
 
         <div className="flex w-full flex-col gap-4">
-            <button 
-                type="submit" 
+            <button
+                type="submit"
                 className="auth-submit"
                 disabled={isSubmitting}>
                 {isSubmitting ? 'LOGGING IN' : 'LOGIN'}
@@ -136,7 +135,7 @@ const FormLogin = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType }:
     </form>
 )
 
-const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType}: FormProps) => (
+const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType }: FormProps) => (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-5 sm:gap-6">
         <header className="flex w-full flex-col items-start gap-2">
             <h1 className="text-3xl font-extrabold tracking-tight text-[#5571ff] sm:text-[2.7rem]">
@@ -191,18 +190,17 @@ const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType
 
         <p
             role={feedbackType === 'error' ? 'alert' : 'status'}
-            className={`pb-2 min-h-[2rem] text-sm ${
-                feedbackType === 'success'
+            className={`pb-2 min-h-[2rem] text-sm ${feedbackType === 'success'
                     ? 'text-green-800'
                     : 'text-red-700'
-            }`}
+                }`}
         >
             {feedback}
         </p>
 
         <div className="flex w-full flex-col gap-4">
-            <button 
-                type="submit" 
+            <button
+                type="submit"
                 className="auth-submit"
                 disabled={isSubmitting}>
                 {isSubmitting ? 'CREATING ACCOUNT' : 'CREATE ACCOUNT'}
@@ -225,7 +223,7 @@ const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType
 const Auth = () => {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams()
-    const {setUser} = useAuth()
+    const { setUser } = useAuth()
 
     const mode: AuthMode =
         searchParams.get('mode') === 'register' ? 'register' : 'login'
@@ -317,12 +315,11 @@ const Auth = () => {
             <section className="flex min-h-screen w-full min-w-0 items-center justify-center bg-[#f7f7f7] px-5 py-10 sm:px-8 lg:w-[45%] lg:flex-none lg:px-8">
                 <div
                     key={mode}
-                    className={`w-full max-w-[430px] ${
-                        isRegistering
+                    className={`w-full max-w-[430px] ${isRegistering
                             ? 'auth-fade-in-right'
                             : 'auth-fade-in-left'
-                    }`}
-                > 
+                        }`}
+                >
                     {isRegistering ? (
                         <FormRegister
                             onSwitch={switchForm}

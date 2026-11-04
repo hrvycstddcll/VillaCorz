@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import DirectionalButton from '../ui/DirectionalButton'
-import { useAuth } from '../../../services/AuthContext'
+import { useAuth } from '../../../services/useAuth'
 
 const backgroundVideo =
     'https://res.cloudinary.com/ql4hruc3/video/upload/q_auto:good,w_1280,c_limit/v1791730522/home-background.mp4'
@@ -61,7 +61,8 @@ const HomePage = () => {
     return (
         <section
             ref={rootRef}
-            className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-black pt-16 sm:pt-20"
+            id="home"
+            className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-black pb-36 pt-16 sm:pb-28 sm:pt-20"
         >
             <div
                 className="absolute inset-0 bg-cover bg-center"

@@ -2,9 +2,11 @@ import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import HomePage from './assets/components/pages/HomePage'
 import AboutUs from './assets/components/pages/AboutUs'
+import Services from './assets/components/pages/Services'
 import Navbar from './assets/components/ui/Navbar'
 import Auth from './assets/components/auth/Auth'
-import { AuthProvider, useAuth } from './services/AuthContext'
+import { AuthProvider } from './services/AuthContext'
+import { useAuth } from './services/useAuth'
 import { initSmoothScroll } from './lib/smoothScroll'
 
 function AppRoutes() {
@@ -16,11 +18,21 @@ function AppRoutes() {
     return (
         <Routes>
             <Route
+                path="/services"
+                element={
+                    <>
+                        <Navbar />
+                        <Services />
+                    </>
+                }
+            />
+            <Route
                 path="/"
                 element={
                     <>
                         <Navbar />
                         <HomePage />
+                        <Services bookingOnly />
                         <AboutUs />
                     </>
                 }

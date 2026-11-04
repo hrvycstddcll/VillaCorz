@@ -9,7 +9,7 @@ import logoSvg from '../../VillaCorz-SVGLogo.svg?raw'
 import { Menu, X } from 'lucide-react'
 import DirectionalButton from './DirectionalButton'
 import GooeyNav, { type GooeyNavItem } from './GooeyNav'
-import { useAuth } from '../../../services/AuthContext'
+import { useAuth } from '../../../services/useAuth'
 import LogoutModal from './LogoutModal'
 
 const buttonColor = '#3d8bff'
@@ -18,10 +18,10 @@ const logoMarkup = logoSvg
 
 const navLinks = [
     { name: "Home", href: "#home" },
-    { name: "Services", href: "#services" },
-    { name: "Contact", href: "#contact" },
-    { name: "About Us", href: "#about" },
-    { name: "Testimonials", href: "#testimonials" },
+    { name: "Services", href: "/services" },
+    { name: "Contact", href: "/#contact" },
+    { name: "About Us", href: "/#about" },
+    { name: "Testimonials", href: "/#testimonials" },
 ]
 
 const gooeyLinks: GooeyNavItem[] = navLinks.map(({ name, href }) => ({
@@ -125,7 +125,7 @@ const Navbar = () => {
                         }`}
                     >
                     <a
-                        href="#home"
+                        href="/#home"
                         className="flex h-8 w-auto shrink-0 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]/60 focus-visible:ring-offset-2 sm:h-9 lg:h-10 [&>svg]:h-full [&>svg]:w-auto"
                         aria-label="VillaCorz Beach House"
                         dangerouslySetInnerHTML={{ __html: logoMarkup }}
