@@ -93,20 +93,19 @@ Development dependencies:
 
 ## Install
 
-Run these commands from the repository root:
+Run the all-in-one installer from the repository root:
 
-```sh
-npm ci
-cd VillaCorz
-npm ci
-cd backend
-composer install
-npm install
+```bash
+bash ./install-dependencies.sh
 ```
 
-The backend has no npm lockfile, so use `npm install` there. The repository
-root and frontend have lockfiles; use `npm ci` to install their locked
-dependencies.
+On Windows, run this from Git Bash. The script uses the npm lockfiles in all
+three JavaScript project directories and installs Composer dependencies from
+the Laravel lockfile.
+
+Stop any running Vite development servers before running the installer.
+On Windows, `npm ci` replaces installed packages and can fail if a running
+Vite process has a native package loaded.
 
 ## Configure and run locally
 

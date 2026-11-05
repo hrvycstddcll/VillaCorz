@@ -1,6 +1,8 @@
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import axios from 'axios'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import api from '../../../services/api'
 import {
     MapContainer,
@@ -17,8 +19,14 @@ import {
     Clock,
     Route,
     LoaderCircle,
+    ArrowUpRight,
+    Send,
 } from 'lucide-react'
 import 'leaflet/dist/leaflet.css'
+import './Contact.css'
+import contactReef from '../../images/contact-reef.png'
+
+gsap.registerPlugin(ScrollTrigger)
 
 type Coordinates = {
     lat: number
@@ -30,6 +38,21 @@ type RouteInfo = {
     duration: number
 }
 
+const REVEAL_GROUPS: {
+    selector: string
+    animation: gsap.TweenVars
+}[] = [
+    { selector: '[data-animate="heading"]', animation: { y: 45, duration: 1 } },
+    {
+        selector: '[data-animate="contact"]',
+        animation: { y: 30, duration: 0.8, stagger: 0.15 },
+    },
+    { selector: '[data-animate="form"]', animation: { x: 45, duration: 1 } },
+    { selector: '[data-animate="map-heading"]', animation: { y: 30 } },
+    { selector: '[data-animate="map"]', animation: { y: 40, duration: 1 } },
+    { selector: '[data-animate="directions"]', animation: { y: 20 } },
+]
+
 const VILLA_LOCATION: Coordinates = {
     lat: 13.95007,
     lng: 120.618683,
@@ -37,7 +60,6 @@ const VILLA_LOCATION: Coordinates = {
 
 const VILLA_NAME = 'VillaCorz'
 
-// Automatically adjusts the map when the visitor's location is detected.
 function MapViewport({
     userLocation,
 }: {
@@ -65,7 +87,233 @@ function MapViewport({
     return null
 }
 
+function LocationSection({
+    userLocation,
+    routeCoordinates,
+    routeInfo,
+    isLocating,
+    isRouting,
+    locationError,
+    routeError,
+    directionsUrl,
+    onLocate,
+    formatDistance,
+    formatDuration,
+}: {
+    userLocation: Coordinates | null
+    routeCoordinates: [number, number][]
+    routeInfo: RouteInfo | null
+    isLocating: boolean
+    isRouting: boolean
+    locationError: string
+    routeError: string
+    directionsUrl: string
+    onLocate: () => void
+    formatDistance: (meters: number) => string
+    formatDuration: (seconds: number) => string
+}) {
+    return (
+        <div className="contact-location">
+            <div
+                data-animate="map-heading"
+                className="contact-location__header"
+            >
+                <div>
+                    <span className="contact-eyebrow">
+                        <span className="contact-eyebrow__line" />
+                        Find Us
+                    </span>
+                    <h3 className="contact-location__title">
+                        Your Journey to VillaCorz.
+                    </h3>
+                    <p className="contact-location__description">
+                        Find our location and discover how far you are from your
+                        next getaway.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={onLocate}
+                    disabled={isLocating}
+                    className="contact-location__button"
+                >
+                    {isLocating ? (
+                        <LoaderCircle className="contact-icon-spin" />
+                    ) : (
+                        <Navigation size={17} />
+                    )}
+                    {isLocating ? 'Finding Location...' : 'Get My Location'}
+                </button>
+            </div>
+
+            {locationError && (
+                <p
+                    role="alert"
+                    className="contact-error"
+                >
+                    {locationError}
+                </p>
+            )}
+
+            <div
+                data-animate="map"
+                className="contact-map-frame"
+            >
+                <div className="contact-map-canvas">
+                    <MapContainer
+                        center={[VILLA_LOCATION.lat, VILLA_LOCATION.lng]}
+                        zoom={15}
+                        scrollWheelZoom={false}
+                        className="contact-map"
+                    >
+                        <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            maxZoom={19}
+                        />
+                        <MapViewport userLocation={userLocation} />
+                        <CircleMarker
+                            center={[VILLA_LOCATION.lat, VILLA_LOCATION.lng]}
+                            radius={11}
+                            pathOptions={{
+                                color: '#ffffff',
+                                weight: 3,
+                                fillColor: '#006dfc',
+                                fillOpacity: 1,
+                            }}
+                        >
+                            <Popup>
+                                <strong>{VILLA_NAME}</strong>
+                                <br />
+                                Your destination
+                            </Popup>
+                        </CircleMarker>
+                        {userLocation && (
+                            <CircleMarker
+                                center={[userLocation.lat, userLocation.lng]}
+                                radius={8}
+                                pathOptions={{
+                                    color: '#ffffff',
+                                    weight: 3,
+                                    fillColor: '#16a34a',
+                                    fillOpacity: 1,
+                                }}
+                            >
+                                <Popup>Your current location</Popup>
+                            </CircleMarker>
+                        )}
+                        {routeCoordinates.length > 0 && (
+                            <Polyline
+                                positions={routeCoordinates}
+                                pathOptions={{
+                                    color: '#006dfc',
+                                    weight: 5,
+                                    opacity: 0.85,
+                                }}
+                            />
+                        )}
+                    </MapContainer>
+                </div>
+            </div>
+
+            <div className="contact-route">
+                {!userLocation ? (
+                    <div className="contact-route__prompt">
+                        <div className="contact-icon-box">
+                            <Navigation size={22} />
+                        </div>
+                        <div>
+                            <p className="contact-detail__title">
+                                How far are you from VillaCorz?
+                            </p>
+                            <p className="contact-detail__description">
+                                Allow location access to calculate your driving
+                                distance and estimated travel time.
+                            </p>
+                        </div>
+                    </div>
+                ) : isRouting ? (
+                    <div className="contact-route__loading">
+                        <LoaderCircle className="contact-icon-spin contact-icon-spin--large" />
+                        Calculating your driving route...
+                    </div>
+                ) : routeInfo ? (
+                    <div
+                        data-animate="route-info"
+                        className="contact-route__metrics"
+                    >
+                        <RouteMetric
+                            icon={<Route size={22} />}
+                            label="Driving Distance"
+                            value={formatDistance(routeInfo.distance)}
+                        />
+                        <RouteMetric
+                            icon={<Clock size={22} />}
+                            label="Estimated Travel Time"
+                            value={formatDuration(routeInfo.duration)}
+                        />
+                    </div>
+                ) : routeError ? (
+                    <p
+                        role="alert"
+                        className="contact-error"
+                    >
+                        {routeError}
+                    </p>
+                ) : null}
+
+                <div
+                    data-animate="directions"
+                    className="contact-directions"
+                >
+                    <p className="contact-directions__note">
+                        Map data © OpenStreetMap contributors. Routes provided by
+                        OSRM. Travel times are estimates and don't account for
+                        live traffic.
+                    </p>
+                    <a
+                        href={directionsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="contact-directions__link"
+                    >
+                        Get Directions
+                        <ArrowUpRight className="contact-arrow" />
+                    </a>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function RouteMetric({
+    icon,
+    label,
+    value,
+}: {
+    icon: ReactNode
+    label: string
+    value: string
+}) {
+    return (
+        <div className="contact-metric">
+            <div className="contact-icon-box">
+                {icon}
+            </div>
+            <div>
+                <p className="contact-metric__label">
+                    {label}
+                </p>
+                <p className="contact-metric__value">{value}</p>
+            </div>
+        </div>
+    )
+}
+
 const Contact = () => {
+    const sectionRef = useRef<HTMLElement>(null)
+
     const [userLocation, setUserLocation] =
         useState<Coordinates | null>(null)
 
@@ -80,12 +328,95 @@ const Contact = () => {
     const [locationError, setLocationError] = useState('')
     const [routeError, setRouteError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+
     const [formFeedback, setFormFeedback] = useState<{
         type: 'success' | 'error'
         message: string
     } | null>(null)
 
-    const handleContactSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    useEffect(() => {
+        const section = sectionRef.current
+        if (!section) return
+
+        const media = gsap.matchMedia(section)
+
+        media.add('(prefers-reduced-motion: no-preference)', () => {
+            REVEAL_GROUPS.forEach(({ selector, animation }) => {
+                const elements = section.querySelectorAll<HTMLElement>(selector)
+                if (!elements.length) return
+
+                gsap.from(elements, {
+                    y: 35,
+                    opacity: 0,
+                    duration: 0.9,
+                    ease: 'power3.out',
+                    scrollTrigger: {
+                        trigger: elements[0],
+                        start: 'top 88%',
+                        once: true,
+                    },
+                    ...animation,
+                })
+            })
+
+            const bubbles =
+                section.querySelectorAll<HTMLElement>('[data-bubble]')
+            if (bubbles.length) {
+                const bubbleTimeline = gsap.timeline({
+                    scrollTrigger: {
+                        trigger: section,
+                        start: 'top bottom',
+                        end: 'bottom top',
+                        scrub: true,
+                    },
+                })
+
+                bubbles.forEach((bubble) => {
+                    const travel = Number(bubble.dataset.bubbleTravel)
+                    if (Number.isFinite(travel)) {
+                        bubbleTimeline.to(
+                            bubble,
+                            { y: -travel, ease: 'none' },
+                            0,
+                        )
+                    }
+                })
+            }
+        })
+
+        return () => media.revert()
+    }, [])
+
+    // Animate route information when it becomes available.
+    useEffect(() => {
+        if (!routeInfo || !sectionRef.current) return
+
+        const metrics = sectionRef.current.querySelector(
+            '[data-animate="route-info"]',
+        )
+
+        if (!metrics) return
+
+        const animation = gsap.fromTo(
+            metrics,
+            { y: 20, opacity: 0 },
+            {
+                y: 0,
+                opacity: 1,
+                duration: 0.7,
+                ease: 'power3.out',
+            },
+        )
+
+        return () => {
+            animation.kill()
+        }
+    }, [routeInfo])
+
+    // Contact form submission
+    const handleContactSubmit = async (
+        event: FormEvent<HTMLFormElement>,
+    ) => {
         event.preventDefault()
         setFormFeedback(null)
         setIsSubmitting(true)
@@ -101,6 +432,7 @@ const Contact = () => {
             })
 
             form.reset()
+
             setFormFeedback({
                 type: 'success',
                 message: response.data.message,
@@ -112,7 +444,9 @@ const Contact = () => {
                     errors?: Record<string, string[]>
                 } | undefined
                 : undefined
-            const validationError = Object.values(data?.errors ?? {}).flat()[0]
+
+            const validationError =
+                Object.values(data?.errors ?? {}).flat()[0]
 
             setFormFeedback({
                 type: 'error',
@@ -126,7 +460,7 @@ const Contact = () => {
         }
     }
 
-    // Request the visitor's current location.
+    // Get visitor location
     const getCurrentLocation = () => {
         if (!navigator.geolocation) {
             setLocationError(
@@ -155,8 +489,10 @@ const Contact = () => {
                 }
 
                 setLocationError(
-                    messages[error.code] || 'Unable to get your location.',
+                    messages[error.code] ||
+                    'Unable to get your location.',
                 )
+
                 setIsLocating(false)
             },
             {
@@ -167,7 +503,7 @@ const Contact = () => {
         )
     }
 
-    // Request a driving route from the visitor to VillaCorz.
+    // Calculate driving route
     useEffect(() => {
         if (!userLocation) return
 
@@ -261,328 +597,277 @@ const Contact = () => {
         : `https://www.google.com/maps/dir/?api=1&destination=${VILLA_LOCATION.lat},${VILLA_LOCATION.lng}`
 
     return (
-        <section id="contact" className="bg-white px-6 py-24">
-            <div className="mx-auto max-w-7xl">
+        <section
+            ref={sectionRef}
+            id="contact"
+            className="contact-section"
+        >
+            <div
+                aria-hidden="true"
+                className="contact-glow contact-glow--top"
+            />
 
-                {/* Section heading */}
-                <div className="mb-14">
-                    <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[#006dfc]">
+            <div
+                aria-hidden="true"
+                className="contact-glow contact-glow--bottom"
+            />
+
+            <img
+                src={contactReef}
+                alt=""
+                aria-hidden="true"
+                className="contact-reef"
+            />
+
+            <div
+                aria-hidden="true"
+                className="contact-bubbles"
+            >
+                <span
+                    data-bubble
+                    data-bubble-travel="360"
+                    className="contact-bubble contact-bubble--one"
+                />
+                <span
+                    data-bubble
+                    data-bubble-travel="520"
+                    className="contact-bubble contact-bubble--two"
+                />
+                <span
+                    data-bubble
+                    data-bubble-travel="440"
+                    className="contact-bubble contact-bubble--three"
+                />
+                <span
+                    data-bubble
+                    data-bubble-travel="620"
+                    className="contact-bubble contact-bubble--four"
+                />
+            </div>
+
+            <div className="contact-container">
+
+                <div
+                    data-animate="heading"
+                    className="contact-heading"
+                >
+                    <span className="contact-eyebrow">
+                        <span className="contact-eyebrow__line" />
                         Get in Touch
                     </span>
 
-                    <h2 className="mt-3 text-4xl font-bold tracking-tight text-slate-900 md:text-5xl">
-                        We'd Love to Hear From You.
+                    <h2 className="contact-heading__title">
+                        We'd Love to
+                        <span className="contact-heading__accent">
+                            Hear From You.
+                        </span>
                     </h2>
 
-                    <p className="mt-4 max-w-xl text-slate-500">
-                        Have questions about your stay? Feel free to reach
-                        out. We're always happy to help.
+                    <p className="contact-heading__description">
+                        Have questions about your stay or planning your
+                        next getaway? Send us a message. We'd be happy
+                        to help make your VillaCorz experience special.
                     </p>
                 </div>
 
-                <div className="grid gap-14 md:grid-cols-2">
+                <LocationSection
+                    userLocation={userLocation}
+                    routeCoordinates={routeCoordinates}
+                    routeInfo={routeInfo}
+                    isLocating={isLocating}
+                    isRouting={isRouting}
+                    locationError={locationError}
+                    routeError={routeError}
+                    directionsUrl={directionsUrl}
+                    onLocate={getCurrentLocation}
+                    formatDistance={formatDistance}
+                    formatDuration={formatDuration}
+                />
 
-                    <div className="space-y-8">
-                        <div className="flex items-start gap-4">
-                            <div className="rounded-lg bg-[#006dfc]/10 p-3 text-[#006dfc]">
-                                <MapPin size={22} />
+                {/* Contact information and form */}
+                <div className="contact-grid">
+
+                    <div className="contact-details">
+
+                        <div
+                            data-animate="contact"
+                            className="contact-card"
+                        >
+                            <div className="contact-icon-box contact-card__icon">
+                                <MapPin className="contact-icon" />
                             </div>
 
                             <div>
-                                <h3 className="font-semibold text-slate-900">
+                                <h3 className="contact-detail__title">
                                     Our Location
                                 </h3>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    Mabuhangray, Lian, Batangas
+
+                                <p className="contact-detail__description">
+                                    Matabungkay, Lian, Batangas
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex items-start gap-4">
-                            <div className="rounded-lg bg-[#006dfc]/10 p-3 text-[#006dfc]">
-                                <Mail size={22} />
+                        <div
+                            data-animate="contact"
+                            className="contact-card"
+                        >
+                            <div className="contact-icon-box contact-card__icon">
+                                <Mail className="contact-icon" />
                             </div>
 
                             <div>
-                                <h3 className="font-semibold text-slate-900">
+                                <h3 className="contact-detail__title">
                                     Get in Touch
                                 </h3>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    Send us a message using the form. We will
-                                    reply to the email address you provide.
+
+                                <p className="contact-detail__description">
+                                    Send us a message using the form.
+                                    We'll reply to the email address
+                                    you provide.
                                 </p>
                             </div>
                         </div>
+
+                        <div
+                            data-animate="contact"
+                            className="contact-note"
+                        >
+                            <p className="contact-note__title">
+                                Your getaway is just a message away.
+                            </p>
+
+                            <p className="contact-note__description">
+                                We look forward to welcoming you to
+                                VillaCorz.
+                            </p>
+                        </div>
                     </div>
 
-                    <form
-                        onSubmit={handleContactSubmit}
-                        className="space-y-5"
+                    {/* Contact form */}
+                    <div
+                        data-animate="form"
+                        className="contact-form-card"
                     >
-                        <div>
-                            <label htmlFor="contact-name" className="mb-2 block text-sm font-medium text-slate-700">
-                                Full Name
-                            </label>
-                            <input
-                                id="contact-name"
-                                name="name"
-                                type="text"
-                                required
-                                maxLength={120}
-                                autoComplete="name"
-                                placeholder="Enter your name"
-                                className="w-full border-b border-slate-300 bg-transparent px-1 py-3 text-sm outline-none transition focus:border-[#006dfc]"
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="contact-email" className="mb-2 block text-sm font-medium text-slate-700">
-                                Email Address
-                            </label>
-                            <input
-                                id="contact-email"
-                                name="email"
-                                type="email"
-                                required
-                                maxLength={254}
-                                autoComplete="email"
-                                placeholder="Enter your email"
-                                className="w-full border-b border-slate-300 bg-transparent px-1 py-3 text-sm outline-none transition focus:border-[#006dfc]"
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="contact-message" className="mb-2 block text-sm font-medium text-slate-700">
-                                Message
-                            </label>
-                            <textarea
-                                id="contact-message"
-                                name="message"
-                                rows={4}
-                                required
-                                maxLength={5000}
-                                placeholder="How can we help you?"
-                                className="w-full resize-none border-b border-slate-300 bg-transparent px-1 py-3 text-sm outline-none transition focus:border-[#006dfc]"
-                            />
-                        </div>
-
-                        {formFeedback && (
-                            <p
-                                role={formFeedback.type === 'error' ? 'alert' : 'status'}
-                                className={`text-sm ${
-                                    formFeedback.type === 'error'
-                                        ? 'text-red-600'
-                                        : 'text-green-700'
-                                }`}
-                            >
-                                {formFeedback.message}
-                            </p>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="bg-[#006dfc] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#0056cc] disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            {isSubmitting ? 'Sending...' : 'Send Message'}
-                        </button>
-                    </form>
-                </div>
-
-                {/* Location map */}
-                <div className="mt-20">
-                    <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-                        <div>
-                            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[#006dfc]">
-                                Find Us
+                        <div className="contact-form-card__header">
+                            <span className="contact-form-card__eyebrow">
+                                Send an Inquiry
                             </span>
 
-                            <h3 className="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">
-                                Visit VillaCorz
+                            <h3 className="contact-form-card__title">
+                                Let's talk.
                             </h3>
 
-                            <p className="mt-2 text-sm text-slate-500">
-                                Discover our location and plan your journey.
+                            <p className="contact-form-card__description">
+                                Fill out the form below and we'll get
+                                back to you.
                             </p>
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={getCurrentLocation}
-                            disabled={isLocating}
-                            className="inline-flex items-center justify-center gap-2 bg-[#006dfc] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0056cc] disabled:cursor-not-allowed disabled:opacity-60"
+                        <form
+                            onSubmit={handleContactSubmit}
+                            className="contact-form"
                         >
-                            {isLocating ? (
-                                <LoaderCircle className="size-4 animate-spin" />
-                            ) : (
-                                <Navigation className="size-4" />
-                            )}
-
-                            {isLocating
-                                ? 'Finding location...'
-                                : 'Get My Location'}
-                        </button>
-                    </div>
-
-                    {/* Location errors */}
-                    {locationError && (
-                        <p role="alert" className="mb-4 text-sm text-red-600">
-                            {locationError}
-                        </p>
-                    )}
-
-                    {/* Map */}
-                    <div className="relative z-0 h-[350px] overflow-hidden border border-slate-200 shadow-sm md:h-[450px]">
-                        <MapContainer
-                            center={[
-                                VILLA_LOCATION.lat,
-                                VILLA_LOCATION.lng,
-                            ]}
-                            zoom={15}
-                            scrollWheelZoom={false}
-                            className="h-full w-full"
-                        >
-                            <TileLayer
-                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                maxZoom={19}
-                            />
-
-                            <MapViewport userLocation={userLocation} />
-
-                            {/* VillaCorz marker */}
-                            <CircleMarker
-                                center={[
-                                    VILLA_LOCATION.lat,
-                                    VILLA_LOCATION.lng,
-                                ]}
-                                radius={11}
-                                pathOptions={{
-                                    color: '#ffffff',
-                                    weight: 3,
-                                    fillColor: '#006dfc',
-                                    fillOpacity: 1,
-                                }}
-                            >
-                                <Popup>
-                                    <strong>{VILLA_NAME}</strong>
-                                    <br />
-                                    Your destination
-                                </Popup>
-                            </CircleMarker>
-
-                            {/* Visitor marker */}
-                            {userLocation && (
-                                <CircleMarker
-                                    center={[
-                                        userLocation.lat,
-                                        userLocation.lng,
-                                    ]}
-                                    radius={8}
-                                    pathOptions={{
-                                        color: '#ffffff',
-                                        weight: 3,
-                                        fillColor: '#16a34a',
-                                        fillOpacity: 1,
-                                    }}
+                            <div>
+                                <label
+                                    htmlFor="contact-name"
+                                    className="contact-form__label"
                                 >
-                                    <Popup>
-                                        Your current location
-                                    </Popup>
-                                </CircleMarker>
-                            )}
+                                    Full Name
+                                </label>
 
-                            {/* Driving route */}
-                            {routeCoordinates.length > 0 && (
-                                <Polyline
-                                    positions={routeCoordinates}
-                                    pathOptions={{
-                                        color: '#006dfc',
-                                        weight: 5,
-                                        opacity: 0.85,
-                                    }}
+                                <input
+                                    id="contact-name"
+                                    name="name"
+                                    type="text"
+                                    required
+                                    maxLength={120}
+                                    autoComplete="name"
+                                    placeholder="Enter your name"
+                                    className="contact-form__input"
                                 />
+                            </div>
+
+                            <div>
+                                <label
+                                    htmlFor="contact-email"
+                                    className="contact-form__label"
+                                >
+                                    Email Address
+                                </label>
+
+                                <input
+                                    id="contact-email"
+                                    name="email"
+                                    type="email"
+                                    required
+                                    maxLength={254}
+                                    autoComplete="email"
+                                    placeholder="Enter your email"
+                                    className="contact-form__input"
+                                />
+                            </div>
+
+                            <div>
+                                <label
+                                    htmlFor="contact-message"
+                                    className="contact-form__label"
+                                >
+                                    Message
+                                </label>
+
+                                <textarea
+                                    id="contact-message"
+                                    name="message"
+                                    rows={5}
+                                    required
+                                    maxLength={5000}
+                                    placeholder="How can we help you?"
+                                    className="contact-form__textarea"
+                                />
+                            </div>
+
+                            {formFeedback && (
+                                <p
+                                    role={
+                                        formFeedback.type === 'error'
+                                            ? 'alert'
+                                            : 'status'
+                                    }
+                                    className={`contact-form__feedback ${
+                                        formFeedback.type === 'error'
+                                            ? 'contact-form__feedback--error'
+                                            : 'contact-form__feedback--success'
+                                    }`}
+                                >
+                                    {formFeedback.message}
+                                </p>
                             )}
-                        </MapContainer>
+
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="contact-form__submit"
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <LoaderCircle className="contact-icon-spin" />
+                                        Sending Message...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send className="contact-icon" />
+                                        Send Message
+                                        <ArrowUpRight
+                                            className="contact-arrow contact-form__arrow"
+                                        />
+                                    </>
+                                )}
+                            </button>
+                        </form>
                     </div>
-
-                    {/* Route information */}
-                    <div className="mt-5">
-                        {!userLocation ? (
-                            <div className="flex items-start gap-3 bg-slate-50 p-5">
-                                <Navigation className="mt-1 size-5 shrink-0 text-[#006dfc]" />
-                                <div>
-                                    <p className="font-semibold text-slate-900">
-                                        Want to know how far we are?
-                                    </p>
-                                    <p className="mt-1 text-sm text-slate-500">
-                                        Allow location access to calculate
-                                        your driving distance and estimated
-                                        travel time to VillaCorz.
-                                    </p>
-                                </div>
-                            </div>
-                        ) : isRouting ? (
-                            <div className="flex items-center gap-3 bg-slate-50 p-5 text-sm text-slate-600">
-                                <LoaderCircle className="size-5 animate-spin text-[#006dfc]" />
-                                Calculating your route...
-                            </div>
-                        ) : routeInfo ? (
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="flex items-center gap-4 bg-slate-50 p-5">
-                                    <div className="rounded-lg bg-[#006dfc]/10 p-3 text-[#006dfc]">
-                                        <Route size={22} />
-                                    </div>
-
-                                    <div>
-                                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                                            Driving Distance
-                                        </p>
-                                        <p className="mt-1 text-xl font-bold text-slate-900">
-                                            {formatDistance(routeInfo.distance)}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-4 bg-slate-50 p-5">
-                                    <div className="rounded-lg bg-[#006dfc]/10 p-3 text-[#006dfc]">
-                                        <Clock size={22} />
-                                    </div>
-
-                                    <div>
-                                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                                            Estimated Travel Time
-                                        </p>
-                                        <p className="mt-1 text-xl font-bold text-slate-900">
-                                            {formatDuration(routeInfo.duration)}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : routeError ? (
-                            <p role="alert" className="bg-slate-50 p-5 text-sm text-red-600">
-                                {routeError}
-                            </p>
-                        ) : null}
-
-                        {/* Directions link */}
-                        <a
-                            href={directionsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#006dfc] transition hover:text-[#0056cc]"
-                        >
-                            <Navigation size={17} />
-                            Get Directions
-                        </a>
-                    </div>
-
-                    <p className="mt-5 text-xs text-slate-400">
-                        Map data © OpenStreetMap contributors. Routes provided
-                        by OSRM. Travel times are estimates and do not account
-                        for live traffic.
-                    </p>
                 </div>
+
             </div>
         </section>
     )
