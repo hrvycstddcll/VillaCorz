@@ -89,6 +89,7 @@ const ServicesFooter = ({
     onCheckAvailability,
 }: ServicesFooterProps) => {
     const [bookingPopover, setBookingPopover] = useState<BookingPopover>(null)
+    const [isExpanded, setIsExpanded] = useState(false)
     const [calendarMonth, setCalendarMonth] = useState(() =>
         startOfMonth(new Date()),
     )
@@ -155,8 +156,6 @@ const ServicesFooter = ({
         )
     }
 
-    const [isExpanded, setIsExpanded] = useState(false)
-
     return (
         <footer
             aria-label="Stay dates and guests"
@@ -165,7 +164,7 @@ const ServicesFooter = ({
             <div className="grid w-full grid-cols-2 items-center gap-2 bg-white px-4 py-2.5 sm:gap-4 sm:px-7 sm:py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_268px] lg:gap-7">
                 <div
                     className={`relative col-span-2 min-w-0 lg:col-span-1 ${
-                        !isExpanded ? 'hidden md:block' : ''
+                        !isExpanded ? 'hidden lg:block' : ''
                     }`}
                 >
                     <button
@@ -403,7 +402,7 @@ const ServicesFooter = ({
 
                 <div
                     className={`relative min-w-0 ${
-                        !isExpanded ? 'hidden md:block' : ''
+                        !isExpanded ? 'hidden lg:block' : ''
                     }`}
                 >
                     <button
@@ -703,12 +702,12 @@ const ServicesFooter = ({
                         }}
                         aria-label={isExpanded ? 'Collapse booking form' : 'Expand booking form'}
                         aria-expanded={isExpanded}
-                        className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-[#2875e8] text-white transition hover:bg-[#1763d4] md:hidden"
+                        className="flex size-11 shrink-0 items-center justify-center rounded-sm bg-[#2875e8] text-white transition hover:bg-[#1763d4] lg:hidden"
                     >
                         {isExpanded ? (
-                            <ChevronUp size={16} />
+                            <ChevronUp size={30} />
                         ) : (
-                            <ChevronDown size={16} />
+                            <ChevronDown size={30} />
                         )}
                     </button>
                 </div>
@@ -716,7 +715,7 @@ const ServicesFooter = ({
                     <p
                         role="status"
                         className={`col-span-2 flex items-start gap-2 rounded-lg bg-blue-50 p-2.5 text-[10px] leading-4 text-blue-800 lg:col-span-3 ${
-                            !isExpanded ? 'hidden md:flex' : ''
+                            !isExpanded ? 'hidden lg:flex' : ''
                         }`}
                     >
                         <Check
