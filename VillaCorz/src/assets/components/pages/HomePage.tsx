@@ -21,7 +21,7 @@ const HomePage = () => {
         : isAdmin
         ? {
                 label: 'GO TO DASHBOARD',
-                destination: '/dashboard',
+                destination: '/admin',
             }
         : {
                 label: 'VIEW SERVICES',

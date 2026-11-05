@@ -20,8 +20,8 @@ const navLinks = [
     { name: "Home", href: "#home" },
     { name: "About Us", href: "/#about" },
     { name: "Services", href: "/services" },
-    { name: "Testimonials", href: "/#testimonials" },
     { name: "Gallery", href: "/#gallery" },
+    { name: "Testimonials", href: "/#testimonials" },
     { name: "Contact", href: "/#contact" },
 ]
 
@@ -33,7 +33,7 @@ const gooeyLinks: GooeyNavItem[] = navLinks.map(({ name, href }) => ({
 const gooeyListClassName = 'hidden items-center gap-1 lg:flex xl:gap-2'
 
 const gooeyLinkClassName =
-    'inline-flex items-center rounded-lg px-3 py-2 text-sm font-poppins uppercase tracking-[0.2em] text-gray-600 transition-colors hover:text-black focus-visible:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006dfc]/60 focus-visible:ring-offset-2'
+    'inline-flex items-center rounded-lg px-3 py-2 text-[clamp(0.6875rem,0.85vw,0.875rem)] font-poppins uppercase tracking-[clamp(0.06em,0.14vw,0.2em)] text-gray-600 transition-colors hover:text-black focus-visible:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006dfc]/60 focus-visible:ring-offset-2'
 
 const notchBackground: CSSProperties = {
     backgroundImage:
@@ -181,7 +181,7 @@ const Navbar = () => {
                             textColor="#006dfc"
                             //onClick={handleLogout}
                             onClick={() => setShowLogoutModal(true)}
-                            className="absolute right-0 top-1/2 hidden -translate-y-1/2 bg-[#006dfc] px-5 py-2.5 font-poppins text-xs font-semibold tracking-wide text-white lg:inline-flex"
+                            className="absolute right-0 top-1/2 hidden -translate-y-1/2 bg-[#006dfc] px-5 py-2.5 font-poppins text-[clamp(0.6875rem,0.8vw,0.75rem)] font-semibold tracking-wide text-white lg:inline-flex"
                         >
                             LOGOUT
                         </DirectionalButton>
@@ -190,7 +190,7 @@ const Navbar = () => {
                             fillColor="#ffffff"
                             textColor="#006dfc"
                             onClick={() => navigate('/auth?mode=login')}
-                            className="absolute right-0 top-1/2 hidden -translate-y-1/2 bg-[#006dfc] px-5 py-2.5 font-poppins text-xs font-semibold tracking-wide text-white lg:inline-flex"
+                            className="absolute right-0 top-1/2 hidden -translate-y-1/2 bg-[#006dfc] px-5 py-2.5 font-poppins text-[clamp(0.6875rem,0.8vw,0.75rem)] font-semibold tracking-wide text-white lg:inline-flex"
                         >
                             LOGIN
                         </DirectionalButton>
@@ -215,7 +215,7 @@ const Navbar = () => {
                                     <a
                                         href={link.href}
                                         onClick={() => setIsOpen(false)}
-                                        className="block rounded-xl px-4 py-3.5 text-sm font-medium uppercase tracking-[0.2em] text-gray-600 transition-colors hover:bg-black/5 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]/60 focus-visible:ring-inset"
+                                        className="block rounded-xl px-4 py-3.5 text-[clamp(0.875rem,2.4vw,1rem)] font-medium uppercase tracking-[clamp(0.08em,0.3vw,0.2em)] text-gray-600 transition-colors hover:bg-black/5 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]/60 focus-visible:ring-inset"
                                     >
                                         {link.name}
                                     </a>
@@ -231,7 +231,7 @@ const Navbar = () => {
                                         fillColor={buttonColor}
                                         style={{ backgroundColor: buttonColor }}
                                         onClick={handleLogout}
-                                        className="w-full px-5 py-3.5 text-sm font-semibold tracking-wide text-white transition hover:brightness-110"
+                                        className="w-full px-5 py-3.5 text-[clamp(0.875rem,2.4vw,1rem)] font-semibold tracking-wide text-white transition hover:brightness-110"
                                     >
                                         LOGOUT
                                     </DirectionalButton>
@@ -244,7 +244,7 @@ const Navbar = () => {
                                             setIsOpen(false)
                                             navigate('/auth?mode=login')
                                         }}
-                                        className="w-full px-5 py-3.5 text-sm font-semibold tracking-wide text-white transition hover:brightness-110"
+                                        className="w-full px-5 py-3.5 text-[clamp(0.875rem,2.4vw,1rem)] font-semibold tracking-wide text-white transition hover:brightness-110"
                                     >
                                         LOGIN
                                     </DirectionalButton>

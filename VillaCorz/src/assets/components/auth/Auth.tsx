@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../services/useAuth'
 import axios from 'axios'
 import { Mail } from 'lucide-react'
@@ -222,6 +222,7 @@ const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType
 
 const Auth = () => {
     const navigate = useNavigate();
+    const location = useLocation()
     const [searchParams, setSearchParams] = useSearchParams()
     const { setUser } = useAuth()
 
@@ -255,7 +256,15 @@ const Auth = () => {
                 const response = await login(email, password)
 
                 setUser(response.data.user)
-                navigate('/')
+                const requestedPath = (
+                    location.state as { from?: { pathname?: string } } | null
+                )?.from?.pathname
+                navigate(
+                    requestedPath === '/dashboard' &&
+                        response.data.user.role === 'admin'
+                        ? '/dashboard'
+                        : '/',
+                )
                 return
             }
 
