@@ -16,6 +16,8 @@ type BookingCalendarPanelProps = {
     setCheckOut: Dispatch<SetStateAction<string>>
     roomGuests: RoomGuests[]
     setRoomGuests: Dispatch<SetStateAction<RoomGuests[]>>
+    selectedRoomIndex: number
+    onSelectedRoomIndexChange: (index: number) => void
     roomChoices: BookingRoomChoice[]
     notice: string
     onDateChange: () => void
@@ -46,6 +48,8 @@ const BookingCalendarPanel = ({
     setCheckOut,
     roomGuests,
     setRoomGuests,
+    selectedRoomIndex,
+    onSelectedRoomIndexChange,
     roomChoices,
     notice,
     onDateChange,
@@ -117,16 +121,18 @@ const BookingCalendarPanel = ({
         )
     }
 
-    const addRoom = () =>
+    const addRoom = () => {
+        onSelectedRoomIndexChange(roomGuests.length)
         setRoomGuests((current) => [
             ...current,
             { stayId: null, adults: 2, kids: 0 },
         ])
+    }
 
     return (
         <aside
             aria-label="Booking calendar"
-            className="h-fit self-start rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,0.12)] sm:p-5"
+            className="h-fit self-start rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,0.12)] sm:p-5 lg:sticky lg:top-28"
         >
             <p className="mb-4 text-xs font-semibold text-[#006dfc]">Select dates</p>
 
@@ -248,11 +254,34 @@ const BookingCalendarPanel = ({
             </div>
 
             <div className="max-h-44 overflow-y-auto">
-                {roomGuests.map((room, index) => (
+                {roomGuests.map((room, index) => {
+                    const villaAssignedElsewhere = roomGuests.some(
+                        (otherRoom, otherIndex) =>
+                            otherIndex !== index &&
+                            roomChoices.some(
+                                (choice) =>
+                                    choice.id === otherRoom.stayId &&
+                                    choice.category === 'exclusive',
+                            ),
+                    )
+                    const otherRoomsAssigned = roomGuests.some(
+                        (otherRoom, otherIndex) =>
+                            otherIndex !== index &&
+                            otherRoom.stayId !== null &&
+                            roomChoices.some(
+                                (choice) =>
+                                    choice.id === otherRoom.stayId &&
+                                    choice.category === 'public',
+                            ),
+                    )
+
+                    return (
                     <section
                         key={index}
                         aria-label={`Room ${index + 1} guests`}
-                        className="border-b border-slate-200 py-3 last:border-0"
+                        className={`border-b border-slate-200 py-3 last:border-0 ${
+                            selectedRoomIndex === index ? 'rounded-md bg-blue-50/60 px-2' : ''
+                        }`}
                     >
                         <div className="mb-2 flex items-center justify-between gap-2">
                             <label
@@ -264,11 +293,20 @@ const BookingCalendarPanel = ({
                             {roomGuests.length > 1 && (
                                 <button
                                     type="button"
-                                    onClick={() =>
+                                    onClick={() => {
                                         setRoomGuests((current) =>
                                             current.filter((_, roomIndex) => roomIndex !== index),
                                         )
-                                    }
+                                        const nextSelectedIndex =
+                                            selectedRoomIndex > index
+                                                ? selectedRoomIndex - 1
+                                                : selectedRoomIndex === index
+                                                  ? Math.min(index, roomGuests.length - 2)
+                                                  : selectedRoomIndex
+                                        onSelectedRoomIndexChange(
+                                            Math.max(0, nextSelectedIndex),
+                                        )
+                                    }}
                                     aria-label={`Remove room ${index + 1}`}
                                     className="text-slate-400 transition hover:text-rose-600"
                                 >
@@ -279,7 +317,9 @@ const BookingCalendarPanel = ({
                         <select
                             id={`booking-room-${index}`}
                             value={room.stayId ?? ''}
-                            onChange={(event) =>
+                            onFocus={() => onSelectedRoomIndexChange(index)}
+                            onChange={(event) => {
+                                onSelectedRoomIndexChange(index)
                                 setRoomGuests((current) =>
                                     current.map((item, roomIndex) =>
                                         roomIndex === index
@@ -287,15 +327,32 @@ const BookingCalendarPanel = ({
                                             : item,
                                     ),
                                 )
-                            }
+                            }}
                             className="mb-2 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] text-slate-700 focus:border-[#0875f9] focus:outline-none"
                         >
                             <option value="">Choose a room</option>
-                            {roomChoices.map((choice) => (
-                                <option key={choice.id} value={choice.id}>
-                                    {choice.title}
-                                </option>
-                            ))}
+                            {roomChoices.map((choice) => {
+                                const selectedElsewhere = roomGuests.some(
+                                    (otherRoom, otherIndex) =>
+                                        otherIndex !== index &&
+                                        otherRoom.stayId === choice.id,
+                                )
+                                return (
+                                    <option
+                                        key={choice.id}
+                                        value={choice.id}
+                                        disabled={
+                                            selectedElsewhere ||
+                                            (choice.category === 'exclusive' &&
+                                                otherRoomsAssigned) ||
+                                            (choice.category === 'public' &&
+                                                villaAssignedElsewhere)
+                                        }
+                                    >
+                                        {choice.title}
+                                    </option>
+                                )
+                            })}
                         </select>
                         {(['adults', 'kids'] as const).map((guestType) => (
                             <div
@@ -331,7 +388,8 @@ const BookingCalendarPanel = ({
                             </div>
                         ))}
                     </section>
-                ))}
+                    )
+                })}
             </div>
 
             <button
@@ -352,7 +410,7 @@ const BookingCalendarPanel = ({
                 onClick={onCheckAvailability}
                 className="mt-4 w-full rounded-full bg-[#0875f9] px-4 py-3 text-[11px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
             >
-                Check availability
+                Continue
             </button>
         </aside>
     )

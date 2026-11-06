@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Fan } from 'lucide-react'
+import { ChevronDown, ChevronUp, Fan } from 'lucide-react'
 import ServicesFooter, {
     type RoomGuests,
 } from '../ui/ServicesFooter'
@@ -21,6 +21,13 @@ import airConditioningIcon from '../../images/AC.png'
 import tvIcon from '../../images/Tv.png'
 import privateBathroomIcon from '../../images/Cr.png'
 import villaFont from '../../images/villafont.png'
+import gcashLogo from '../../images/gcash.png'
+import mayaLogo from '../../images/maya.png'
+import paypalLogo from '../../images/paypal.png'
+import bdoLogo from '../../images/bdo.png'
+import bpiLogo from '../../images/bpi.png'
+import ewalletLogo from '../../images/ewallet.png'
+import onlineBankLogo from '../../images/onlinebank.png'
 
 type StayCategory = 'public' | 'exclusive'
 type BookingRequest = { checkIn: string; checkOut: string; rooms: RoomGuests[] }
@@ -85,15 +92,72 @@ const dateParts = (value: string) => {
     }
 }
 
+const guestCapacity = (stay: Stay) =>
+    stay.capacity.replace('Good for ', '').replace(' pax', '')
+
+const reservationAmenities = (stay: Stay) => {
+    switch (stay.id) {
+        case 'room-1':
+        case 'room-2':
+        case 'room-3':
+            return 'Airconditioned, TV, private CR.'
+        case 'room-4':
+            return 'AC. No TV, no private CR.'
+        case 'room-5':
+            return 'Airconditioned, 2 fans.'
+        default:
+            return stay.description
+    }
+}
+
+const getReservationPrice = (stay: Stay, checkIn: string, checkOut: string) => {
+    const start = new Date(`${checkIn}T00:00:00Z`)
+    const end = new Date(`${checkOut}T00:00:00Z`)
+    const startTime = start.getTime()
+    const endTime = end.getTime()
+
+    if (
+        !checkIn ||
+        !checkOut ||
+        !Number.isFinite(startTime) ||
+        !Number.isFinite(endTime) ||
+        endTime <= startTime
+    ) {
+        return { nights: 1, total: stay.price }
+    }
+
+    let total = 0
+    let nights = 0
+
+    for (let time = startTime; time < endTime; time += 86_400_000) {
+        const day = new Date(time).getUTCDay()
+        const isWeekend = day === 0 || day === 5 || day === 6
+        total += isWeekend ? stay.weekendPrice ?? stay.price : stay.price
+        nights += 1
+    }
+
+    return { nights, total }
+}
+
 function PublicAccommodationSection({
     selectedStay,
     onSelectStay,
+    onReserve,
+    checkIn,
+    checkOut,
 }: {
     selectedStay: Stay
     onSelectStay: (stay: Stay) => void
+    onReserve: (stay: Stay) => void
+    checkIn: string
+    checkOut: string
 }) {
     const [showAllRooms, setShowAllRooms] = useState(false)
+    const [reservationStay, setReservationStay] = useState<Stay | null>(null)
     const visibleRooms = showAllRooms ? roomStays : roomStays.slice(0, 4)
+    const reservationPrice = reservationStay
+        ? getReservationPrice(reservationStay, checkIn, checkOut)
+        : null
 
     return (
         <section aria-labelledby="public-title" className="mb-8 sm:mb-11">
@@ -115,20 +179,26 @@ function PublicAccommodationSection({
                 {visibleRooms.map((stay) => {
                     const isSelected = selectedStay.id === stay.id
                     return (
-                        <button
+                        <article
                             key={stay.id}
-                            type="button"
-                            onClick={() => onSelectStay(stay)}
-                            aria-pressed={isSelected}
-                            className={`group relative min-w-[72vw] snap-start overflow-hidden rounded-xl bg-white text-left shadow-md ring-1 transition hover:-translate-y-0.5 hover:shadow-lg sm:min-w-0 ${
-                                isSelected ? 'ring-2 ring-[#006dfc]' : 'ring-black/5'
+                            className={`group relative min-w-[72vw] snap-start overflow-hidden rounded-xl bg-white text-left shadow-md ring-1 sm:min-w-0 ${
+                                isSelected || reservationStay?.id === stay.id
+                                    ? 'ring-2 ring-[#006dfc]'
+                                    : 'ring-black/5'
                             }`}
                         >
-                            <img
-                                src={stay.image}
-                                alt={`${stay.title} interior`}
-                                className="h-56 w-full scale-[1.05] object-cover transition duration-500 group-hover:scale-[1.08] sm:h-64 lg:h-72"
-                            />
+                            <button
+                                type="button"
+                                onClick={() => onSelectStay(stay)}
+                                aria-label={`View ${stay.title} photo and details`}
+                                className="block w-full focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#006dfc]"
+                            >
+                                <img
+                                    src={stay.image}
+                                    alt={`${stay.title} interior`}
+                                    className="h-56 w-full scale-[1.05] object-cover transition duration-500 group-hover:scale-[1.08] sm:h-64 lg:h-72"
+                                />
+                            </button>
                             <img
                                 src={discountBadge}
                                 alt="20% off"
@@ -179,15 +249,81 @@ function PublicAccommodationSection({
                                             {money(stay.weekendPrice ?? stay.price)}
                                         </span>
                                     </span>
-                                    <span className="rounded-md bg-white px-2.5 py-1.5 text-[9px] font-semibold text-[#006dfc] shadow-sm sm:px-3 sm:text-[10px]">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setReservationStay((current) =>
+                                                current?.id === stay.id ? null : stay,
+                                            )
+                                        }
+                                        aria-label={`Select ${stay.title}, good for ${guestCapacity(stay)} guests`}
+                                        aria-pressed={reservationStay?.id === stay.id}
+                                        className="rounded-md bg-white px-2.5 py-1.5 text-[9px] font-semibold text-[#006dfc] shadow-sm transition duration-200 hover:scale-105 hover:bg-[#006dfc] hover:text-white hover:shadow-md active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3 sm:text-[10px]"
+                                    >
                                         Select room
-                                    </span>
+                                    </button>
                                 </span>
                             </span>
-                        </button>
+                        </article>
                     )
                 })}
             </div>
+            {reservationStay && reservationPrice && (
+                <section
+                    aria-label={`${reservationStay.title} reservation`}
+                    aria-live="polite"
+                    className="mt-3 grid overflow-hidden rounded-lg border border-slate-200 bg-[#f7f7f8] text-slate-600 shadow-[0_3px_12px_rgba(15,23,42,0.12)] sm:grid-cols-[1.45fr_0.55fr_1.2fr_1fr]"
+                >
+                    <div className="border-b border-slate-200 px-4 py-3 sm:border-b-0 sm:border-r">
+                        <p className="text-[10px]">Rate</p>
+                        <p className="mt-2 text-sm font-bold text-slate-700">
+                            {reservationStay.title}
+                        </p>
+                        <p className="mt-1 text-[10px] leading-4 text-slate-600">
+                            {reservationAmenities(reservationStay)} {reservationStay.capacity}.
+                        </p>
+                    </div>
+                    <div className="border-b border-slate-200 px-4 py-3 sm:border-b-0 sm:border-r">
+                        <p className="text-[10px]">Guest</p>
+                        <p className="mt-4 text-xs text-slate-700">
+                            {guestCapacity(reservationStay)}
+                        </p>
+                    </div>
+                    <div className="border-b border-slate-200 px-4 py-3 sm:border-b-0 sm:border-r">
+                        <p className="text-[10px]">
+                            Price for {reservationPrice.nights}{' '}
+                            {reservationPrice.nights === 1 ? 'night' : 'nights'}
+                        </p>
+                        <p className="mt-2 flex items-center gap-2">
+                            <span className="text-lg font-bold text-slate-600">
+                                {money(reservationPrice.total)}
+                            </span>
+                        </p>
+                        <p className="text-[10px] text-[#006dfc]">
+                            {checkIn && checkOut ? 'based on selected dates' : 'weekdays'}
+                        </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-3 sm:flex-col sm:justify-center">
+                        <div className="text-left sm:text-center">
+                            <p className="text-[10px]">1 Room</p>
+                            <p className="text-lg font-bold text-slate-600">
+                                {money(reservationPrice.total)}
+                            </p>
+                            <p className="text-[10px]">
+                                for {reservationPrice.nights}{' '}
+                                {reservationPrice.nights === 1 ? 'night' : 'nights'}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => onReserve(reservationStay)}
+                            className="rounded-md bg-[#0875f9] px-6 py-2 text-[10px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:scale-105 hover:bg-blue-700 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                        >
+                            Reserve
+                        </button>
+                    </div>
+                </section>
+            )}
             {!showAllRooms && (
                 <div className="mt-1 flex justify-center">
                     <button
@@ -477,6 +613,468 @@ function RoomDetailView({
     )
 }
 
+function ReservationView({
+    checkIn,
+    checkOut,
+    roomGuests,
+    roomChoices,
+}: {
+    checkIn: string
+    checkOut: string
+    roomGuests: RoomGuests[]
+    roomChoices: Stay[]
+}) {
+    const [paymentMethod, setPaymentMethod] = useState('GCash')
+    const [showPaymentMethods, setShowPaymentMethods] = useState(false)
+    const [isEWalletOpen, setIsEWalletOpen] = useState(true)
+    const [isBankOpen, setIsBankOpen] = useState(true)
+    const [formNotice, setFormNotice] = useState('')
+    const paymentOptions = [
+        { name: 'GCash', detail: '65********9876', logo: gcashLogo },
+        { name: 'Maya', detail: '65********9876', logo: mayaLogo },
+        { name: 'PayPal', detail: '65********9876', logo: paypalLogo },
+        { name: 'BDO', detail: 'Debit Card ********9876', logo: bdoLogo },
+        { name: 'Unionbank Internet Banking', detail: 'Debit Card ********9876', logo: onlineBankLogo },
+        { name: 'BPI', detail: 'Debit Card ********9876', logo: bpiLogo },
+    ]
+    const selectedPaymentOption = paymentOptions.find(
+        (option) => option.name === paymentMethod,
+    )
+    const assignedRooms = roomGuests.flatMap((room) => {
+        const stay = roomChoices.find((choice) => choice.id === room.stayId)
+        return stay ? [{ room, stay }] : []
+    })
+    const nights = Math.max(
+        1,
+        Math.round(
+            (new Date(`${checkOut}T00:00:00`).getTime() -
+                new Date(`${checkIn}T00:00:00`).getTime()) /
+                86_400_000,
+        ),
+    )
+    const total = assignedRooms.reduce(
+        (sum, { stay }) =>
+            sum + getReservationPrice(stay, checkIn, checkOut).total,
+        0,
+    )
+    const dateLabel = (value: string) => {
+        const parts = dateParts(value)
+        return `${parts.day} ${parts.weekday.slice(0, 3)} ${parts.monthYear.slice(0, 3)}`
+    }
+
+    return (
+        <main className="relative min-h-svh overflow-hidden bg-slate-100 px-4 pb-10 pt-24 font-poppins sm:px-7 sm:pt-28">
+            <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${wholeVilla})` }}
+            />
+            <div aria-hidden="true" className="absolute inset-0 bg-white/65" />
+            <div className="relative mx-auto grid max-w-5xl items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] md:gap-5">
+                <section
+                    aria-labelledby="reservation-title"
+                    className="rounded-2xl bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,0.2)] sm:p-5"
+                >
+                    <h1
+                        id="reservation-title"
+                        className="mb-3 text-center text-sm font-bold text-slate-600"
+                    >
+                        Your reservation
+                    </h1>
+                    {assignedRooms[0] && (
+                        <img
+                            src={assignedRooms[0].stay.image}
+                            alt={`${assignedRooms[0].stay.title} accommodation`}
+                            className="h-40 w-full rounded-lg object-cover sm:h-48"
+                        />
+                    )}
+                    <p className="mt-2 border-b border-slate-100 pb-2 text-[9px] text-slate-500">
+                        Selected accommodations
+                    </p>
+                    <div className="grid grid-cols-4 gap-1 border-b border-slate-100 py-2 text-[9px] text-slate-600">
+                        <div>
+                            <span className="block">Check-in</span>
+                            <strong className="text-slate-800">{dateLabel(checkIn)}</strong>
+                        </div>
+                        <div>
+                            <span className="block">Check-out</span>
+                            <strong className="text-slate-800">{dateLabel(checkOut)}</strong>
+                        </div>
+                        <div>
+                            <span className="block">Nights</span>
+                            <strong className="text-slate-800">{nights}</strong>
+                        </div>
+                        <div>
+                            <span className="block">Guest</span>
+                            <strong className="text-slate-800">
+                                {roomGuests.reduce(
+                                    (sum, room) => sum + room.adults + room.kids,
+                                    0,
+                                )}
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div className="max-h-44 overflow-y-auto divide-y divide-slate-100">
+                        {assignedRooms.map(({ room, stay }, index) => (
+                            <div
+                                key={`${stay.id}-${index}`}
+                                className="flex items-start justify-between gap-3 py-2"
+                            >
+                                <div className="text-[9px] leading-4 text-slate-600">
+                                    <p className="font-bold text-[#0875f9]">
+                                        {stay.title} #{index + 1}
+                                    </p>
+                                    <p>{room.adults} Adults{room.kids ? ` · ${room.kids} Kids` : ''}</p>
+                                    <p>Not refundable</p>
+                                    <p>Payment Center / E-Wallet</p>
+                                </div>
+                                <strong className="shrink-0 text-base text-slate-600">
+                                    {money(getReservationPrice(stay, checkIn, checkOut).total)}
+                                </strong>
+                            </div>
+                        ))}
+                    </div>
+
+                    <section
+                        aria-label="Selected payment method"
+                        className="mt-3 flex items-center justify-between rounded-lg border border-slate-100 p-3 shadow-[0_3px_12px_rgba(15,23,42,0.12)]"
+                    >
+                        <div className="flex items-center gap-2">
+                            <img
+                                src={selectedPaymentOption?.logo ?? ewalletLogo}
+                                alt=""
+                                className="size-8 object-contain"
+                            />
+                            <div>
+                                <p className="text-xs font-bold text-slate-700">
+                                    {paymentMethod}
+                                </p>
+                                <p className="text-[9px] text-slate-500">
+                                    {selectedPaymentOption?.detail ?? 'Payment method'}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowPaymentMethods(true)}
+                            className="text-[10px] font-semibold text-[#0875f9] hover:underline"
+                        >
+                            Change
+                        </button>
+                    </section>
+                    {showPaymentMethods && (
+                        <div
+                            className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]"
+                            onMouseDown={(event) => {
+                                if (event.target === event.currentTarget) {
+                                    setShowPaymentMethods(false)
+                                }
+                            }}
+                        >
+                            <section
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="payment-method-title"
+                                className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl sm:p-5"
+                            >
+                                <h2
+                                    id="payment-method-title"
+                                    className="mb-3 text-center text-sm font-bold text-slate-600"
+                                >
+                                    Payment Method
+                                </h2>
+                                <div className="overflow-hidden rounded-lg border border-slate-200 shadow-sm">
+                                    <button
+                                        type="button"
+                                        aria-expanded={isEWalletOpen}
+                                        onClick={() => setIsEWalletOpen((open) => !open)}
+                                        className="flex w-full items-center justify-between bg-slate-50 px-3 py-2 text-left text-[10px] font-semibold text-slate-700"
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <img
+                                                src={ewalletLogo}
+                                                alt=""
+                                                className="size-5 object-contain"
+                                            />
+                                            Payment Center / E-Wallet
+                                        </span>
+                                        {isEWalletOpen ? (
+                                            <ChevronUp className="size-4" />
+                                        ) : (
+                                            <ChevronDown className="size-4" />
+                                        )}
+                                    </button>
+                                    {isEWalletOpen && (
+                                        <div className="px-3">
+                                            {paymentOptions.slice(0, 3).map((option) => (
+                                                <label
+                                                    key={option.name}
+                                                    className="flex cursor-pointer items-center gap-2 border-t border-slate-100 py-2"
+                                                >
+                                                    <img
+                                                        src={option.logo}
+                                                        alt=""
+                                                        className="h-5 w-7 shrink-0 object-contain"
+                                                    />
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="block text-[10px] font-semibold leading-tight text-slate-700">
+                                                            {option.name}
+                                                        </span>
+                                                        <span className="block text-[9px] leading-tight text-slate-500">
+                                                            {option.detail}
+                                                        </span>
+                                                    </span>
+                                                    <input
+                                                        type="radio"
+                                                        name="reservation-payment-method"
+                                                        value={option.name}
+                                                        checked={paymentMethod === option.name}
+                                                        onChange={() => setPaymentMethod(option.name)}
+                                                        className="size-4 accent-[#0875f9]"
+                                                    />
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 shadow-sm">
+                                    <button
+                                        type="button"
+                                        aria-expanded={isBankOpen}
+                                        onClick={() => setIsBankOpen((open) => !open)}
+                                        className="flex w-full items-center justify-between bg-slate-50 px-3 py-2 text-left text-[10px] font-semibold text-slate-700"
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <img
+                                                src={onlineBankLogo}
+                                                alt=""
+                                                className="size-5 object-contain"
+                                            />
+                                            Online Banking
+                                        </span>
+                                        {isBankOpen ? (
+                                            <ChevronUp className="size-4" />
+                                        ) : (
+                                            <ChevronDown className="size-4" />
+                                        )}
+                                    </button>
+                                    {isBankOpen && (
+                                        <div className="px-3">
+                                            {paymentOptions.slice(3).map((option) => (
+                                                <label
+                                                    key={option.name}
+                                                    className="flex cursor-pointer items-center gap-2 border-t border-slate-100 py-2"
+                                                >
+                                                    <img
+                                                        src={option.logo}
+                                                        alt=""
+                                                        className="h-5 w-7 shrink-0 object-contain"
+                                                    />
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="block text-[10px] font-semibold leading-tight text-slate-700">
+                                                            {option.name}
+                                                        </span>
+                                                        <span className="block text-[9px] leading-tight text-slate-500">
+                                                            {option.detail}
+                                                        </span>
+                                                    </span>
+                                                    <input
+                                                        type="radio"
+                                                        name="reservation-payment-method"
+                                                        value={option.name}
+                                                        checked={paymentMethod === option.name}
+                                                        onChange={() => setPaymentMethod(option.name)}
+                                                        className="size-4 accent-[#0875f9]"
+                                                    />
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPaymentMethods(false)}
+                                    className="mt-4 min-h-10 w-full rounded-full bg-[#0875f9] text-[10px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700"
+                                >
+                                    Confirm Payment Method
+                                </button>
+                            </section>
+                        </div>
+                    )}
+                    <div className="mt-3 flex items-center justify-between rounded-lg border border-slate-100 p-3 shadow-[0_3px_12px_rgba(15,23,42,0.12)]">
+                        <span className="text-[10px] text-slate-600">Total payment</span>
+                        <strong className="text-lg text-[#f58245]">{money(total)}</strong>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() =>
+                            setFormNotice('Payment confirmation is not connected yet.')
+                        }
+                        className="mt-5 min-h-11 w-full rounded-full bg-[#0875f9] px-4 text-[10px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                    >
+                        Confirm Payment
+                    </button>
+                </section>
+
+                <section
+                    aria-labelledby="details-title"
+                    className="rounded-2xl bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.2)] sm:p-6"
+                >
+                    <h2
+                        id="details-title"
+                        className="mb-4 text-sm font-bold text-slate-600"
+                    >
+                        Complete Your Details
+                    </h2>
+                    <form
+                        className="space-y-4"
+                        onSubmit={(event) => {
+                            event.preventDefault()
+                            setFormNotice('Your guest details have been saved for this reservation.')
+                        }}
+                    >
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                            <label className="border-b border-slate-300 pb-1">
+                                <span className="sr-only">Name</span>
+                                <input
+                                    required
+                                    autoComplete="given-name"
+                                    placeholder="Name"
+                                    className="w-full text-[10px] outline-none placeholder:font-semibold placeholder:text-slate-400"
+                                />
+                            </label>
+                            <label className="border-b border-slate-300 pb-1">
+                                <span className="sr-only">Last name</span>
+                                <input
+                                    required
+                                    autoComplete="family-name"
+                                    placeholder="Last Name"
+                                    className="w-full text-[10px] outline-none placeholder:font-semibold placeholder:text-slate-400"
+                                />
+                            </label>
+                            <label className="border-b border-slate-300 pb-1">
+                                <span className="sr-only">Email</span>
+                                <input
+                                    required
+                                    type="email"
+                                    autoComplete="email"
+                                    placeholder="Email"
+                                    className="w-full text-[10px] outline-none placeholder:font-semibold placeholder:text-slate-400"
+                                />
+                            </label>
+                            <label className="border-b border-slate-300 pb-1">
+                                <span className="sr-only">Confirm email</span>
+                                <input
+                                    required
+                                    type="email"
+                                    placeholder="Confirm Email"
+                                    className="w-full text-[10px] outline-none placeholder:font-semibold placeholder:text-slate-400"
+                                />
+                            </label>
+                        </div>
+
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-600">
+                                Guest Information
+                            </h3>
+                            <p className="text-[9px] text-slate-400">
+                                Enter guest full name for each room
+                            </p>
+                            <div className="mt-1 max-h-52 space-y-3 overflow-y-auto pr-1">
+                                {assignedRooms.map(({ room, stay }, roomIndex) => (
+                                    <fieldset
+                                        key={`${stay.id}-guest-${roomIndex}`}
+                                        className="min-w-0"
+                                    >
+                                        <legend className="text-[11px] font-bold text-[#0875f9]">
+                                            {stay.title}
+                                        </legend>
+                                        {Array.from(
+                                            { length: room.adults + room.kids },
+                                            (_, guestIndex) => {
+                                                const guestType =
+                                                    guestIndex < room.adults ? 'Adult' : 'Child'
+                                                const number =
+                                                    guestType === 'Adult'
+                                                        ? guestIndex + 1
+                                                        : guestIndex - room.adults + 1
+
+                                                return (
+                                                    <div
+                                                        key={`${guestType}-${number}`}
+                                                        className="mt-2"
+                                                    >
+                                                        <p className="mb-1 text-[8px] text-slate-500">
+                                                            {guestType} #{number}
+                                                        </p>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <input
+                                                                aria-label={`${stay.title} ${guestType} ${number} first name`}
+                                                                placeholder="Name (optional)"
+                                                                className="min-w-0 border-b border-slate-300 pb-1 text-[9px] outline-none placeholder:text-slate-400"
+                                                            />
+                                                            <input
+                                                                aria-label={`${stay.title} ${guestType} ${number} last name`}
+                                                                placeholder="Last Name (optional)"
+                                                                className="min-w-0 border-b border-slate-300 pb-1 text-[9px] outline-none placeholder:text-slate-400"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )
+                                            },
+                                        )}
+                                    </fieldset>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 text-[8px] leading-4 text-slate-500">
+                            <label className="flex items-start gap-2">
+                                <input type="checkbox" className="mt-0.5 accent-[#0875f9]" />
+                                <span>I would like to receive special offers from Villa Corz.</span>
+                            </label>
+                            <label className="flex items-start gap-2">
+                                <input required type="checkbox" className="mt-0.5 accent-[#0875f9]" />
+                                <span>
+                                    I have read the information regarding the handling of my
+                                    personal data and I agree.{' '}
+                                    <a href="/privacy" className="font-semibold text-[#0875f9]">
+                                        Privacy Policy
+                                    </a>
+                                </span>
+                            </label>
+                        </div>
+                        <button
+                            type="submit"
+                            className="min-h-11 w-full rounded-full bg-[#0875f9] px-4 text-[10px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                        >
+                            Continue
+                        </button>
+                        <p className="text-center text-[9px] font-semibold text-emerald-500">
+                            Best Price Guarantee
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setFormNotice('Account sign-in is not connected on this step.')
+                            }
+                            className="block w-full text-center text-[10px] font-semibold text-cyan-600 hover:underline"
+                        >
+                            I have an account
+                        </button>
+                        {formNotice && (
+                            <p role="status" className="text-center text-[10px] text-slate-600">
+                                {formNotice}
+                            </p>
+                        )}
+                    </form>
+                </section>
+            </div>
+        </main>
+    )
+}
+
 function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
     const navigate = useNavigate()
     const location = useLocation()
@@ -494,7 +1092,9 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
     const [roomGuests, setRoomGuests] = useState<RoomGuests[]>(
         incomingBooking?.rooms ?? [{ stayId: null, adults: 2, kids: 0 }],
     )
+    const [selectedRoomIndex, setSelectedRoomIndex] = useState(0)
     const [notice, setNotice] = useState('')
+    const [isReservationOpen, setIsReservationOpen] = useState(false)
 
     const nights = useMemo(() => {
         if (!checkIn || !checkOut) return 0
@@ -514,6 +1114,31 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
         )
     }
 
+    const reserveStay = (stay: Stay) => {
+        const alreadySelectedIndex = roomGuests.findIndex(
+            (room) => room.stayId === stay.id,
+        )
+        if (alreadySelectedIndex !== -1) {
+            setSelectedRoomIndex(alreadySelectedIndex)
+            setNotice(`${stay.title} is already selected in Room ${alreadySelectedIndex + 1}.`)
+            return
+        }
+
+        const targetIndex = Math.max(
+            0,
+            Math.min(selectedRoomIndex, roomGuests.length - 1),
+        )
+        setRoomGuests((current) =>
+            current.length === 0
+                ? [{ stayId: stay.id, adults: 2, kids: 0 }]
+                : current.map((room, index) =>
+                      index === targetIndex ? { ...room, stayId: stay.id } : room,
+                  ),
+        )
+        setSelectedRoomIndex(targetIndex)
+        setNotice(`${stay.title} added to your booking.`)
+    }
+
     const handleCheckAvailability = () => {
         if (!checkIn || !checkOut || nights < 1) {
             setNotice('Choose a valid check-in and check-out date to continue.')
@@ -529,9 +1154,13 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
             return
         }
 
-        setNotice(
-            'Your stay details are ready. Online availability confirmation is not connected yet.',
-        )
+        if (!roomGuests.some((room) => room.stayId)) {
+            setNotice('Choose a room before continuing to your reservation.')
+            return
+        }
+
+        setNotice('')
+        setIsReservationOpen(true)
     }
 
     const showPublic = activeFilter !== 'exclusive'
@@ -539,7 +1168,15 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
 
     return (
         <>
-        {!bookingOnly && (
+        {!bookingOnly && isReservationOpen && (
+            <ReservationView
+                checkIn={checkIn}
+                checkOut={checkOut}
+                roomGuests={roomGuests}
+                roomChoices={roomChoices}
+            />
+        )}
+        {!bookingOnly && !isReservationOpen && (
         <main className="min-h-svh bg-white px-4 pb-12 pt-24 font-poppins sm:px-7 sm:pt-28">
             <div className="mx-auto grid max-w-7xl items-start gap-7 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-9">
                 <BookingCalendarPanel
@@ -549,6 +1186,8 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
                     setCheckOut={setCheckOut}
                     roomGuests={roomGuests}
                     setRoomGuests={setRoomGuests}
+                    selectedRoomIndex={selectedRoomIndex}
+                    onSelectedRoomIndexChange={setSelectedRoomIndex}
                     roomChoices={roomChoices}
                     notice={notice}
                     onDateChange={() => setNotice('')}
@@ -601,6 +1240,9 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
                     <PublicAccommodationSection
                         selectedStay={selectedStay}
                         onSelectStay={selectStay}
+                        onReserve={reserveStay}
+                        checkIn={checkIn}
+                        checkOut={checkOut}
                     />
                 )}
 

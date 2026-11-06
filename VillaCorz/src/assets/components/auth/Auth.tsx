@@ -263,7 +263,7 @@ const Auth = () => {
                 navigate(
                     response.data.user.role === 'admin'
                         ? adminPaths.find((path) => path === requestedPath) ??
-                            '/dashboard'
+                        '/dashboard'
                         : '/',
                 )
                 return
