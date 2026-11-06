@@ -1,10 +1,14 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChevronLeft, Menu, X } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import logoUrl from '../../VillaCorz-SVGLogo.svg'
 
-const navigationItems = ['Analytics', 'Manage Offers', 'Reports']
+const navigationItems = [
+    { label: 'Dashboard', to: '/dashboard' },
+    { label: 'Manage Offers', to: '/manageOffers' },
+    { label: 'Reports', to: '/reports' },
+]
 
 const focusRing =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
@@ -96,44 +100,29 @@ const DashboardNavbar = () => {
                     {/* Navigation */}
                     <nav
                         id="dashboard-navigation"
-                        aria-label="Dashboard sections"
+                        aria-label="Admin navigation"
                         className={`${
                             menuOpen ? 'flex' : 'hidden'
                         } order-3 w-full flex-col border-t border-slate-100 pt-3 md:order-none md:flex md:min-w-0 md:flex-1 md:flex-row md:items-center md:justify-center md:border-0 md:pt-0`}
                     >
                         {/* Dashboard navigation links */}
                         <ul className="flex w-full flex-col items-stretch gap-1 md:w-auto md:flex-row md:items-center md:justify-center">
-                            {navigationItems.map((label, index) => {
-                                const active = index === 0
-
+                            {navigationItems.map(({ label, to }) => {
                                 return (
-                                    <li key={label}>
-                                        <button
-                                            type="button"
-                                            disabled={!active}
-                                            aria-current={
-                                                active ? 'page' : undefined
-                                            }
-                                            title={
-                                                active
-                                                    ? undefined
-                                                    : 'Coming soon'
-                                            }
+                                    <li key={to}>
+                                        <NavLink
+                                            to={to}
                                             onClick={() => setMenuOpen(false)}
-                                            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition md:w-auto ${focusRing} ${
-                                                active
-                                                    ? 'bg-[#006dfc]/10 font-semibold text-[#003079]'
-                                                    : 'cursor-not-allowed text-slate-400'
-                                            }`}
+                                            className={({ isActive }) =>
+                                                `flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition md:w-auto ${focusRing} ${
+                                                    isActive
+                                                        ? 'bg-[#006dfc]/10 font-semibold text-[#003079]'
+                                                        : 'text-slate-600 hover:bg-[#006dfc]/5 hover:text-[#003079]'
+                                                }`
+                                            }
                                         >
                                             {label}
-
-                                            {!active && (
-                                                <span className="rounded-full bg-slate-200/60 px-2 py-0.5 text-[0.65rem] font-medium text-slate-500">
-                                                    Soon
-                                                </span>
-                                            )}
-                                        </button>
+                                        </NavLink>
                                     </li>
                                 )
                             })}

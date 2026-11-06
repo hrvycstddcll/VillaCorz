@@ -1,8 +1,16 @@
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import {
+    useEffect,
+    useRef,
+    useState,
+    type CSSProperties,
+    type FormEvent,
+    type ReactNode,
+} from 'react'
 import axios from 'axios'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { SplitText } from 'gsap/SplitText'
 import api from '../../../services/api'
 import {
     MapContainer,
@@ -26,7 +34,7 @@ import 'leaflet/dist/leaflet.css'
 import './Contact.css'
 import contactReef from '../../images/contact-reef.png'
 
-gsap.registerPlugin(ScrollTrigger)
+gsap.registerPlugin(ScrollTrigger, SplitText)
 
 type Coordinates = {
     lat: number
@@ -42,15 +50,29 @@ const REVEAL_GROUPS: {
     selector: string
     animation: gsap.TweenVars
 }[] = [
-    { selector: '[data-animate="heading"]', animation: { y: 45, duration: 1 } },
+    {
+        selector: '[data-animate="heading-aside"]',
+        animation: { y: 26, duration: 0.9 },
+    },
+    {
+        selector: '[data-animate="map-copy"]',
+        animation: { y: 24, duration: 0.85 },
+    },
+    {
+        selector: '[data-animate="map-actions"]',
+        animation: { y: 18, duration: 0.8 },
+    },
+    {
+        selector: '[data-animate="block-title"]',
+        animation: { y: 22, duration: 0.85 },
+    },
     {
         selector: '[data-animate="contact"]',
-        animation: { y: 30, duration: 0.8, stagger: 0.15 },
+        animation: { y: 24, duration: 0.8, stagger: 0.12 },
     },
-    { selector: '[data-animate="form"]', animation: { x: 45, duration: 1 } },
-    { selector: '[data-animate="map-heading"]', animation: { y: 30 } },
-    { selector: '[data-animate="map"]', animation: { y: 40, duration: 1 } },
-    { selector: '[data-animate="directions"]', animation: { y: 20 } },
+    { selector: '[data-animate="form"]', animation: { x: 42, duration: 1 } },
+    { selector: '[data-animate="map"]', animation: { y: 34, duration: 1 } },
+    { selector: '[data-animate="directions"]', animation: { y: 16 } },
 ]
 
 const VILLA_LOCATION: Coordinates = {
@@ -59,6 +81,43 @@ const VILLA_LOCATION: Coordinates = {
 }
 
 const VILLA_NAME = 'VillaCorz'
+
+type BubbleSpec = {
+    id: string
+    top: number
+    left: number
+    size: number
+    travel: number
+    drift: number
+    opacity: number
+    tone?: 'azure' | 'bright'
+}
+
+/**
+ * Decorative bubbles are laid out as percentages so they spread evenly
+ * across the section regardless of its rendered height.
+ */
+const BUBBLES: BubbleSpec[] = [
+    { id: 'b01', top: 3, left: 4, size: 42, travel: 90, drift: 26, opacity: 0.55 },
+    { id: 'b02', top: 6, left: 82, size: 22, travel: 150, drift: 18, opacity: 0.5 },
+    { id: 'b03', top: 9, left: 34, size: 10, travel: 70, drift: 14, opacity: 0.6, tone: 'bright' },
+    { id: 'b04', top: 13, left: 60, size: 64, travel: 200, drift: 34, opacity: 0.45, tone: 'azure' },
+    { id: 'b05', top: 17, left: 12, size: 16, travel: 110, drift: 20, opacity: 0.55 },
+    { id: 'b06', top: 22, left: 90, size: 34, travel: 170, drift: 28, opacity: 0.5 },
+    { id: 'b07', top: 27, left: 46, size: 8, travel: 80, drift: 12, opacity: 0.65, tone: 'bright' },
+    { id: 'b08', top: 32, left: 22, size: 56, travel: 190, drift: 36, opacity: 0.4 },
+    { id: 'b09', top: 38, left: 74, size: 20, travel: 120, drift: 22, opacity: 0.55, tone: 'azure' },
+    { id: 'b10', top: 44, left: 8, size: 26, travel: 140, drift: 24, opacity: 0.5 },
+    { id: 'b11', top: 49, left: 56, size: 12, travel: 90, drift: 14, opacity: 0.6, tone: 'bright' },
+    { id: 'b12', top: 55, left: 88, size: 72, travel: 220, drift: 42, opacity: 0.35, tone: 'azure' },
+    { id: 'b13', top: 61, left: 30, size: 18, travel: 110, drift: 18, opacity: 0.5 },
+    { id: 'b14', top: 67, left: 68, size: 38, travel: 160, drift: 30, opacity: 0.45 },
+    { id: 'b15', top: 73, left: 4, size: 14, travel: 90, drift: 16, opacity: 0.55 },
+    { id: 'b16', top: 79, left: 48, size: 10, travel: 70, drift: 12, opacity: 0.6, tone: 'bright' },
+    { id: 'b17', top: 85, left: 84, size: 48, travel: 180, drift: 34, opacity: 0.4, tone: 'azure' },
+    { id: 'b18', top: 91, left: 18, size: 28, travel: 130, drift: 24, opacity: 0.45 },
+    { id: 'b19', top: 95, left: 62, size: 16, travel: 100, drift: 18, opacity: 0.5 },
+]
 
 function MapViewport({
     userLocation,
@@ -114,53 +173,64 @@ function LocationSection({
 }) {
     return (
         <div className="contact-location">
-            <div
-                data-animate="map-heading"
-                className="contact-location__header"
-            >
-                <div>
+            <div className="contact-location__intro">
+                <div
+                    data-animate="map-copy"
+                    className="contact-location__lead"
+                >
                     <span className="contact-eyebrow">
                         <span className="contact-eyebrow__line" />
                         Find Us
                     </span>
-                    <h3 className="contact-location__title">
-                        Your Journey to VillaCorz.
+
+                    <h3
+                        data-split
+                        className="contact-location__title"
+                    >
+                        Your journey to VillaCorz.
                     </h3>
+
                     <p className="contact-location__description">
                         Find our location and discover how far you are from your
                         next getaway.
                     </p>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={onLocate}
-                    disabled={isLocating}
-                    className="contact-location__button"
+                <div
+                    data-animate="map-actions"
+                    className="contact-location__actions"
                 >
-                    {isLocating ? (
-                        <LoaderCircle className="contact-icon-spin" />
-                    ) : (
-                        <Navigation size={17} />
-                    )}
-                    {isLocating ? 'Finding Location...' : 'Get My Location'}
-                </button>
-            </div>
+                    <button
+                        type="button"
+                        onClick={onLocate}
+                        disabled={isLocating}
+                        className="contact-location__button"
+                    >
+                        {isLocating ? (
+                            <LoaderCircle className="contact-icon-spin" />
+                        ) : (
+                            <Navigation size={17} />
+                        )}
+                        {isLocating ? 'Finding Location...' : 'Get My Location'}
+                    </button>
 
-            {locationError && (
-                <p
-                    role="alert"
-                    className="contact-error"
-                >
-                    {locationError}
-                </p>
-            )}
+                    {locationError && (
+                        <p
+                            role="alert"
+                            className="contact-error"
+                        >
+                            {locationError}
+                        </p>
+                    )}
+                </div>
+            </div>
 
             <div
                 data-animate="map"
-                className="contact-map-frame"
+                className="contact-location__map"
             >
-                <div className="contact-map-canvas">
+                <div className="contact-map-frame">
+                    <div className="contact-map-canvas">
                     <MapContainer
                         center={[VILLA_LOCATION.lat, VILLA_LOCATION.lng]}
                         zoom={15}
@@ -214,6 +284,15 @@ function LocationSection({
                             />
                         )}
                     </MapContainer>
+                    </div>
+
+                    <span
+                        aria-hidden="true"
+                        className="contact-map-stamp"
+                    >
+                        <MapPin size={13} />
+                        Matabungkay · Batangas
+                    </span>
                 </div>
             </div>
 
@@ -313,6 +392,7 @@ function RouteMetric({
 
 const Contact = () => {
     const sectionRef = useRef<HTMLElement>(null)
+    const feedbackRef = useRef<HTMLParagraphElement>(null)
 
     const [userLocation, setUserLocation] =
         useState<Coordinates | null>(null)
@@ -338,49 +418,200 @@ const Contact = () => {
         const section = sectionRef.current
         if (!section) return
 
-        const media = gsap.matchMedia(section)
+        const media = gsap.matchMedia()
+        const splits: SplitText[] = []
+        let removePointerListener: (() => void) | undefined
 
         media.add('(prefers-reduced-motion: no-preference)', () => {
+            // Editorial line-by-line reveals for the display text.
+            section
+                .querySelectorAll<HTMLElement>('[data-split]')
+                .forEach((target) => {
+                    const split = SplitText.create(target, {
+                        type: 'lines,words',
+                        mask: 'lines',
+                        linesClass: 'contact-split-line',
+                        wordsClass: 'contact-split-word',
+                    })
+
+                    splits.push(split)
+
+                    gsap.from(split.lines, {
+                        yPercent: 118,
+                        duration: 1.05,
+                        ease: 'power4.out',
+                        stagger: 0.09,
+                        scrollTrigger: {
+                            trigger: target,
+                            start: 'top 88%',
+                            once: true,
+                        },
+                    })
+                })
+
+            // Scroll reveals for the main content groups.
             REVEAL_GROUPS.forEach(({ selector, animation }) => {
                 const elements = section.querySelectorAll<HTMLElement>(selector)
                 if (!elements.length) return
 
                 gsap.from(elements, {
-                    y: 35,
-                    opacity: 0,
+                    y: 34,
+                    autoAlpha: 0,
                     duration: 0.9,
                     ease: 'power3.out',
                     scrollTrigger: {
                         trigger: elements[0],
-                        start: 'top 88%',
+                        start: 'top 85%',
                         once: true,
                     },
                     ...animation,
                 })
             })
 
-            const bubbles =
-                section.querySelectorAll<HTMLElement>('[data-bubble]')
-            if (bubbles.length) {
-                const bubbleTimeline = gsap.timeline({
+            const eyebrowLines = section.querySelectorAll<HTMLElement>(
+                '.contact-eyebrow__line',
+            )
+
+            if (eyebrowLines.length) {
+                gsap.from(eyebrowLines, {
+                    scaleX: 0,
+                    transformOrigin: 'left center',
+                    duration: 0.9,
+                    ease: 'power3.out',
+                    stagger: 0.15,
                     scrollTrigger: {
                         trigger: section,
-                        start: 'top bottom',
-                        end: 'bottom top',
-                        scrub: true,
+                        start: 'top 80%',
+                        once: true,
                     },
                 })
+            }
 
-                bubbles.forEach((bubble) => {
-                    const travel = Number(bubble.dataset.bubbleTravel)
-                    if (Number.isFinite(travel)) {
-                        bubbleTimeline.to(
-                            bubble,
-                            { y: -travel, ease: 'none' },
-                            0,
-                        )
-                    }
+            // Ambient light shafts drifting from the top of the section.
+            section
+                .querySelectorAll<HTMLElement>('[data-beam]')
+                .forEach((beam, index) => {
+                    gsap.to(beam, {
+                        xPercent: index % 2 === 0 ? 9 : -9,
+                        opacity: index % 2 === 0 ? 0.55 : 0.32,
+                        duration: 10 + index * 2.6,
+                        delay: index * 0.9,
+                        repeat: -1,
+                        yoyo: true,
+                        ease: 'sine.inOut',
+                    })
+
+                    gsap.to(beam, {
+                        yPercent: 10 + index * 3,
+                        ease: 'none',
+                        scrollTrigger: {
+                            trigger: section,
+                            start: 'top bottom',
+                            end: 'bottom top',
+                            scrub: 1.6,
+                        },
+                    })
                 })
+
+            // Scroll parallax + gentle drift for each bubble.
+            const bubbles = section.querySelectorAll<HTMLElement>('[data-bubble]')
+
+            bubbles.forEach((bubble, index) => {
+                const travel = Number(bubble.dataset.bubbleTravel) || 120
+                const drift = Number(bubble.dataset.bubbleDrift) || 24
+
+                gsap.fromTo(
+                    bubble,
+                    { y: travel * 0.45 },
+                    {
+                        y: travel * -0.55,
+                        ease: 'none',
+                        scrollTrigger: {
+                            trigger: section,
+                            start: 'top bottom',
+                            end: 'bottom top',
+                            scrub: 1.1,
+                            invalidateOnRefresh: true,
+                        },
+                    },
+                )
+
+                gsap.to(bubble, {
+                    x: drift,
+                    duration: 6 + (index % 5) * 1.4,
+                    delay: index * 0.22,
+                    repeat: -1,
+                    yoyo: true,
+                    ease: 'sine.inOut',
+                })
+            })
+
+            // Reef and glows move at a slower rate to add depth.
+            const reef = section.querySelector<HTMLElement>('.contact-reef')
+
+            if (reef) {
+                gsap.fromTo(
+                    reef,
+                    { yPercent: -5 },
+                    {
+                        yPercent: 5,
+                        ease: 'none',
+                        scrollTrigger: {
+                            trigger: section,
+                            start: 'top bottom',
+                            end: 'bottom top',
+                            scrub: 1.2,
+                        },
+                    },
+                )
+            }
+
+            section
+                .querySelectorAll<HTMLElement>('.contact-glow')
+                .forEach((glow, index) => {
+                    gsap.to(glow, {
+                        yPercent: index === 0 ? -16 : 16,
+                        ease: 'none',
+                        scrollTrigger: {
+                            trigger: section,
+                            start: 'top bottom',
+                            end: 'bottom top',
+                            scrub: 1.4,
+                        },
+                    })
+                })
+
+            // Pointer parallax for the whole bubble field (desktop only).
+            const bubbleField = section.querySelector<HTMLElement>(
+                '[data-bubble-field]',
+            )
+            const hasFinePointer = window.matchMedia('(pointer: fine)').matches
+
+            if (bubbleField && hasFinePointer) {
+                const xTo = gsap.quickTo(bubbleField, 'x', {
+                    duration: 0.9,
+                    ease: 'power3',
+                })
+                const yTo = gsap.quickTo(bubbleField, 'y', {
+                    duration: 0.9,
+                    ease: 'power3',
+                })
+
+                const handlePointerMove = (event: PointerEvent) => {
+                    xTo((event.clientX / window.innerWidth - 0.5) * -34)
+                    yTo((event.clientY / window.innerHeight - 0.5) * -24)
+                }
+
+                section.addEventListener('pointermove', handlePointerMove)
+                removePointerListener = () =>
+                    section.removeEventListener('pointermove', handlePointerMove)
+            }
+
+            return () => {
+                removePointerListener?.()
+                removePointerListener = undefined
+                splits.forEach((split) => split.revert())
+                splits.length = 0
             }
         })
 
@@ -412,6 +643,30 @@ const Contact = () => {
             animation.kill()
         }
     }, [routeInfo])
+
+    // Animate the form feedback in when the submission result changes.
+    useEffect(() => {
+        if (!formFeedback || !feedbackRef.current) return
+
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return
+        }
+
+        const animation = gsap.fromTo(
+            feedbackRef.current,
+            { y: 10, autoAlpha: 0 },
+            {
+                y: 0,
+                autoAlpha: 1,
+                duration: 0.45,
+                ease: 'power2.out',
+            },
+        )
+
+        return () => {
+            animation.kill()
+        }
+    }, [formFeedback])
 
     // Contact form submission
     const handleContactSubmit = async (
@@ -604,6 +859,28 @@ const Contact = () => {
         >
             <div
                 aria-hidden="true"
+                className="contact-beams"
+            >
+                <span
+                    data-beam
+                    className="contact-beam contact-beam--one"
+                />
+                <span
+                    data-beam
+                    className="contact-beam contact-beam--two"
+                />
+                <span
+                    data-beam
+                    className="contact-beam contact-beam--three"
+                />
+                <span
+                    data-beam
+                    className="contact-beam contact-beam--four"
+                />
+            </div>
+
+            <div
+                aria-hidden="true"
                 className="contact-glow contact-glow--top"
             />
 
@@ -623,52 +900,79 @@ const Contact = () => {
                 aria-hidden="true"
                 className="contact-bubbles"
             >
-                <span
-                    data-bubble
-                    data-bubble-travel="360"
-                    className="contact-bubble contact-bubble--one"
-                />
-                <span
-                    data-bubble
-                    data-bubble-travel="520"
-                    className="contact-bubble contact-bubble--two"
-                />
-                <span
-                    data-bubble
-                    data-bubble-travel="440"
-                    className="contact-bubble contact-bubble--three"
-                />
-                <span
-                    data-bubble
-                    data-bubble-travel="620"
-                    className="contact-bubble contact-bubble--four"
-                />
+                <div
+                    className="contact-bubbles__field"
+                    data-bubble-field
+                >
+                    {BUBBLES.map((bubble) => (
+                        <span
+                            key={bubble.id}
+                            data-bubble
+                            data-bubble-travel={bubble.travel}
+                            data-bubble-drift={bubble.drift}
+                            style={
+                                {
+                                    '--bubble-top': `${bubble.top}%`,
+                                    '--bubble-left': `${bubble.left}%`,
+                                    '--bubble-size': `${bubble.size}px`,
+                                    '--bubble-opacity': bubble.opacity,
+                                } as CSSProperties
+                            }
+                            className={`contact-bubble${
+                                bubble.tone
+                                    ? ` contact-bubble--${bubble.tone}`
+                                    : ''
+                            }`}
+                        />
+                    ))}
+                </div>
             </div>
+
+            <div
+                aria-hidden="true"
+                className="contact-grain"
+            />
 
             <div className="contact-container">
 
-                <div
-                    data-animate="heading"
-                    className="contact-heading"
-                >
-                    <span className="contact-eyebrow">
-                        <span className="contact-eyebrow__line" />
-                        Get in Touch
-                    </span>
+                <header className="contact-heading">
+                    <div className="contact-heading__lead">
+                        <div className="contact-heading__meta">
+                            <span className="contact-index">
+                                04 / Contact
+                            </span>
 
-                    <h2 className="contact-heading__title">
-                        We'd Love to
-                        <span className="contact-heading__accent">
-                            Hear From You.
-                        </span>
-                    </h2>
+                            <span className="contact-eyebrow">
+                                <span className="contact-eyebrow__line" />
+                                Get in touch
+                            </span>
+                        </div>
 
-                    <p className="contact-heading__description">
-                        Have questions about your stay or planning your
-                        next getaway? Send us a message. We'd be happy
-                        to help make your VillaCorz experience special.
-                    </p>
-                </div>
+                        <h2
+                            data-split
+                            className="contact-heading__title"
+                        >
+                            We'd love to <em>hear from you.</em>
+                        </h2>
+                    </div>
+
+                    <div
+                        data-animate="heading-aside"
+                        className="contact-heading__aside"
+                    >
+                        <p className="contact-heading__description">
+                            Have questions about your stay or planning your
+                            next getaway? Send us a message. We'd be happy
+                            to help make your VillaCorz experience special.
+                        </p>
+
+                        <div className="contact-heading__meta-list">
+                            <span>Matabungkay</span>
+                            <span>Lian, Batangas</span>
+                            <span>13.9501° N · 120.6187° E</span>
+                        </div>
+                    </div>
+                </header>
 
                 <LocationSection
                     userLocation={userLocation}
@@ -685,189 +989,223 @@ const Contact = () => {
                 />
 
                 {/* Contact information and form */}
-                <div className="contact-grid">
+                <div className="contact-block">
+                    <div
+                        data-animate="block-title"
+                        className="contact-block__header"
+                    >
+                        <span className="contact-eyebrow">
+                            <span className="contact-eyebrow__line" />
+                            Say hello
+                        </span>
 
-                    <div className="contact-details">
-
-                        <div
-                            data-animate="contact"
-                            className="contact-card"
+                        <h3
+                            data-split
+                            className="contact-block__title"
                         >
-                            <div className="contact-icon-box contact-card__icon">
-                                <MapPin className="contact-icon" />
-                            </div>
-
-                            <div>
-                                <h3 className="contact-detail__title">
-                                    Our Location
-                                </h3>
-
-                                <p className="contact-detail__description">
-                                    Matabungkay, Lian, Batangas
-                                </p>
-                            </div>
-                        </div>
-
-                        <div
-                            data-animate="contact"
-                            className="contact-card"
-                        >
-                            <div className="contact-icon-box contact-card__icon">
-                                <Mail className="contact-icon" />
-                            </div>
-
-                            <div>
-                                <h3 className="contact-detail__title">
-                                    Get in Touch
-                                </h3>
-
-                                <p className="contact-detail__description">
-                                    Send us a message using the form.
-                                    We'll reply to the email address
-                                    you provide.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div
-                            data-animate="contact"
-                            className="contact-note"
-                        >
-                            <p className="contact-note__title">
-                                Your getaway is just a message away.
-                            </p>
-
-                            <p className="contact-note__description">
-                                We look forward to welcoming you to
-                                VillaCorz.
-                            </p>
-                        </div>
+                            Send us a note.
+                        </h3>
                     </div>
 
-                    {/* Contact form */}
-                    <div
-                        data-animate="form"
-                        className="contact-form-card"
-                    >
-                        <div className="contact-form-card__header">
-                            <span className="contact-form-card__eyebrow">
-                                Send an Inquiry
-                            </span>
+                    <div className="contact-grid">
 
-                            <h3 className="contact-form-card__title">
-                                Let's talk.
-                            </h3>
+                        <div className="contact-details">
 
-                            <p className="contact-form-card__description">
-                                Fill out the form below and we'll get
-                                back to you.
-                            </p>
+                            <div
+                                data-animate="contact"
+                                className="contact-row"
+                            >
+                                <span className="contact-row__index">
+                                    01
+                                </span>
+
+                                <div className="contact-row__body">
+                                    <p className="contact-row__label">
+                                        Visit
+                                    </p>
+
+                                    <p className="contact-row__value">
+                                        Matabungkay, Lian, Batangas
+                                    </p>
+                                </div>
+
+                                <MapPin className="contact-row__icon" />
+                            </div>
+
+                            <div
+                                data-animate="contact"
+                                className="contact-row"
+                            >
+                                <span className="contact-row__index">
+                                    02
+                                </span>
+
+                                <div className="contact-row__body">
+                                    <p className="contact-row__label">
+                                        Write
+                                    </p>
+
+                                    <p className="contact-row__value">
+                                        Send us a message
+                                    </p>
+
+                                    <p className="contact-row__description">
+                                        We'll reply to the email address
+                                        you provide.
+                                    </p>
+                                </div>
+
+                                <Mail className="contact-row__icon" />
+                            </div>
+
+                            <blockquote
+                                data-animate="contact"
+                                className="contact-note"
+                            >
+                                <p className="contact-note__title">
+                                    Your getaway is just a message away.
+                                </p>
+
+                                <p className="contact-note__description">
+                                    We look forward to welcoming you to
+                                    VillaCorz.
+                                </p>
+                            </blockquote>
                         </div>
 
-                        <form
-                            onSubmit={handleContactSubmit}
-                            className="contact-form"
+                        {/* Contact form */}
+                        <div
+                            data-animate="form"
+                            className="contact-form-card"
                         >
-                            <div>
-                                <label
-                                    htmlFor="contact-name"
-                                    className="contact-form__label"
-                                >
-                                    Full Name
-                                </label>
+                            <div className="contact-form-card__header">
+                                <span className="contact-form-card__eyebrow">
+                                    Send an inquiry
+                                </span>
 
-                                <input
-                                    id="contact-name"
-                                    name="name"
-                                    type="text"
-                                    required
-                                    maxLength={120}
-                                    autoComplete="name"
-                                    placeholder="Enter your name"
-                                    className="contact-form__input"
-                                />
-                            </div>
+                                <h3 className="contact-form-card__title">
+                                    Let's talk.
+                                </h3>
 
-                            <div>
-                                <label
-                                    htmlFor="contact-email"
-                                    className="contact-form__label"
-                                >
-                                    Email Address
-                                </label>
-
-                                <input
-                                    id="contact-email"
-                                    name="email"
-                                    type="email"
-                                    required
-                                    maxLength={254}
-                                    autoComplete="email"
-                                    placeholder="Enter your email"
-                                    className="contact-form__input"
-                                />
-                            </div>
-
-                            <div>
-                                <label
-                                    htmlFor="contact-message"
-                                    className="contact-form__label"
-                                >
-                                    Message
-                                </label>
-
-                                <textarea
-                                    id="contact-message"
-                                    name="message"
-                                    rows={5}
-                                    required
-                                    maxLength={5000}
-                                    placeholder="How can we help you?"
-                                    className="contact-form__textarea"
-                                />
-                            </div>
-
-                            {formFeedback && (
-                                <p
-                                    role={
-                                        formFeedback.type === 'error'
-                                            ? 'alert'
-                                            : 'status'
-                                    }
-                                    className={`contact-form__feedback ${
-                                        formFeedback.type === 'error'
-                                            ? 'contact-form__feedback--error'
-                                            : 'contact-form__feedback--success'
-                                    }`}
-                                >
-                                    {formFeedback.message}
+                                <p className="contact-form-card__description">
+                                    Fill out the form below and we'll get
+                                    back to you.
                                 </p>
-                            )}
+                            </div>
 
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="contact-form__submit"
+                            <form
+                                onSubmit={handleContactSubmit}
+                                className="contact-form"
                             >
-                                {isSubmitting ? (
-                                    <>
-                                        <LoaderCircle className="contact-icon-spin" />
-                                        Sending Message...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Send className="contact-icon" />
-                                        Send Message
-                                        <ArrowUpRight
-                                            className="contact-arrow contact-form__arrow"
+                                <div className="contact-form__row">
+                                    <div>
+                                        <label
+                                            htmlFor="contact-name"
+                                            className="contact-form__label"
+                                        >
+                                            Full name
+                                        </label>
+
+                                        <input
+                                            id="contact-name"
+                                            name="name"
+                                            type="text"
+                                            required
+                                            maxLength={120}
+                                            autoComplete="name"
+                                            placeholder="Enter your name"
+                                            className="contact-form__input"
                                         />
-                                    </>
+                                    </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="contact-email"
+                                            className="contact-form__label"
+                                        >
+                                            Email address
+                                        </label>
+
+                                        <input
+                                            id="contact-email"
+                                            name="email"
+                                            type="email"
+                                            required
+                                            maxLength={254}
+                                            autoComplete="email"
+                                            placeholder="Enter your email"
+                                            className="contact-form__input"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label
+                                        htmlFor="contact-message"
+                                        className="contact-form__label"
+                                    >
+                                        Message
+                                    </label>
+
+                                    <textarea
+                                        id="contact-message"
+                                        name="message"
+                                        rows={5}
+                                        required
+                                        maxLength={5000}
+                                        placeholder="How can we help you?"
+                                        className="contact-form__textarea"
+                                    />
+                                </div>
+
+                                {formFeedback && (
+                                    <p
+                                        role={
+                                            formFeedback.type === 'error'
+                                                ? 'alert'
+                                                : 'status'
+                                        }
+                                        ref={feedbackRef}
+                                        className={`contact-form__feedback ${
+                                            formFeedback.type === 'error'
+                                                ? 'contact-form__feedback--error'
+                                                : 'contact-form__feedback--success'
+                                        }`}
+                                    >
+                                        {formFeedback.message}
+                                    </p>
                                 )}
-                            </button>
-                        </form>
+
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="contact-form__submit"
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <LoaderCircle className="contact-icon-spin" />
+                                            Sending message...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Send className="contact-icon" />
+                                            Send message
+                                            <ArrowUpRight
+                                                className="contact-arrow contact-form__arrow"
+                                            />
+                                        </>
+                                    )}
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
+                <footer className="contact-footer">
+                    <span>VillaCorz Beach House</span>
+                    <span className="contact-footer__line" />
+                    <span>Matabungkay · Lian · Batangas</span>
+                </footer>
             </div>
         </section>
     )

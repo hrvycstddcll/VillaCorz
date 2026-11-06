@@ -705,9 +705,9 @@ const ServicesFooter = ({
                         className="flex size-11 shrink-0 items-center justify-center rounded-sm bg-[#2875e8] text-white transition hover:bg-[#1763d4] lg:hidden"
                     >
                         {isExpanded ? (
-                            <ChevronUp size={30} />
-                        ) : (
                             <ChevronDown size={30} />
+                        ) : (
+                            <ChevronUp size={30} />
                         )}
                     </button>
                 </div>
