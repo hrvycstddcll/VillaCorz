@@ -97,9 +97,9 @@ const FormLogin = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType }:
 
             <p
                 role={feedbackType === 'error' ? 'alert' : 'status'}
-                className={`pb-2 min-h-[2rem] text-sm ${feedbackType === 'success'
-                        ? 'text-green-800'
-                        : 'text-red-700'
+                className={`pb-2 min-h-8 text-sm ${feedbackType === 'success'
+                    ? 'text-green-800'
+                    : 'text-red-700'
                     }`}
             >
                 {feedback}
@@ -190,9 +190,9 @@ const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType
 
         <p
             role={feedbackType === 'error' ? 'alert' : 'status'}
-            className={`pb-2 min-h-[2rem] text-sm ${feedbackType === 'success'
-                    ? 'text-green-800'
-                    : 'text-red-700'
+            className={`pb-2 min-h-8 text-sm ${feedbackType === 'success'
+                ? 'text-green-800'
+                : 'text-red-700'
                 }`}
         >
             {feedback}
@@ -324,9 +324,9 @@ const Auth = () => {
             <section className="flex min-h-screen w-full min-w-0 items-center justify-center bg-[#f7f7f7] px-5 py-10 sm:px-8 lg:w-[45%] lg:flex-none lg:px-8">
                 <div
                     key={mode}
-                    className={`w-full max-w-[430px] ${isRegistering
-                            ? 'auth-fade-in-right'
-                            : 'auth-fade-in-left'
+                    className={`w-full max-w-107.5 ${isRegistering
+                        ? 'auth-fade-in-right'
+                        : 'auth-fade-in-left'
                         }`}
                 >
                     {isRegistering ? (
