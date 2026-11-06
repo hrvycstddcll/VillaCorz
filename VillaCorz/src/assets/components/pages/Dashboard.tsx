@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import DashboardNavbar from '../ui/DashboardNavbar'
 
 const metrics = [
     { label: 'Check-ins', value: '—' },
@@ -18,10 +17,7 @@ const Dashboard = () => {
     const [range, setRange] = useState<(typeof ranges)[number]>('30 days')
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-800">
-            <DashboardNavbar />
-
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-6 pt-6 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-6 pt-6 sm:px-6 lg:px-8">
                     <main className="flex flex-col gap-6">
                         {/* Page heading */}
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -181,7 +177,6 @@ const Dashboard = () => {
                             </div>
                         </section>
                     </main>
-                </div>
         </div>
     )
 }

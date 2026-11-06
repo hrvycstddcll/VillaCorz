@@ -259,10 +259,11 @@ const Auth = () => {
                 const requestedPath = (
                     location.state as { from?: { pathname?: string } } | null
                 )?.from?.pathname
+                const adminPaths = ['/dashboard', '/manageOffers', '/reports']
                 navigate(
-                    requestedPath === '/dashboard' &&
-                        response.data.user.role === 'admin'
-                        ? '/dashboard'
+                    response.data.user.role === 'admin'
+                        ? adminPaths.find((path) => path === requestedPath) ??
+                            '/dashboard'
                         : '/',
                 )
                 return
