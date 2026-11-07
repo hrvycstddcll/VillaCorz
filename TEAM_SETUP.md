@@ -134,6 +134,12 @@ form, configure a valid Brevo API key and sender in your private `.env`, or
 configure a local mail catcher. Set `CONTACT_MAIL_TO` to the inbox that should
 receive contact-form messages. Do not commit or share `.env` files or API keys.
 
+Manage Offers uploads service photos to Cloudinary. Set
+`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in
+`VillaCorz/backend/.env`. `CLOUDINARY_UPLOAD_FOLDER` defaults to
+`villacorz/services`. Offers can still be created without images when these
+values are not configured.
+
 Start the backend from `VillaCorz/backend`:
 
 ```sh
