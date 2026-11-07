@@ -939,7 +939,7 @@ const Contact = () => {
                     <div className="contact-heading__lead">
                         <div className="contact-heading__meta">
                             <span className="contact-index">
-                                04 / Contact
+                                Contact
                             </span>
 
                             <span className="contact-eyebrow">
