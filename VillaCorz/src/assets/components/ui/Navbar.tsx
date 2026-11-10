@@ -34,7 +34,6 @@ const adminItem: GooeyNavItem = {
     label: 'Admin',
     href: '/dashboard',
     align: 'end',
-    chevronClassName: 'hidden xl:inline',
     children: adminLinks.map(({ label, to }) => ({ label, href: to })),
 }
 
@@ -470,9 +469,15 @@ const Navbar = () => {
                                     onClick={() =>
                                         setAdminGroupOpen((open) => !open)
                                     }
-                                    className={mobileItemClassName}
+                                    className={`${mobileItemClassName} flex items-center justify-between`}
                                 >
                                     Admin
+                                    <ChevronDown
+                                        className={`size-5 transition-transform duration-200 motion-reduce:transition-none ${
+                                            adminGroupOpen ? 'rotate-180' : ''
+                                        }`}
+                                        aria-hidden="true"
+                                    />
                                 </button>
 
                                 <div

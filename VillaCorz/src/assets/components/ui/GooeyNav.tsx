@@ -1248,13 +1248,15 @@ const GooeyNav = ({
                 className={`${listClassName} gooey-nav__list--active`.trim()}
                 aria-hidden="true"
             >
-                {items.map((item) => (
+                {items.map((item, index) => (
                     <li key={item.label} className="relative">
                         <span className={linkClassName}>
                             {item.label}
                             {item.children?.length ? (
                                 <ChevronDown
-                                    className={`size-3.5 shrink-0 ${item.chevronClassName ?? ''}`.trim()}
+                                    className={`size-3.5 shrink-0 transition-transform duration-200 motion-reduce:transition-none ${
+                                        openIndex === index ? 'rotate-180' : ''
+                                    } ${item.chevronClassName ?? ''}`.trim()}
                                     aria-hidden="true"
                                 />
                             ) : null}

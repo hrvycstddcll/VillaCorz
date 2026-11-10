@@ -132,7 +132,7 @@ const BookingCalendarPanel = ({
     return (
         <aside
             aria-label="Booking calendar"
-            className="h-fit self-start rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,0.12)] sm:p-5 lg:sticky lg:top-28"
+            className="h-fit w-full self-start overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,0.12)] sm:p-5 lg:sticky lg:top-24 lg:w-auto"
         >
             <p className="mb-4 text-xs font-semibold text-[#006dfc]">Select dates</p>
 
@@ -253,7 +253,7 @@ const BookingCalendarPanel = ({
                 </div>
             </div>
 
-            <div className="max-h-44 overflow-y-auto">
+            <div className="overflow-visible">
                 {roomGuests.map((room, index) => {
                     const villaAssignedElsewhere = roomGuests.some(
                         (otherRoom, otherIndex) =>
