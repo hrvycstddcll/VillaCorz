@@ -8,16 +8,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Service extends Model
 {
-    Protected $fillable = [
+    protected $fillable = [
         'created_by',
         'name',
         'description',
         'price',
+        'pax',
+        'features',
+        'amenities',
         'status',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
+        'pax' => 'integer',
+        'features' => 'array',
+        'amenities' => 'array',
     ];
 
     public function creator(): BelongsTo

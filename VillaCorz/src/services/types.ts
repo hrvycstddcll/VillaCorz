@@ -25,6 +25,9 @@ export type Service = {
     name: string
     description: string | null
     price: string | number
+    pax: number | null
+    features: string[] | null
+    amenities: string[] | null
     status: ServiceStatus
     images: ServiceImage[]
     created_at: string

@@ -7,9 +7,46 @@ import { getUser, logout } from './authService'
 import type { User } from './types'
 import { AuthContext } from './AuthContextValue'
 
+const USER_CACHE_KEY = 'villacorz.user'
+
+const readCachedUser = (): User | null => {
+    if (typeof window === 'undefined') return null
+
+    try {
+        const raw = window.sessionStorage.getItem(USER_CACHE_KEY)
+        if (!raw) return null
+        const parsed = JSON.parse(raw) as User
+        return parsed && typeof parsed === 'object' ? parsed : null
+    } catch {
+        return null
+    }
+}
+
+const writeCachedUser = (user: User | null) => {
+    if (typeof window === 'undefined') return
+
+    try {
+        if (user) {
+            window.sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(user))
+        } else {
+            window.sessionStorage.removeItem(USER_CACHE_KEY)
+        }
+    } catch {
+        // Storage can be unavailable (private mode, quota); the in-memory
+        // state below is still correct for this session.
+    }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const [user, setUser] = useState<User | null>(null)
+    // Hydrate from the session cache so the navbar renders the right menu on
+    // the very first paint instead of popping it in after /user resolves.
+    const [user, setUserState] = useState<User | null>(() => readCachedUser())
     const [loading, setLoading] = useState(true)
+
+    const setUser = (nextUser: User | null) => {
+        writeCachedUser(nextUser)
+        setUserState(nextUser)
+    }
 
     const refreshUser = async () => {
         try {

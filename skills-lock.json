@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "better-layout": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-layout/SKILL.md",
+      "computedHash": "482cd1a14d84146815650825ad8391e65683fec0e88a15cbaa11356335060ecc"
+    },
+    "better-typography": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-typography/SKILL.md",
+      "computedHash": "2bdcdec47af0939829a5a63a659968ca4fe6938ba92fc25dc1a29636425b0c53"
+    },
+    "create-component": {
+      "source": "PrototyperAI/prototyper-ui",
+      "sourceType": "github",
+      "skillPath": "apps/docs/skill/create-component/SKILL.md",
+      "computedHash": "9ead21a76210a3cd0de03de962442f6c9d690f5300b950668170afe2f9acfa30"
+    },
+    "interface-design": {
+      "source": "Dammyjay93/interface-design",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/interface-design/SKILL.md",
+      "computedHash": "55a83a96d1e3d161b8c3630dab8ae2dd4547d92636d3d9b4b447d7d59163e084"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "3bf6ba3aead8c890cb3cb43480b8588a9dc292465204795b10a66b62504ad1d2"
+    }
+  }
+}

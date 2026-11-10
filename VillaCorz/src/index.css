@@ -184,3 +184,9 @@
     animation: none;
   }
 }
+
+/* Anchored sections must clear the fixed navbar. */
+section[id] {
+  scroll-margin-top: 6rem;
+}
+

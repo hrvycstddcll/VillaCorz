@@ -3,12 +3,8 @@ import axios from 'axios'
 import {
     AlertCircle,
     CheckCircle2,
-    Images,
-    Pencil,
-    Plus,
     RefreshCw,
     SearchX,
-    Trash2,
     X,
 } from 'lucide-react'
 import type { Service } from '../../../services/types'
@@ -55,22 +51,6 @@ const getErrorMessage = (
     return fallback
 }
 
-const formatUpdated = (value: string) => {
-    if (!value) return 'Recently'
-
-    const date = new Date(value)
-
-    if (Number.isNaN(date.getTime())) {
-        return 'Recently'
-    }
-
-    return new Intl.DateTimeFormat('en', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    }).format(date)
-}
-
 const toServiceTileStay = (service: Service): ServiceTileStay => {
     const images = service.images ?? []
     const primaryImage =
@@ -82,120 +62,23 @@ const toServiceTileStay = (service: Service): ServiceTileStay => {
         title: service.name,
         image: primaryImage?.image_url ?? fallbackOfferImage,
         price: Number(service.price),
-        capacity: 'Good for all pax',
+        capacity:
+            service.pax != null
+                ? `Good for ${service.pax} pax`
+                : 'Good for all pax',
         rating: `${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`,
     }
-}
-
-const OffersSkeleton = () => (
-    <div
-        role="listitem"
-        aria-hidden="true"
-        className="flex w-[72vw] min-w-0 shrink-0 snap-start flex-col gap-3 sm:w-auto sm:shrink"
-    >
-        <div className="animate-pulse overflow-hidden rounded-xl bg-white shadow-md ring-1 ring-black/5">
-            <div className="h-56 bg-slate-200/70 sm:h-64 lg:h-72" />
-        </div>
-        <div className="flex flex-1 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center justify-between gap-3">
-                <div className="h-6 w-20 rounded-full bg-slate-100" />
-                <div className="h-8 w-28 rounded-lg bg-slate-100" />
-            </div>
-            <div className="mt-3 space-y-2">
-                <div className="h-3 w-full rounded-full bg-slate-100" />
-                <div className="h-3 w-4/5 rounded-full bg-slate-100" />
-            </div>
-            <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3">
-                <div className="h-2.5 w-20 rounded-full bg-slate-100" />
-                <div className="h-2.5 w-24 rounded-full bg-slate-100" />
-            </div>
-        </div>
-    </div>
-)
-
-type OfferManagementPanelProps = {
-    service: Service
-    onEdit: (service: Service) => void
-    onDelete: (service: Service) => void
-}
-
-const OfferManagementPanel = ({
-    service,
-    onEdit,
-    onDelete,
-}: OfferManagementPanelProps) => {
-    const isActive = service.status === 'active'
-    const imageCount = service.images?.length ?? 0
-    const description = service.description?.trim()
-
-    return (
-        <div className="flex flex-1 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-200 group-hover:border-[#006dfc]/25 group-hover:shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${
-                        isActive
-                            ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                            : 'bg-slate-100 text-slate-600 ring-slate-200'
-                    }`}
-                >
-                    <span
-                        aria-hidden="true"
-                        className={`size-1.5 rounded-full ${
-                            isActive ? 'bg-emerald-500' : 'bg-slate-400'
-                        }`}
-                    />
-                    {isActive ? 'Active' : 'Inactive'}
-                </span>
-
-                <div className="flex shrink-0 items-center gap-1.5">
-                    <button
-                        type="button"
-                        onClick={() => onEdit(service)}
-                        aria-label={`Edit ${service.name}`}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-600 transition hover:border-[#006dfc]/40 hover:bg-[#006dfc]/5 hover:text-[#006dfc] ${focusRing}`}
-                    >
-                        <Pencil className="size-3.5" aria-hidden="true" />
-                        Edit
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onDelete(service)}
-                        aria-label={`Delete ${service.name}`}
-                        className={`inline-grid size-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 ${focusRing}`}
-                    >
-                        <Trash2 className="size-4" aria-hidden="true" />
-                    </button>
-                </div>
-            </div>
-
-            <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-600">
-                {description ||
-                    'No description has been added for this offer yet.'}
-            </p>
-
-            <div className="mt-auto flex flex-wrap items-center justify-between gap-2 gap-y-1 border-t border-slate-100 pt-3 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                <span className="inline-flex items-center gap-1.5">
-                    <Images className="size-3.5" aria-hidden="true" />
-                    {imageCount} {imageCount === 1 ? 'photo' : 'photos'}
-                </span>
-                <span className="whitespace-nowrap">
-                    Updated {formatUpdated(service.updated_at)}
-                </span>
-            </div>
-        </div>
-    )
 }
 
 type OfferTileProps = {
     service: Service
     onEdit: (service: Service) => void
-    onDelete: (service: Service) => void
 }
 
-const OfferTile = ({ service, onEdit, onDelete }: OfferTileProps) => (
+const OfferTile = ({ service, onEdit }: OfferTileProps) => (
     <div
         role="listitem"
-        className="group flex w-[72vw] min-w-0 shrink-0 snap-start flex-col gap-3 sm:w-auto sm:shrink"
+        className="group flex w-[72vw] min-w-0 shrink-0 snap-start flex-col sm:w-auto sm:shrink"
     >
         <ServiceTile
             variant="room"
@@ -204,11 +87,6 @@ const OfferTile = ({ service, onEdit, onDelete }: OfferTileProps) => (
             isReservationSelected={false}
             onSelect={() => onEdit(service)}
             onToggleReservation={() => onEdit(service)}
-        />
-        <OfferManagementPanel
-            service={service}
-            onEdit={onEdit}
-            onDelete={onDelete}
         />
     </div>
 )
@@ -320,6 +198,11 @@ const ManageOffers = () => {
         setDeletingService(service)
     }
 
+    const openDeleteFromForm = (service: Service) => {
+        closeForm()
+        openDeleteDialog(service)
+    }
+
     const closeDeleteDialog = () => {
         if (deleting) return
 
@@ -371,72 +254,33 @@ const ManageOffers = () => {
         ]
 
     return (
-        <main className="mx-auto w-full max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8 lg:pt-10">
-            <div className="flex flex-col gap-8">
-                <header
-                    aria-labelledby="manage-offers-heading"
-                    className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white px-5 py-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-8 sm:py-9"
-                >
-                    <div
-                        aria-hidden="true"
-                        className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-[#006dfc]/[0.07] blur-3xl"
-                    />
-                    <div
-                        aria-hidden="true"
-                        className="pointer-events-none absolute right-10 top-10 hidden size-24 rounded-full border border-[#006dfc]/10 lg:block"
-                    />
-
-                    <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
-                        <div className="max-w-2xl">
-                            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#006dfc]">
-                                <span
-                                    aria-hidden="true"
-                                    className="h-px w-6 bg-[#006dfc]"
-                                />
-                                VillaCorz Admin
-                            </p>
-                            <h1
-                                id="manage-offers-heading"
-                                className="mt-3 font-serif text-3xl font-bold tracking-tight text-[#003079] sm:text-4xl"
-                            >
-                                Manage Offers
-                            </h1>
-                            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                                Shape the experiences guests can book, from
-                                quiet rooms to the whole beach house. Keep
-                                pricing, photos, and availability in one place.
-                            </p>
-                        </div>
-
-                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
-                            <button
-                                type="button"
-                                onClick={() => void loadServices()}
-                                disabled={loading}
-                                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:border-[#006dfc]/30 hover:bg-[#006dfc]/5 hover:text-[#006dfc] disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
-                            >
-                                <RefreshCw
-                                    className={`size-4 ${
-                                        loading ? 'animate-spin' : ''
-                                    }`}
-                                    aria-hidden="true"
-                                />
-                                Refresh
-                            </button>
-                            <button
-                                type="button"
-                                onClick={openAddForm}
-                                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#006dfc] px-5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(0,109,252,0.24)] transition duration-200 hover:bg-[#0057cc] hover:shadow-[0_10px_24px_rgba(0,109,252,0.28)] active:scale-[0.99] ${focusRing}`}
-                            >
-                                <Plus className="size-4" aria-hidden="true" />
-                                Add offer
-                            </button>
-                        </div>
+        <main className="w-full pb-16">
+            <header
+                aria-labelledby="manage-offers-heading"
+                className="relative w-full bg-[#003079] text-white"
+            >
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 bottom-full h-[var(--navbar-height,3.5rem)] bg-[#003079]"
+                />
+                <div className="relative mx-auto w-full max-w-7xl px-4 pb-8 pt-10 font-poppins sm:px-6 sm:pb-10 sm:pt-12 lg:px-8">
+                    <div className="relative max-w-2xl pb-10">
+                        <h1
+                            id="manage-offers-heading"
+                            className="text-balance text-3xl font-bold tracking-tight text-white sm:text-4xl"
+                        >
+                            Manage Offers
+                        </h1>
+                        <p className="max-w-xl pt-3 text-sm leading-6 text-blue-100">
+                            Shape the experiences guests can book, from quiet
+                            rooms to the whole beach house. Keep pricing,
+                            photos, and availability in one place.
+                        </p>
                     </div>
 
                     <dl
                         aria-label="Offer summary"
-                        className="relative mt-8 grid grid-cols-3 divide-x divide-slate-200 border-t border-slate-200 pt-5"
+                        className="relative grid grid-cols-3 divide-x divide-white/20 border-t border-white/20 pt-6"
                     >
                         {[
                             { label: 'Offers', value: services.length },
@@ -447,17 +291,19 @@ const ManageOffers = () => {
                                 key={stat.label}
                                 className="px-3 first:pl-0 last:pr-0 sm:px-4"
                             >
-                                <dt className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:text-[10px]">
+                                <dt className="text-[9px] font-semibold uppercase tracking-[0.18em] text-blue-100 sm:text-[10px]">
                                     {stat.label}
                                 </dt>
-                                <dd className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#003079] sm:text-3xl">
+                                <dd className="pt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">
                                     {loading ? '—' : stat.value}
                                 </dd>
                             </div>
                         ))}
                     </dl>
-                </header>
+                </div>
+            </header>
 
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pt-8 sm:px-6 lg:px-8">
                 {notice && (
                     <div
                         role="status"
@@ -552,7 +398,7 @@ const ManageOffers = () => {
                             </p>
                         </div>
 
-                        {!isEmpty && (
+                        {!loading && !isEmpty && (
                             <div
                                 role="group"
                                 aria-label="Filter offers"
@@ -626,28 +472,28 @@ const ManageOffers = () => {
                                 Show all offers
                             </button>
                         </div>
+                    ) : loading ? (
+                        <p
+                            role="status"
+                            className="py-6 text-sm text-slate-500"
+                        >
+                            Loading offers…
+                        </p>
                     ) : (
                         <div
                             role="list"
                             aria-label="Offers"
                             className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-3"
                         >
-                            {loading
-                                ? Array.from({ length: 3 }, (_, index) => (
-                                      <OffersSkeleton key={index} />
-                                  ))
-                                : filteredServices.map((service) => (
-                                      <OfferTile
-                                          key={service.id}
-                                          service={service}
-                                          onEdit={openEditForm}
-                                          onDelete={openDeleteDialog}
-                                      />
-                                  ))}
+                            {filteredServices.map((service) => (
+                                <OfferTile
+                                    key={service.id}
+                                    service={service}
+                                    onEdit={openEditForm}
+                                />
+                            ))}
 
-                            {!loading && (
-                                <AddOfferCardSlot onClick={openAddForm} />
-                            )}
+                            <AddOfferCardSlot onClick={openAddForm} />
                         </div>
                     )}
                 </section>
@@ -659,6 +505,7 @@ const ManageOffers = () => {
                     service={editingService}
                     onClose={closeForm}
                     onSaved={handleSaved}
+                    onDelete={openDeleteFromForm}
                 />
             )}
 

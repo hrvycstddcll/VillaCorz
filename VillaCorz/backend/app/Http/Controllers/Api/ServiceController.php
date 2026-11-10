@@ -67,6 +67,9 @@ class ServiceController extends Controller
                     'name' => $validated['name'],
                     'description' => $validated['description'] ?? null,
                     'price' => $validated['price'],
+                    'pax' => $validated['pax'] ?? null,
+                    'features' => $this->cleanList($validated['features'] ?? []),
+                    'amenities' => $this->cleanList($validated['amenities'] ?? []),
                     'status' => $validated['status'],
                 ]);
 
@@ -152,20 +155,37 @@ class ServiceController extends Controller
 
         $removedPublicIds = [];
 
+        $detailUpdates = [
+            'pax' => $validated['pax'] ?? null,
+        ];
+
+        if ($request->boolean('features_present')) {
+            $detailUpdates['features'] = $this->cleanList(
+                $validated['features'] ?? [],
+            );
+        }
+
+        if ($request->boolean('amenities_present')) {
+            $detailUpdates['amenities'] = $this->cleanList(
+                $validated['amenities'] ?? [],
+            );
+        }
+
         try {
             DB::transaction(function () use (
                 $service,
                 $validated,
+                $detailUpdates,
                 $orderTokens,
                 $uploaded,
                 &$removedPublicIds,
             ) {
-                $service->update([
+                $service->update(array_merge([
                     'name' => $validated['name'],
                     'description' => $validated['description'] ?? null,
                     'price' => $validated['price'],
                     'status' => $validated['status'],
-                ]);
+                ], $detailUpdates));
 
                 $existing = $service->images()->get()->keyBy('id');
                 $primaryToken = $this->resolvePrimaryToken(
@@ -270,6 +290,13 @@ class ServiceController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'price' => ['required', 'numeric', 'min:0'],
+            'pax' => ['nullable', 'integer', 'min:1', 'max:1000'],
+            'features' => ['nullable', 'array', 'max:20'],
+            'features.*' => ['string', 'max:80'],
+            'amenities' => ['nullable', 'array', 'max:20'],
+            'amenities.*' => ['string', 'max:80'],
+            'features_present' => ['sometimes', 'boolean'],
+            'amenities_present' => ['sometimes', 'boolean'],
             'status' => ['required', 'in:active,inactive'],
             'images' => ['nullable', 'array', 'max:'.self::MAX_IMAGES],
             'images.*' => ['image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
@@ -278,6 +305,31 @@ class ServiceController extends Controller
             'image_order_present' => ['sometimes', 'boolean'],
             'primary_image' => ['nullable', 'string', 'regex:/^(existing:\d+|new:\d+)$/'],
         ]);
+    }
+
+    /**
+     * Trim, drop blanks and remove duplicates from a list of labels.
+     *
+     * @param  array<int, mixed>  $items
+     * @return array<int, string>
+     */
+    private function cleanList(array $items): array
+    {
+        $cleaned = [];
+
+        foreach ($items as $item) {
+            if (! is_string($item)) {
+                continue;
+            }
+
+            $value = trim($item);
+
+            if ($value !== '' && ! in_array($value, $cleaned, true)) {
+                $cleaned[] = $value;
+            }
+        }
+
+        return $cleaned;
     }
 
     /**

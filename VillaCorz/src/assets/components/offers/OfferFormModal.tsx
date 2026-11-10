@@ -1,6 +1,15 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import {
+    useEffect,
+    useRef,
+    useState,
+    type FormEvent,
+    type ReactNode,
+} from 'react'
 import axios from 'axios'
-import { Loader2, X } from 'lucide-react'
+import { Fan, Loader2, Trash2, X } from 'lucide-react'
+import acIcon from '../../images/AC.png'
+import crIcon from '../../images/Cr.png'
+import tvIcon from '../../images/Tv.png'
 import type { Service, ServiceStatus } from '../../../services/types'
 import {
     createService,
@@ -14,6 +23,7 @@ type OfferFormModalProps = {
     service: Service | null
     onClose: () => void
     onSaved: (message: string) => void
+    onDelete: (service: Service) => void
 }
 
 type FieldErrors = Record<string, string>
@@ -28,7 +38,36 @@ const inputClass = (hasError: boolean) =>
             : 'border-slate-200 focus:border-[#006dfc] focus:ring-[#006dfc]/10'
     }`
 
-const OfferFormModal = ({ service, onClose, onSaved }: OfferFormModalProps) => {
+type RoomFeatureOption = {
+    value: string
+    icon: ReactNode
+}
+
+const roomFeatureOptions: RoomFeatureOption[] = [
+    {
+        value: 'TV',
+        icon: <img src={tvIcon} alt="" className="size-4 object-contain" />,
+    },
+    {
+        value: 'Private CR',
+        icon: <img src={crIcon} alt="" className="size-4 object-contain" />,
+    },
+    {
+        value: 'Airconditioned',
+        icon: <img src={acIcon} alt="" className="size-4 object-contain" />,
+    },
+    {
+        value: '2 Fans',
+        icon: <Fan className="size-4" aria-hidden="true" />,
+    },
+]
+
+const OfferFormModal = ({
+    service,
+    onClose,
+    onSaved,
+    onDelete,
+}: OfferFormModalProps) => {
     const isEditing = service !== null
     const initialImages: ManagedOfferImage[] = (service?.images ?? []).map(
         (image) => ({
@@ -46,6 +85,12 @@ const OfferFormModal = ({ service, onClose, onSaved }: OfferFormModalProps) => {
     )
     const [status, setStatus] = useState<ServiceStatus>(
         service?.status ?? 'active',
+    )
+    const [pax, setPax] = useState(
+        service?.pax != null ? String(service.pax) : '',
+    )
+    const [amenities, setAmenities] = useState<string[]>(
+        service?.amenities ?? [],
     )
     const [images, setImages] = useState<ManagedOfferImage[]>(initialImages)
     const [primaryKey, setPrimaryKey] = useState<string | null>(
@@ -100,6 +145,23 @@ const OfferFormModal = ({ service, onClose, onSaved }: OfferFormModalProps) => {
         })
     }
 
+    const toggleAmenity = (value: string, checked: boolean) => {
+        setAmenities((current) => {
+            const selected = new Set(current)
+
+            if (checked) {
+                selected.add(value)
+            } else {
+                selected.delete(value)
+            }
+
+            return roomFeatureOptions
+                .map((option) => option.value)
+                .filter((option) => selected.has(option))
+        })
+        clearFieldError('amenities')
+    }
+
     const validate = () => {
         const errors: FieldErrors = {}
 
@@ -111,6 +173,16 @@ const OfferFormModal = ({ service, onClose, onSaved }: OfferFormModalProps) => {
             errors.price = 'Enter a valid price.'
         } else if (Number(price) < 0) {
             errors.price = 'Price cannot be negative.'
+        }
+
+        if (pax.trim() !== '') {
+            const capacity = Number(pax)
+
+            if (!Number.isInteger(capacity) || capacity < 1) {
+                errors.pax = 'Enter a whole number of guests.'
+            } else if (capacity > 1000) {
+                errors.pax = 'Pax cannot be more than 1000.'
+            }
         }
 
         if (images.length > 10) {
@@ -132,6 +204,9 @@ const OfferFormModal = ({ service, onClose, onSaved }: OfferFormModalProps) => {
         payload.append('name', name.trim())
         payload.append('description', description.trim())
         payload.append('price', price)
+        payload.append('pax', pax.trim())
+        payload.append('amenities_present', '1')
+        amenities.forEach((amenity) => payload.append('amenities[]', amenity))
         payload.append('status', status)
         payload.append('image_order_present', '1')
 
@@ -203,18 +278,24 @@ const OfferFormModal = ({ service, onClose, onSaved }: OfferFormModalProps) => {
 
                         if (!message) return
 
+                        const rootField = field.split('.')[0]
+
                         if (
-                            field.startsWith('images') ||
-                            field.startsWith('image_order') ||
-                            field === 'primary_image'
+                            rootField.startsWith('image') ||
+                            rootField === 'primary_image'
                         ) {
                             imageError = message
                         } else if (
-                            ['name', 'description', 'price', 'status'].includes(
-                                field,
-                            )
+                            [
+                                'name',
+                                'description',
+                                'price',
+                                'status',
+                                'pax',
+                                'amenities',
+                            ].includes(rootField)
                         ) {
-                            nextErrors[field] = message
+                            nextErrors[rootField] = message
                         }
                     })
 
@@ -281,11 +362,6 @@ const OfferFormModal = ({ service, onClose, onSaved }: OfferFormModalProps) => {
                         >
                             {isEditing ? 'Edit Offer' : 'Add Offer'}
                         </h2>
-                        <p className="mt-1 text-sm text-slate-500">
-                            {isEditing
-                                ? 'Update the offer details and manage its images.'
-                                : 'Add a new service and optional photos for your guests.'}
-                        </p>
                     </div>
                     <button
                         type="button"
@@ -336,32 +412,7 @@ const OfferFormModal = ({ service, onClose, onSaved }: OfferFormModalProps) => {
                             )}
                         </div>
 
-                        <div>
-                            <label
-                                htmlFor="offer-description"
-                                className="text-xs font-semibold text-slate-600"
-                            >
-                                Description
-                            </label>
-                            <textarea
-                                id="offer-description"
-                                value={description}
-                                onChange={(event) => {
-                                    setDescription(event.target.value)
-                                    clearFieldError('description')
-                                }}
-                                rows={4}
-                                placeholder="Describe what this offer includes."
-                                className={`${inputClass(Boolean(fieldErrors.description))} resize-y`}
-                            />
-                            {fieldErrors.description && (
-                                <p className="mt-1.5 text-xs text-rose-600">
-                                    {fieldErrors.description}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="grid gap-5 sm:grid-cols-2">
+                        <div className="grid gap-5 sm:grid-cols-3">
                             <div>
                                 <label
                                     htmlFor="offer-price"
@@ -425,6 +476,116 @@ const OfferFormModal = ({ service, onClose, onSaved }: OfferFormModalProps) => {
                                     </p>
                                 )}
                             </div>
+
+                            <div>
+                                <label
+                                    htmlFor="offer-pax"
+                                    className="text-xs font-semibold text-slate-600"
+                                >
+                                    Pax
+                                </label>
+                                <input
+                                    id="offer-pax"
+                                    type="number"
+                                    min="1"
+                                    max="1000"
+                                    step="1"
+                                    inputMode="numeric"
+                                    value={pax}
+                                    onChange={(event) => {
+                                        setPax(event.target.value)
+                                        clearFieldError('pax')
+                                    }}
+                                    placeholder="e.g. 4"
+                                    aria-invalid={Boolean(fieldErrors.pax)}
+                                    className={inputClass(Boolean(fieldErrors.pax))}
+                                />
+                                {fieldErrors.pax && (
+                                    <p className="mt-1.5 text-xs text-rose-600">
+                                        {fieldErrors.pax}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <fieldset>
+                            <legend className="text-xs font-semibold text-slate-600">
+                                Room Features
+                            </legend>
+                            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                {roomFeatureOptions.map((option) => {
+                                    const checked = amenities.includes(
+                                        option.value,
+                                    )
+
+                                    return (
+                                        <label
+                                            key={option.value}
+                                            className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition focus-within:border-[#006dfc] focus-within:ring-4 focus-within:ring-[#006dfc]/10 ${
+                                                checked
+                                                    ? 'border-[#006dfc] bg-[#006dfc]/5 text-[#003079]'
+                                                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                                            } ${
+                                                submitting
+                                                    ? 'pointer-events-none opacity-60'
+                                                    : ''
+                                            }`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                disabled={submitting}
+                                                onChange={(event) =>
+                                                    toggleAmenity(
+                                                        option.value,
+                                                        event.target.checked,
+                                                    )
+                                                }
+                                                className="size-4 shrink-0 accent-[#006dfc]"
+                                            />
+                                            <span
+                                                className="text-emerald-500"
+                                                aria-hidden="true"
+                                            >
+                                                {option.icon}
+                                            </span>
+                                            <span className="font-medium">
+                                                {option.value}
+                                            </span>
+                                        </label>
+                                    )
+                                })}
+                            </div>
+                            {fieldErrors.amenities && (
+                                <p className="mt-1.5 text-xs text-rose-600">
+                                    {fieldErrors.amenities}
+                                </p>
+                            )}
+                        </fieldset>
+
+                        <div>
+                            <label
+                                htmlFor="offer-description"
+                                className="text-xs font-semibold text-slate-600"
+                            >
+                                Description
+                            </label>
+                            <textarea
+                                id="offer-description"
+                                value={description}
+                                onChange={(event) => {
+                                    setDescription(event.target.value)
+                                    clearFieldError('description')
+                                }}
+                                rows={3}
+                                placeholder="Describe what this offer includes."
+                                className={`${inputClass(Boolean(fieldErrors.description))} resize-y`}
+                            />
+                            {fieldErrors.description && (
+                                <p className="mt-1.5 text-xs text-rose-600">
+                                    {fieldErrors.description}
+                                </p>
+                            )}
                         </div>
 
                         <div className="border-t border-slate-100 pt-5">
@@ -439,32 +600,46 @@ const OfferFormModal = ({ service, onClose, onSaved }: OfferFormModalProps) => {
                         </div>
                     </div>
 
-                    <footer className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:flex-row sm:justify-end sm:px-6">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={submitting}
-                            className={`inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 ${focusRing}`}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={submitting}
-                            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#006dfc] px-5 text-sm font-semibold text-white shadow-[0_5px_15px_rgba(0,109,252,0.25)] transition hover:bg-[#0059cf] disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
-                        >
-                            {submitting && (
-                                <Loader2
-                                    className="size-4 animate-spin"
-                                    aria-hidden="true"
-                                />
-                            )}
-                            {submitting
-                                ? 'Saving…'
-                                : isEditing
-                                  ? 'Save changes'
-                                  : 'Create offer'}
-                        </button>
+                    <footer className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                        {isEditing ? (
+                            <button
+                                type="button"
+                                onClick={() => onDelete(service)}
+                                disabled={submitting}
+                                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50 ${focusRing}`}
+                            >
+                                <Trash2 className="size-4" aria-hidden="true" />
+                                Delete offer
+                            </button>
+                        ) : null}
+
+                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                disabled={submitting}
+                                className={`inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 ${focusRing}`}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={submitting}
+                                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#006dfc] px-5 text-sm font-semibold text-white shadow-[0_5px_15px_rgba(0,109,252,0.25)] transition hover:bg-[#0059cf] disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
+                            >
+                                {submitting && (
+                                    <Loader2
+                                        className="size-4 animate-spin"
+                                        aria-hidden="true"
+                                    />
+                                )}
+                                {submitting
+                                    ? 'Saving…'
+                                    : isEditing
+                                      ? 'Save changes'
+                                      : 'Create offer'}
+                            </button>
+                        </div>
                     </footer>
                 </form>
             </section>
