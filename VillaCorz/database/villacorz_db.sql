@@ -94,9 +94,9 @@ CREATE TABLE IF NOT EXISTS `migrations` (
   `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.migrations: ~1 rows (approximately)
+-- Dumping data for table villacorz_db.migrations: ~12 rows (approximately)
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(1, '0001_01_01_000000_create_users_table', 1),
 	(2, '0001_01_01_000001_create_cache_table', 1),
@@ -104,7 +104,12 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(4, '2026_10_12_165222_create_personal_access_tokens_table', 1),
 	(5, '2026_10_12_171710_add_firstname_lastname_to_users_table', 1),
 	(6, '2026_10_12_172918_add_role_to_users_table', 1),
-	(7, '2026_10_12_180125_remove_name_from_users_table', 2);
+	(7, '2026_10_12_180125_remove_name_from_users_table', 2),
+	(9, '2026_10_14_230849_create_email_otps_table', 3),
+	(10, '2026_10_15_000000_create_pending_registrations_table', 4),
+	(11, '2026_11_07_030630_create_services_table', 5),
+	(12, '2026_11_07_030655_create_service_images_table', 5),
+	(13, '2026_11_10_042215_add_details_to_services_table', 6);
 
 -- Dumping structure for table villacorz_db.password_reset_tokens
 CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
@@ -115,6 +120,27 @@ CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Dumping data for table villacorz_db.password_reset_tokens: ~0 rows (approximately)
+
+-- Dumping structure for table villacorz_db.pending_registrations
+CREATE TABLE IF NOT EXISTS `pending_registrations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `firstname` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `lastname` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `expires_at` timestamp NOT NULL,
+  `attempts` tinyint unsigned NOT NULL DEFAULT '0',
+  `last_sent_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `pending_registrations_email_unique` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table villacorz_db.pending_registrations: ~1 rows (approximately)
+INSERT INTO `pending_registrations` (`id`, `firstname`, `lastname`, `email`, `password`, `code_hash`, `expires_at`, `attempts`, `last_sent_at`, `created_at`, `updated_at`) VALUES
+	(3, 'Hatsui', 'Dacillo', 'dlord0260@gmail.com', '$2y$12$oemWNH8v3yqVTWRIAB1dUeTjCeDNA91lEAff5dgrhaMXSzs.duNUm', '$2y$12$oTYWwHovvz6tUxt39llyxOJj0k2kaYmbLlvJERPsNHu4IlfOJRlJu', '2026-10-14 17:21:10', 0, '2026-10-14 17:11:10', '2026-10-14 16:07:13', '2026-10-14 17:11:10');
 
 -- Dumping structure for table villacorz_db.personal_access_tokens
 CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
@@ -132,9 +158,9 @@ CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
   UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
   KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`),
   KEY `personal_access_tokens_expires_at_index` (`expires_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.personal_access_tokens: ~0 rows (approximately)
+-- Dumping data for table villacorz_db.personal_access_tokens: ~20 rows (approximately)
 INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `name`, `token`, `abilities`, `last_used_at`, `expires_at`, `created_at`, `updated_at`) VALUES
 	(1, 'App\\Models\\User', 2, 'auth_token', '51787c8876c57f27e59f929879e922a60a1051aecab61dc42fb440cba0ab745d', '["*"]', NULL, NULL, '2026-10-12 10:59:17', '2026-10-12 10:59:17'),
 	(2, 'App\\Models\\User', 3, 'auth_token', 'd30c7b69316aed836db379b82b35eb8fc028f400005a8d5d8b6f9db6d72b49b8', '["*"]', NULL, NULL, '2026-10-12 11:00:17', '2026-10-12 11:00:17'),
@@ -154,7 +180,54 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 	(16, 'App\\Models\\User', 3, 'auth_token', 'bbef981fd2bcdf2c129ba78c2caca91a40309a3edeb913a6d55a7943346ea08a', '["*"]', NULL, NULL, '2026-10-12 19:16:00', '2026-10-12 19:16:00'),
 	(17, 'App\\Models\\User', 3, 'auth_token', '99dd4ade8304cb66d49e4f5d4f9bc2a4e7bf765e120a4ba2bc96851d3e4e5a08', '["*"]', NULL, NULL, '2026-10-12 19:25:28', '2026-10-12 19:25:28'),
 	(18, 'App\\Models\\User', 3, 'auth_token', '7809758a1dc43d8ca478f855dc5d875d1cde4ae8df687d2d3039c8a5edef9de2', '["*"]', NULL, NULL, '2026-10-12 19:25:31', '2026-10-12 19:25:31'),
-	(19, 'App\\Models\\User', 2, 'auth_token', 'de7ed15f45c65a9c3f59b668ccd0fea48441cd55e747a56749df1da0a604de95', '["*"]', NULL, NULL, '2026-10-12 19:33:28', '2026-10-12 19:33:28');
+	(19, 'App\\Models\\User', 2, 'auth_token', 'de7ed15f45c65a9c3f59b668ccd0fea48441cd55e747a56749df1da0a604de95', '["*"]', NULL, NULL, '2026-10-12 19:33:28', '2026-10-12 19:33:28'),
+	(20, 'App\\Models\\User', 3, 'auth_token', 'ff9a09022e3ddd522ec4219cecf2d40a1a556ef60b567c27fd24af61a4709acd', '["*"]', NULL, NULL, '2026-10-12 20:07:45', '2026-10-12 20:07:45');
+
+-- Dumping structure for table villacorz_db.services
+CREATE TABLE IF NOT EXISTS `services` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_by` bigint unsigned DEFAULT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `price` decimal(10,2) NOT NULL,
+  `pax` smallint unsigned DEFAULT NULL,
+  `features` json DEFAULT NULL,
+  `amenities` json DEFAULT NULL,
+  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `services_created_by_foreign` (`created_by`),
+  KEY `services_status_index` (`status`),
+  CONSTRAINT `services_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table villacorz_db.services: ~1 rows (approximately)
+INSERT INTO `services` (`id`, `created_by`, `name`, `description`, `price`, `pax`, `features`, `amenities`, `status`, `created_at`, `updated_at`) VALUES
+	(3, 1, 'Room 1', 'Provides a cozy bunk-style setup with air conditioning, a TV, and a private CR, great for small groups and families.', 3000.00, NULL, '[]', '["TV", "Private CR", "Airconditioned"]', 'active', '2026-11-10 09:35:31', '2026-11-10 09:35:31');
+
+-- Dumping structure for table villacorz_db.service_images
+CREATE TABLE IF NOT EXISTS `service_images` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `service_id` bigint unsigned NOT NULL,
+  `image_url` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `public_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_primary` tinyint(1) NOT NULL DEFAULT '0',
+  `sort_order` smallint unsigned NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `service_images_public_id_unique` (`public_id`),
+  KEY `service_images_service_id_is_primary_index` (`service_id`,`is_primary`),
+  CONSTRAINT `service_images_service_id_foreign` FOREIGN KEY (`service_id`) REFERENCES `services` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table villacorz_db.service_images: ~4 rows (approximately)
+INSERT INTO `service_images` (`id`, `service_id`, `image_url`, `public_id`, `is_primary`, `sort_order`, `created_at`, `updated_at`) VALUES
+	(1, 3, 'https://res.cloudinary.com/ql4hruc3/image/upload/v1794332098/villacorz/services/yprlscorcqiiql1r424p.png', 'villacorz/services/yprlscorcqiiql1r424p', 1, 0, '2026-11-10 09:35:31', '2026-11-10 09:35:31'),
+	(2, 3, 'https://res.cloudinary.com/ql4hruc3/image/upload/v1794332110/villacorz/services/tjpf9dsiylah0qp23loi.png', 'villacorz/services/tjpf9dsiylah0qp23loi', 0, 1, '2026-11-10 09:35:31', '2026-11-10 09:35:31'),
+	(3, 3, 'https://res.cloudinary.com/ql4hruc3/image/upload/v1794332120/villacorz/services/qb6uqdun4bvxcyglv6dz.png', 'villacorz/services/qb6uqdun4bvxcyglv6dz', 0, 2, '2026-11-10 09:35:31', '2026-11-10 09:35:31'),
+	(4, 3, 'https://res.cloudinary.com/ql4hruc3/image/upload/v1794332130/villacorz/services/tuprxy0ps8seo9hl1mne.png', 'villacorz/services/tuprxy0ps8seo9hl1mne', 0, 3, '2026-11-10 09:35:31', '2026-11-10 09:35:31');
 
 -- Dumping structure for table villacorz_db.sessions
 CREATE TABLE IF NOT EXISTS `sessions` (
@@ -169,7 +242,14 @@ CREATE TABLE IF NOT EXISTS `sessions` (
   KEY `sessions_last_activity_index` (`last_activity`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.sessions: ~0 rows (approximately)
+-- Dumping data for table villacorz_db.sessions: ~6 rows (approximately)
+INSERT INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
+	('9CzXioiFNL71Xob1Tlhze5mttSWBqow7wxQ0ErXk', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.145.2 Chrome/150.0.7871.250 Electron/43.8.3 Safari/537.36', 'YTo1OntzOjY6Il90b2tlbiI7czo0MDoiR00yN2JSek91cjVoNVRIWkgxQkhROW9HUDNkaHM2ME5GbnNReDZrUyI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fXM6NTA6ImxvZ2luX3dlYl81OWJhMzZhZGRjMmIyZjk0MDE1ODBmMDE0YzdmNThlYTRlMzA5ODlkIjtpOjE7czoxNzoicGFzc3dvcmRfaGFzaF93ZWIiO3M6NjQ6ImNmZjUyM2IwNzJkNWY5NDUyODU4NWY1ZDQwYmFhOTU3ZjQzMmEwOTUyZDE4YTJmODVjYzUxYzUwMjUxNzkxYjQiO30=', 1794332131),
+	('BFnDcZjPstX2YAbWA3CBfC2fayPLv4F5WwNVO6ZW', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoieWtrRExzTExBUTNaUGVsbXkwWFdQanhVdm9vM2tTMFZGSGxLWmR6ViI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1794331987),
+	('DRlPBYzV4j2x6yDJAMRen2JhSQBPyQDJdNV83wlO', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiUWh3aTJDMURQWGZPYWl3OEhvUzMyTHFrVjhjZ1hmYTBJSDBicFZ2WiI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1794284350),
+	('eOvE630oVk0v40XhoCTUEw6zuJOiF5B3SCBauji5', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiWEtFYlBPc1JLQWwyeGwzcWY3b1NjcEUxZW9KNkJpQUZtTG51RkJ1TSI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1794291741),
+	('FixPNNTVG2bmUshq50OK0eEVNTkaHmTxhB7FofRT', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.145.2 Chrome/150.0.7871.250 Electron/43.8.3 Safari/537.36', 'YTo1OntzOjY6Il90b2tlbiI7czo0MDoiYkhoWmh2VVFwTU9Obkk4OG94UDZqVWJuQ05zQmlsQVJHRUttbTB5dCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fXM6NTA6ImxvZ2luX3dlYl81OWJhMzZhZGRjMmIyZjk0MDE1ODBmMDE0YzdmNThlYTRlMzA5ODlkIjtpOjE7czoxNzoicGFzc3dvcmRfaGFzaF93ZWIiO3M6NjQ6ImNmZjUyM2IwNzJkNWY5NDUyODU4NWY1ZDQwYmFhOTU3ZjQzMmEwOTUyZDE4YTJmODVjYzUxYzUwMjUxNzkxYjQiO30=', 1794288412),
+	('SBvd9FRFIN3n20ChLbcxYiv3AT5kv6eHu9GtEMBm', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', 'YTo1OntzOjY6Il90b2tlbiI7czo0MDoieURNTmxkejdpR0IyY2E1REFTS1NiN3hrWVV1NkhQcTVMVmxVR1pXayI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fXM6NTA6ImxvZ2luX3dlYl81OWJhMzZhZGRjMmIyZjk0MDE1ODBmMDE0YzdmNThlYTRlMzA5ODlkIjtpOjE7czoxNzoicGFzc3dvcmRfaGFzaF93ZWIiO3M6NjQ6ImNmZjUyM2IwNzJkNWY5NDUyODU4NWY1ZDQwYmFhOTU3ZjQzMmEwOTUyZDE4YTJmODVjYzUxYzUwMjUxNzkxYjQiO30=', 1794333478);
 
 -- Dumping structure for table villacorz_db.users
 CREATE TABLE IF NOT EXISTS `users` (
@@ -185,13 +265,12 @@ CREATE TABLE IF NOT EXISTS `users` (
   `role` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'customer',
   PRIMARY KEY (`id`),
   UNIQUE KEY `users_email_unique` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.users: ~3 rows (approximately)
+-- Dumping data for table villacorz_db.users: ~2 rows (approximately)
 INSERT INTO `users` (`id`, `firstname`, `lastname`, `email`, `email_verified_at`, `password`, `remember_token`, `created_at`, `updated_at`, `role`) VALUES
-	(1, 'Harvey', 'Dacillo', 'harvey.test@example.com', NULL, '$2y$12$YbD9Ik4GZ4C0iOyNii8oc.Ateo.0POD0ueqbP0dR0LZJzajDzp7cK', NULL, '2026-10-12 09:56:45', '2026-10-12 09:56:45', 'customer'),
-	(2, 'Nuren', 'Cedo', 'nuren@gmail.com', NULL, '$2y$12$1bSYlPH2YQCTAYb8YpzLK.jY5jnmvlkYkHCULuahJ8sYc.ikEPeKu', NULL, '2026-10-12 10:28:54', '2026-10-12 10:28:54', 'customer'),
-	(3, 'Julby Mier', 'Bilog', 'jmbilog@gmail.com', NULL, '$2y$12$tFgDW2.amA5YBg.beT7JQOd3u89.dlR8XkiBPJowky1GlzYQpcXVq', NULL, '2026-10-12 11:00:05', '2026-10-12 11:00:05', 'customer');
+	(1, 'Admin', 'Account', 'dlord0260@gmail.com', '2026-10-31 20:14:21', '$2y$12$p1qLnpTjGPROeB9Ur97PP./2x6/7UBg0x6H8NwZtyDBg4sRA1CJV6', NULL, '2026-10-31 20:14:21', '2026-11-07 07:19:19', 'admin'),
+	(2, 'Haydee', 'Dacillo', 'dacillohaydee@gmail.com', '2026-11-04 06:58:13', '$2y$12$F1tMQB3HeIUYj2Aj4zZifOe2F.Gh1znjuDI/IM4Ko05sjCRc2iyQ.', NULL, '2026-11-04 06:58:13', '2026-11-04 06:58:13', 'customer');
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
