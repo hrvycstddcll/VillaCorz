@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -154,6 +155,16 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
+        ActivityLogger::record(
+            'registered',
+            $user,
+            'Account created after email verification.',
+            User::class,
+            $user->id,
+            ['role' => $user->role],
+            $request,
+        );
+
         return response()->json([
             'message' => 'Email verified and account created successfully.',
             'user' => [
@@ -230,6 +241,16 @@ class AuthController extends Controller
         ]);
 
         if (!Auth::attempt($credentials)) {
+            ActivityLogger::record(
+                'login_failed',
+                null,
+                "Failed sign-in attempt for {$credentials['email']}.",
+                User::class,
+                null,
+                ['email' => $credentials['email']],
+                $request,
+            );
+
             throw ValidationException::withMessages([
                 'email' => 'Invalid email or password.',
             ]);
@@ -238,6 +259,16 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
+
+        ActivityLogger::record(
+            'login',
+            $user,
+            'Signed in.',
+            User::class,
+            $user->id,
+            ['role' => $user->role],
+            $request,
+        );
 
         return response()->json([
             'message' => 'Login successful.',
@@ -253,6 +284,20 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $user = $request->user();
+
+        if ($user) {
+            ActivityLogger::record(
+                'logout',
+                $user,
+                'Signed out.',
+                User::class,
+                $user->id,
+                [],
+                $request,
+            );
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

@@ -3,6 +3,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\ServiceController;
@@ -34,6 +35,10 @@ Route::get('/services/{id}', [ServiceController::class, 'show']);
 
 // Admin-only service management
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::get('/activity-logs/summary', [ActivityLogController::class, 'summary']);
+    Route::get('/activity-logs/export', [ActivityLogController::class, 'export']);
+    Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+
     Route::post('/services', [ServiceController::class, 'store']);
     Route::put('/services/{id}', [ServiceController::class, 'update']);
     Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
