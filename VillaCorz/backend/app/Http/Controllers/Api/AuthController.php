@@ -60,11 +60,18 @@ class AuthController extends Controller
             ], 500);
         }
 
-        return response()->json([
-            'message' => 'A verification code has been sent to your email.',
+        $localDevelopmentMailer = app()->environment('local')
+            && config('mail.default') === 'log';
+
+        return response()->json(array_filter([
+            'message' => $localDevelopmentMailer
+                ? 'A verification code is ready for local development.'
+                : 'A verification code has been sent to your email.',
+            'verification_delivery' => $localDevelopmentMailer ? 'log' : 'email',
+            'development_code' => $localDevelopmentMailer ? $otp : null,
             'registration_id' => $registrationId,
             'expires_in' => 600,
-        ], 200);
+        ], fn ($value) => $value !== null), 200);
     }
 
     public function verifyOtp(Request $request)
@@ -201,11 +208,18 @@ class AuthController extends Controller
             ], 500);
         }
 
-        return response()->json([
-            'message' => 'A new verification code has been sent to your email.',
+        $localDevelopmentMailer = app()->environment('local')
+            && config('mail.default') === 'log';
+
+        return response()->json(array_filter([
+            'message' => $localDevelopmentMailer
+                ? 'A new verification code is ready for local development.'
+                : 'A new verification code has been sent to your email.',
+            'verification_delivery' => $localDevelopmentMailer ? 'log' : 'email',
+            'development_code' => $localDevelopmentMailer ? $otp : null,
             'registration_id' => $registrationId,
             'expires_in' => 600,
-        ], 200);
+        ], fn ($value) => $value !== null), 200);
     }
 
     public function login(Request $request)

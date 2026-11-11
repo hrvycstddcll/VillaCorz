@@ -236,6 +236,8 @@ const Auth = () => {
         registrationId: string
         email: string
         expiresIn: number
+        delivery: 'email' | 'log'
+        developmentCode: string | null
     } | null>(null)
 
     const isRegistering = mode === 'register'
@@ -286,6 +288,11 @@ const Auth = () => {
                 registrationId: String(response.data.registration_id),
                 email,
                 expiresIn: Number(response.data.expires_in) || 600,
+                delivery: response.data.verification_delivery === 'log' ? 'log' : 'email',
+                developmentCode:
+                    typeof response.data.development_code === 'string'
+                        ? response.data.development_code
+                        : null,
             })
 
         } catch (error) {
@@ -362,6 +369,8 @@ const Auth = () => {
                     email={verification.email}
                     registrationId={verification.registrationId}
                     expiresIn={verification.expiresIn}
+                    delivery={verification.delivery}
+                    developmentCode={verification.developmentCode}
                     onVerified={(user) => {
                         setUser(user)
                         setVerification(null)

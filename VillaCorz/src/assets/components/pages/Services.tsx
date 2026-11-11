@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronUp, Fan } from 'lucide-react'
 import ServicesFooter, {
@@ -7,6 +7,7 @@ import ServicesFooter, {
 import BookingCalendarPanel from '../ui/BookingCalendarPanel'
 import ServiceTile from '../ui/ServiceTile'
 import { guestCapacity, money } from '../../../lib/format'
+import PaymentSuccessView from './PaymentSuccessView'
 import wholeVilla from '../../images/wholevilla.png'
 import wholeVilla1 from '../../images/wholevilla1.png'
 import wholeVilla2 from '../../images/wholevilla2.png'
@@ -465,17 +466,24 @@ function ReservationView({
     checkOut,
     roomGuests,
     roomChoices,
+    onConfirm,
 }: {
     checkIn: string
     checkOut: string
     roomGuests: RoomGuests[]
     roomChoices: Stay[]
+    onConfirm: () => void
 }) {
     const [paymentMethod, setPaymentMethod] = useState('GCash')
     const [showPaymentMethods, setShowPaymentMethods] = useState(false)
     const [isEWalletOpen, setIsEWalletOpen] = useState(true)
     const [isBankOpen, setIsBankOpen] = useState(true)
     const [formNotice, setFormNotice] = useState('')
+    const [isPaymentSuccessful, setIsPaymentSuccessful] = useState(false)
+    const [firstName, setFirstName] = useState('')
+    const [lastName, setLastName] = useState('')
+    const [phoneNumber, setPhoneNumber] = useState('')
+    const detailsFormRef = useRef<HTMLFormElement>(null)
     const paymentOptions = [
         { name: 'GCash', detail: '65********9876', logo: gcashLogo },
         { name: 'Maya', detail: '65********9876', logo: mayaLogo },
@@ -507,6 +515,26 @@ function ReservationView({
     const dateLabel = (value: string) => {
         const parts = dateParts(value)
         return `${parts.day} ${parts.weekday.slice(0, 3)} ${parts.monthYear.slice(0, 3)}`
+    }
+
+    if (isPaymentSuccessful) {
+        return (
+            <PaymentSuccessView
+                firstName={firstName}
+                lastName={lastName}
+                phoneNumber={phoneNumber}
+                checkIn={checkIn}
+                checkOut={checkOut}
+                nights={nights}
+                rooms={assignedRooms.map(({ room, stay }) => ({
+                    name: stay.title,
+                    adults: room.adults,
+                    kids: room.kids,
+                }))}
+                total={total}
+                onConfirm={onConfirm}
+            />
+        )
     }
 
     return (
@@ -755,9 +783,10 @@ function ReservationView({
                     </div>
                     <button
                         type="button"
-                        onClick={() =>
-                            setFormNotice('Payment confirmation is not connected yet.')
-                        }
+                        onClick={() => {
+                            if (!detailsFormRef.current?.reportValidity()) return
+                            setIsPaymentSuccessful(true)
+                        }}
                         className="mt-5 min-h-11 w-full rounded-full bg-[#0875f9] px-4 text-[10px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
                     >
                         Confirm Payment
@@ -775,6 +804,7 @@ function ReservationView({
                         Complete Your Details
                     </h2>
                     <form
+                        ref={detailsFormRef}
                         className="space-y-4"
                         onSubmit={(event) => {
                             event.preventDefault()
@@ -787,6 +817,8 @@ function ReservationView({
                                 <input
                                     required
                                     autoComplete="given-name"
+                                    value={firstName}
+                                    onChange={(event) => setFirstName(event.target.value)}
                                     placeholder="Name"
                                     className="w-full text-[10px] outline-none placeholder:font-semibold placeholder:text-slate-400"
                                 />
@@ -796,6 +828,8 @@ function ReservationView({
                                 <input
                                     required
                                     autoComplete="family-name"
+                                    value={lastName}
+                                    onChange={(event) => setLastName(event.target.value)}
                                     placeholder="Last Name"
                                     className="w-full text-[10px] outline-none placeholder:font-semibold placeholder:text-slate-400"
                                 />
@@ -820,6 +854,18 @@ function ReservationView({
                                 />
                             </label>
                         </div>
+                        <label className="block border-b border-slate-300 pb-1">
+                            <span className="sr-only">Phone number</span>
+                            <input
+                                required
+                                type="tel"
+                                autoComplete="tel"
+                                value={phoneNumber}
+                                onChange={(event) => setPhoneNumber(event.target.value)}
+                                placeholder="Phone Number"
+                                className="w-full text-[10px] outline-none placeholder:font-semibold placeholder:text-slate-400"
+                            />
+                        </label>
 
                         <div>
                             <h3 className="text-xs font-bold text-slate-600">
@@ -1021,6 +1067,7 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
                 checkOut={checkOut}
                 roomGuests={roomGuests}
                 roomChoices={roomChoices}
+                onConfirm={() => setIsReservationOpen(false)}
             />
         )}
         {!bookingOnly && !isReservationOpen && (
