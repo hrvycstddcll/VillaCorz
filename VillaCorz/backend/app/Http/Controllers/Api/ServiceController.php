@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Service;
 use App\Models\ServiceImage;
+use App\Services\ActivityLogger;
 use App\Services\CloudinaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -103,10 +104,28 @@ class ServiceController extends Controller
             throw $exception;
         }
 
+        $service = $service->fresh('images');
+
+        ActivityLogger::record(
+            'created',
+            $request->user(),
+            "Created offer \u{201C}{$service->name}\u{201D}.",
+            Service::class,
+            $service->id,
+            [
+                'name' => $service->name,
+                'status' => $service->status,
+                'price' => $service->price,
+                'pax' => $service->pax,
+                'image_count' => $service->images->count(),
+            ],
+            $request,
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'Service created successfully.',
-            'data' => $service->fresh('images'),
+            'data' => $service,
         ], 201);
     }
 
@@ -124,6 +143,17 @@ class ServiceController extends Controller
     {
         $service = Service::with('images')->findOrFail($id);
         $validated = $this->validateService($request);
+
+        $before = $service->only([
+            'name',
+            'description',
+            'price',
+            'pax',
+            'features',
+            'amenities',
+            'status',
+        ]);
+        $beforeImageCount = $service->images->count();
 
         $files = $this->uploadedImages($request);
         $existingIds = $service->images->pluck('id')->all();
@@ -251,14 +281,43 @@ class ServiceController extends Controller
             $cloudinary->destroy($publicId);
         }
 
+        $service = $service->fresh('images');
+
+        $after = $service->only(array_keys($before));
+        $changedFields = [];
+
+        foreach ($after as $field => $value) {
+            if ($this->logComparable($before[$field] ?? null) !== $this->logComparable($value)) {
+                $changedFields[] = $field;
+            }
+        }
+
+        if ($beforeImageCount !== $service->images->count()) {
+            $changedFields[] = 'images';
+        }
+
+        ActivityLogger::record(
+            'updated',
+            $request->user(),
+            "Updated offer \u{201C}{$service->name}\u{201D}.",
+            Service::class,
+            $service->id,
+            [
+                'name' => $service->name,
+                'status' => $service->status,
+                'changed_fields' => $changedFields,
+            ],
+            $request,
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'Service updated successfully.',
-            'data' => $service->fresh('images'),
+            'data' => $service,
         ]);
     }
 
-    public function destroy(int $id, CloudinaryService $cloudinary): JsonResponse
+    public function destroy(Request $request, int $id, CloudinaryService $cloudinary): JsonResponse
     {
         $service = Service::with('images')->findOrFail($id);
 
@@ -269,11 +328,24 @@ class ServiceController extends Controller
             ->values()
             ->all();
 
+        $deletedId = $service->id;
+        $deletedName = $service->name;
+
         DB::transaction(fn () => $service->delete());
 
         foreach ($publicIds as $publicId) {
             $cloudinary->destroy($publicId);
         }
+
+        ActivityLogger::record(
+            'deleted',
+            $request->user(),
+            "Deleted offer \u{201C}{$deletedName}\u{201D}.",
+            Service::class,
+            $deletedId,
+            ['name' => $deletedName],
+            $request,
+        );
 
         return response()->json([
             'success' => true,
@@ -330,6 +402,11 @@ class ServiceController extends Controller
         }
 
         return $cleaned;
+    }
+
+    private function logComparable(mixed $value): string
+    {
+        return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '';
     }
 
     /**

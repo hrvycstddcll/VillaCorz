@@ -19,6 +19,25 @@
 CREATE DATABASE IF NOT EXISTS `villacorz_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
 USE `villacorz_db`;
 
+-- Dumping structure for table villacorz_db.activity_logs
+CREATE TABLE IF NOT EXISTS `activity_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `action` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `subject_id` bigint unsigned DEFAULT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `properties` json DEFAULT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `activity_logs_action_index` (`action`),
+  KEY `activity_logs_subject_type_subject_id_index` (`subject_type`,`subject_id`),
+  KEY `activity_logs_created_at_index` (`created_at`),
+  CONSTRAINT `activity_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Dumping structure for table villacorz_db.cache
 CREATE TABLE IF NOT EXISTS `cache` (
   `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -94,9 +113,9 @@ CREATE TABLE IF NOT EXISTS `migrations` (
   `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.migrations: ~12 rows (approximately)
+-- Dumping data for table villacorz_db.migrations: ~13 rows (approximately)
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(1, '0001_01_01_000000_create_users_table', 1),
 	(2, '0001_01_01_000001_create_cache_table', 1),
@@ -109,7 +128,8 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(10, '2026_10_15_000000_create_pending_registrations_table', 4),
 	(11, '2026_11_07_030630_create_services_table', 5),
 	(12, '2026_11_07_030655_create_service_images_table', 5),
-	(13, '2026_11_10_042215_add_details_to_services_table', 6);
+	(13, '2026_11_10_042215_add_details_to_services_table', 6),
+	(14, '2026_11_11_000000_create_activity_logs_table', 7);
 
 -- Dumping structure for table villacorz_db.password_reset_tokens
 CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
