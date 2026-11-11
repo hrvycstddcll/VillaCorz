@@ -30,6 +30,10 @@ return [
         'recipient' => env('CONTACT_MAIL_TO'),
     ],
 
+    'verification' => [
+        'expose_development_code' => env('OTP_EXPOSE_IN_RESPONSE', false),
+    ],
+
     'cloudinary' => [
         'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
         'api_key' => env('CLOUDINARY_API_KEY'),

@@ -27,6 +27,13 @@ Laravel has the most extensive and thorough [documentation](https://laravel.com/
 
 If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
 
+## Verification code exposure
+
+The verification code is not returned in API responses by default. Local developers who
+use the `log` mailer can opt in by setting `OTP_EXPOSE_IN_RESPONSE=true` in their local
+environment. The code is exposed only when the application environment is `local` and
+the mailer is `log`; leave this setting unset or false outside local development.
+
 ## Laravel Sponsors
 
 We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).

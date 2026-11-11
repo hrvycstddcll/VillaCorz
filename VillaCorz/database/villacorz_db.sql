@@ -141,27 +141,6 @@ CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
 
 -- Dumping data for table villacorz_db.password_reset_tokens: ~0 rows (approximately)
 
--- Dumping structure for table villacorz_db.pending_registrations
-CREATE TABLE IF NOT EXISTS `pending_registrations` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `firstname` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `lastname` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `expires_at` timestamp NOT NULL,
-  `attempts` tinyint unsigned NOT NULL DEFAULT '0',
-  `last_sent_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `pending_registrations_email_unique` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Dumping data for table villacorz_db.pending_registrations: ~1 rows (approximately)
-INSERT INTO `pending_registrations` (`id`, `firstname`, `lastname`, `email`, `password`, `code_hash`, `expires_at`, `attempts`, `last_sent_at`, `created_at`, `updated_at`) VALUES
-	(3, 'Hatsui', 'Dacillo', 'dlord0260@gmail.com', '$2y$12$oemWNH8v3yqVTWRIAB1dUeTjCeDNA91lEAff5dgrhaMXSzs.duNUm', '$2y$12$oTYWwHovvz6tUxt39llyxOJj0k2kaYmbLlvJERPsNHu4IlfOJRlJu', '2026-10-14 17:21:10', 0, '2026-10-14 17:11:10', '2026-10-14 16:07:13', '2026-10-14 17:11:10');
-
 -- Dumping structure for table villacorz_db.personal_access_tokens
 CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,

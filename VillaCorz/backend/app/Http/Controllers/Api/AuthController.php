@@ -63,13 +63,17 @@ class AuthController extends Controller
 
         $localDevelopmentMailer = app()->environment('local')
             && config('mail.default') === 'log';
+        $exposeDevelopmentCode = $localDevelopmentMailer
+            && config('services.verification.expose_development_code', false);
 
         return response()->json(array_filter([
-            'message' => $localDevelopmentMailer
+            'message' => $exposeDevelopmentCode
                 ? 'A verification code is ready for local development.'
-                : 'A verification code has been sent to your email.',
+                : ($localDevelopmentMailer
+                    ? 'A verification code has been written to the application log.'
+                    : 'A verification code has been sent to your email.'),
             'verification_delivery' => $localDevelopmentMailer ? 'log' : 'email',
-            'development_code' => $localDevelopmentMailer ? $otp : null,
+            'development_code' => $exposeDevelopmentCode ? $otp : null,
             'registration_id' => $registrationId,
             'expires_in' => 600,
         ], fn ($value) => $value !== null), 200);
@@ -89,7 +93,7 @@ class AuthController extends Controller
 
         $pending = Cache::get($cacheKey);
 
-        if (!$pending) {
+        if (! $pending) {
             return response()->json([
                 'message' => 'This registration has expired. Please register again.',
             ], 422);
@@ -106,7 +110,7 @@ class AuthController extends Controller
             ], 429);
         }
 
-        if (!Hash::check($validated['otp'], $pending['otp_hash'])) {
+        if (! Hash::check($validated['otp'], $pending['otp_hash'])) {
             $attempts = Cache::increment($attemptsKey);
 
             if ($attempts >= 5) {
@@ -190,7 +194,7 @@ class AuthController extends Controller
 
         $pending = Cache::get($cacheKey);
 
-        if (!$pending) {
+        if (! $pending) {
             return response()->json([
                 'message' => 'This registration has expired. Please register again.',
             ], 422);
@@ -221,13 +225,17 @@ class AuthController extends Controller
 
         $localDevelopmentMailer = app()->environment('local')
             && config('mail.default') === 'log';
+        $exposeDevelopmentCode = $localDevelopmentMailer
+            && config('services.verification.expose_development_code', false);
 
         return response()->json(array_filter([
-            'message' => $localDevelopmentMailer
+            'message' => $exposeDevelopmentCode
                 ? 'A new verification code is ready for local development.'
-                : 'A new verification code has been sent to your email.',
+                : ($localDevelopmentMailer
+                    ? 'A new verification code has been written to the application log.'
+                    : 'A new verification code has been sent to your email.'),
             'verification_delivery' => $localDevelopmentMailer ? 'log' : 'email',
-            'development_code' => $localDevelopmentMailer ? $otp : null,
+            'development_code' => $exposeDevelopmentCode ? $otp : null,
             'registration_id' => $registrationId,
             'expires_in' => 600,
         ], fn ($value) => $value !== null), 200);
@@ -240,7 +248,7 @@ class AuthController extends Controller
             'password' => 'required|string|min:8',
         ]);
 
-        if (!Auth::attempt($credentials)) {
+        if (! Auth::attempt($credentials)) {
             ActivityLogger::record(
                 'login_failed',
                 null,

@@ -238,7 +238,9 @@ const VerificationModal = ({
             )
             setNotice(
                 delivery === 'log'
-                    ? 'A new development code is ready above.'
+                    ? typeof response.data?.development_code === 'string'
+                        ? 'A new development code is ready above.'
+                        : 'A new verification code was written to the local application log.'
                     : 'A new verification code has been sent.',
             )
             focusInput(0)
@@ -304,7 +306,9 @@ const VerificationModal = ({
                     >
                         {delivery === 'log' ? (
                             <>
-                                This is a local development code. It is not sent by email.
+                                {developmentCode
+                                    ? 'This code is for local development. It was not sent by email.'
+                                    : 'Check the local application log for your code. It was not sent by email.'}
                             </>
                         ) : (
                             <>
