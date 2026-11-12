@@ -54,6 +54,23 @@ function AdminRoute() {
     return <Outlet />
 }
 
+function AuthenticatedRoute() {
+    const { user } = useAuth()
+    const location = useLocation()
+
+    if (!user) {
+        return (
+            <Navigate
+                to="/auth?mode=login"
+                state={{ from: location }}
+                replace
+            />
+        )
+    }
+
+    return <Outlet />
+}
+
 function NavbarSpacer() {
     const spacerRef = useRef<HTMLDivElement>(null)
 
@@ -140,15 +157,40 @@ function SiteLayout() {
 
 function AuthRoute() {
     const { user, loading } = useAuth()
+    const location = useLocation()
 
     if (loading) {
         return <LoadingPanel />
     }
 
     if (user) {
+        const from = (
+            location.state as {
+                from?: {
+                    pathname?: string
+                    search?: string
+                    hash?: string
+                    state?: unknown
+                }
+            } | null
+        )?.from
+        const returnToBooking =
+            from?.pathname === '/reservation' || from?.pathname === '/payment'
+
         return (
             <Navigate
-                to={user.role === 'admin' ? '/dashboard' : '/'}
+                to={
+                    returnToBooking && from
+                        ? {
+                              pathname: from.pathname,
+                              search: from.search,
+                              hash: from.hash,
+                          }
+                        : user.role === 'admin'
+                          ? '/dashboard'
+                          : '/'
+                }
+                state={returnToBooking ? from?.state : undefined}
                 replace
             />
         )
@@ -173,8 +215,14 @@ function AppRoutes() {
                 </Route>
 
                 <Route path="/services" element={<Services />} />
-                <Route path="/payment" element={<Payment />} />
                 <Route path="/payment/confirm" element={<Payment />} />
+                <Route element={<AuthenticatedRoute />}>
+                    <Route
+                        path="/reservation"
+                        element={<Services reservationOnly />}
+                    />
+                    <Route path="/payment" element={<Payment />} />
+                </Route>
                 <Route path="/home" element={<Navigate to="/" replace />} />
 
                 <Route
