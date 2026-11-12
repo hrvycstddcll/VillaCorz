@@ -475,7 +475,7 @@ const ServicesFooter = ({
                                             aria-label={
                                                 room.stayId
                                                     ? `Guests for ${roomTitle ?? 'selected room'}`
-                                                    : 'Choose a preferred room for these guests'
+                                                    : 'Choose a room or villa for these guests'
                                             }
                                             className="border-b border-slate-100 pb-3 last:border-0"
                                         >
@@ -483,7 +483,7 @@ const ServicesFooter = ({
                                                 <h3 className="text-[11px] font-medium text-slate-600">
                                                     {room.stayId
                                                         ? `Guests for ${roomTitle ?? 'selected room'}`
-                                                        : 'Choose a room preference'}
+                                                        : 'Choose a room or villa'}
                                                 </h3>
                                                 {roomGuests.length > 1 && (
                                                     <button
@@ -535,7 +535,7 @@ const ServicesFooter = ({
                                                     className="w-full rounded border border-slate-200 bg-white px-2.5 py-2 text-[10px] text-slate-700 outline-none focus:border-[#0875f9] focus:ring-1 focus:ring-[#0875f9]"
                                                 >
                                                     <option value="">
-                                                        Select a preferred room
+                                                        Choose room or villa
                                                     </option>
                                                     {roomChoices.map((choice) => {
                                                         const selectedElsewhere =

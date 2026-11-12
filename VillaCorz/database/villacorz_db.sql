@@ -32,11 +32,22 @@ CREATE TABLE IF NOT EXISTS `activity_logs` (
   `user_agent` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  KEY `activity_logs_user_id_foreign` (`user_id`),
   KEY `activity_logs_action_index` (`action`),
   KEY `activity_logs_subject_type_subject_id_index` (`subject_type`,`subject_id`),
   KEY `activity_logs_created_at_index` (`created_at`),
   CONSTRAINT `activity_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table villacorz_db.activity_logs: ~7 rows (approximately)
+INSERT INTO `activity_logs` (`id`, `user_id`, `action`, `subject_type`, `subject_id`, `description`, `properties`, `ip_address`, `user_agent`, `created_at`) VALUES
+	(4, 1, 'updated', 'App\\Models\\Service', 3, 'Updated offer “Room 1”.', '{"name": "Room 1", "status": "active", "changed_fields": ["weekday_discount_type", "weekday_discount_value"]}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', '2026-11-11 17:14:29'),
+	(5, 1, 'logout', 'App\\Models\\User', 1, 'Signed out.', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', '2026-11-11 17:16:30'),
+	(6, 1, 'login', 'App\\Models\\User', 1, 'Signed in.', '{"role": "admin"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', '2026-11-11 17:16:42'),
+	(7, 1, 'login', 'App\\Models\\User', 1, 'Signed in.', '{"role": "admin"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', '2026-11-11 20:56:08'),
+	(8, 1, 'login', 'App\\Models\\User', 1, 'Signed in.', '{"role": "admin"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', '2026-11-12 05:30:18'),
+	(9, 1, 'logout', 'App\\Models\\User', 1, 'Signed out.', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', '2026-11-12 05:31:31'),
+	(10, 2, 'login', 'App\\Models\\User', 2, 'Signed in.', '{"role": "customer"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', '2026-11-12 05:33:48');
 
 -- Dumping structure for table villacorz_db.cache
 CREATE TABLE IF NOT EXISTS `cache` (
@@ -113,9 +124,9 @@ CREATE TABLE IF NOT EXISTS `migrations` (
   `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.migrations: ~13 rows (approximately)
+-- Dumping data for table villacorz_db.migrations: ~18 rows (approximately)
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(1, '0001_01_01_000000_create_users_table', 1),
 	(2, '0001_01_01_000001_create_cache_table', 1),
@@ -162,9 +173,9 @@ CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
   UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
   KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`),
   KEY `personal_access_tokens_expires_at_index` (`expires_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.personal_access_tokens: ~20 rows (approximately)
+-- Dumping data for table villacorz_db.personal_access_tokens: ~21 rows (approximately)
 INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `name`, `token`, `abilities`, `last_used_at`, `expires_at`, `created_at`, `updated_at`) VALUES
 	(1, 'App\\Models\\User', 2, 'auth_token', '51787c8876c57f27e59f929879e922a60a1051aecab61dc42fb440cba0ab745d', '["*"]', NULL, NULL, '2026-10-12 10:59:17', '2026-10-12 10:59:17'),
 	(2, 'App\\Models\\User', 3, 'auth_token', 'd30c7b69316aed836db379b82b35eb8fc028f400005a8d5d8b6f9db6d72b49b8', '["*"]', NULL, NULL, '2026-10-12 11:00:17', '2026-10-12 11:00:17'),
@@ -185,7 +196,8 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 	(17, 'App\\Models\\User', 3, 'auth_token', '99dd4ade8304cb66d49e4f5d4f9bc2a4e7bf765e120a4ba2bc96851d3e4e5a08', '["*"]', NULL, NULL, '2026-10-12 19:25:28', '2026-10-12 19:25:28'),
 	(18, 'App\\Models\\User', 3, 'auth_token', '7809758a1dc43d8ca478f855dc5d875d1cde4ae8df687d2d3039c8a5edef9de2', '["*"]', NULL, NULL, '2026-10-12 19:25:31', '2026-10-12 19:25:31'),
 	(19, 'App\\Models\\User', 2, 'auth_token', 'de7ed15f45c65a9c3f59b668ccd0fea48441cd55e747a56749df1da0a604de95', '["*"]', NULL, NULL, '2026-10-12 19:33:28', '2026-10-12 19:33:28'),
-	(20, 'App\\Models\\User', 3, 'auth_token', 'ff9a09022e3ddd522ec4219cecf2d40a1a556ef60b567c27fd24af61a4709acd', '["*"]', NULL, NULL, '2026-10-12 20:07:45', '2026-10-12 20:07:45');
+	(20, 'App\\Models\\User', 3, 'auth_token', 'ff9a09022e3ddd522ec4219cecf2d40a1a556ef60b567c27fd24af61a4709acd', '["*"]', NULL, NULL, '2026-10-12 20:07:45', '2026-10-12 20:07:45'),
+	(24, 'App\\Models\\User', 1, 'discount-qa', '470dc60fa42f4ae7cda7251a7f4ba92991b399374265f89784ae1ce5ab05dc98', '["*"]', NULL, NULL, '2026-11-11 16:54:55', '2026-11-11 16:54:55');
 
 -- Dumping structure for table villacorz_db.services
 CREATE TABLE IF NOT EXISTS `services` (
@@ -208,15 +220,15 @@ CREATE TABLE IF NOT EXISTS `services` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `services_created_by_foreign` (`created_by`),
-  KEY `services_kind_index` (`kind`),
   KEY `services_status_index` (`status`),
+  KEY `services_kind_index` (`kind`),
   CONSTRAINT `services_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.services: ~1 rows (approximately)
-INSERT INTO `services` (`id`, `created_by`, `kind`, `name`, `description`, `price`, `weekend_price`, `pax`, `features`, `amenities`, `status`, `created_at`, `updated_at`) VALUES
-	(3, 1, 'room', 'Room 1', 'Provides a cozy bunk-style setup with air conditioning, a TV, and a private CR, great for small groups and families.', 3000.00, NULL, NULL, '[]', '["TV", "Private CR", "Airconditioned"]', 'active', '2026-11-10 09:35:31', '2026-11-10 09:35:31'),
-	(5, NULL, 'exclusive', 'The Whole Villa', 'Make the whole beach house yours. Gather in the shared spaces, unwind in comfortable rooms, and enjoy an easygoing seaside stay with your group.', 15500.00, 17000.00, NULL, '[]', '["TV", "Private CR", "Airconditioned", "2 Fans"]', 'active', '2026-11-12 04:47:31', '2026-11-12 04:47:31');
+-- Dumping data for table villacorz_db.services: ~2 rows (approximately)
+INSERT INTO `services` (`id`, `created_by`, `kind`, `name`, `description`, `price`, `weekend_price`, `weekday_discount_type`, `weekday_discount_value`, `weekend_discount_type`, `weekend_discount_value`, `pax`, `features`, `amenities`, `status`, `created_at`, `updated_at`) VALUES
+	(3, 1, 'room', 'Room 1', 'Provides a cozy bunk-style setup with air conditioning, a TV, and a private CR, great for small groups and families.', 3000.00, NULL, NULL, NULL, NULL, NULL, NULL, '[]', '["TV", "Private CR", "Airconditioned"]', 'active', '2026-11-10 09:35:31', '2026-11-10 09:35:31'),
+	(5, NULL, 'exclusive', 'The Whole Villa', 'Make the whole beach house yours. Gather in the shared spaces, unwind in comfortable rooms, and enjoy an easygoing seaside stay with your group.', 15500.00, 17000.00, NULL, NULL, NULL, NULL, NULL, '[]', '["TV", "Private CR", "Airconditioned", "2 Fans"]', 'active', '2026-11-11 20:47:31', '2026-11-11 20:47:31');
 
 -- Dumping structure for table villacorz_db.service_images
 CREATE TABLE IF NOT EXISTS `service_images` (
@@ -237,9 +249,9 @@ CREATE TABLE IF NOT EXISTS `service_images` (
 -- Dumping data for table villacorz_db.service_images: ~4 rows (approximately)
 INSERT INTO `service_images` (`id`, `service_id`, `image_url`, `public_id`, `is_primary`, `sort_order`, `created_at`, `updated_at`) VALUES
 	(1, 3, 'https://res.cloudinary.com/ql4hruc3/image/upload/v1794332098/villacorz/services/yprlscorcqiiql1r424p.png', 'villacorz/services/yprlscorcqiiql1r424p', 1, 0, '2026-11-10 09:35:31', '2026-11-10 09:35:31'),
-	(2, 3, 'https://res.cloudinary.com/ql4hruc3/image/upload/v1794332110/villacorz/services/tjpf9dsiylah0qp23loi.png', 'villacorz/services/tjpf9dsiylah0qp23loi', 0, 1, '2026-11-10 09:35:31', '2026-11-10 09:35:31'),
-	(3, 3, 'https://res.cloudinary.com/ql4hruc3/image/upload/v1794332120/villacorz/services/qb6uqdun4bvxcyglv6dz.png', 'villacorz/services/qb6uqdun4bvxcyglv6dz', 0, 2, '2026-11-10 09:35:31', '2026-11-10 09:35:31'),
-	(4, 3, 'https://res.cloudinary.com/ql4hruc3/image/upload/v1794332130/villacorz/services/tuprxy0ps8seo9hl1mne.png', 'villacorz/services/tuprxy0ps8seo9hl1mne', 0, 3, '2026-11-10 09:35:31', '2026-11-10 09:35:31');
+	(2, 3, 'https://res.cloudinary.com/ql4hruc3/image/upload/v1794332110/villacorz/services/tjpf9dsiylah0qp23loi.png', 'villacorz/services/tjpf9dsiylah0qp23loi', 0, 2, '2026-11-10 09:35:31', '2026-11-11 17:14:29'),
+	(3, 3, 'https://res.cloudinary.com/ql4hruc3/image/upload/v1794332120/villacorz/services/qb6uqdun4bvxcyglv6dz.png', 'villacorz/services/qb6uqdun4bvxcyglv6dz', 0, 3, '2026-11-10 09:35:31', '2026-11-11 17:14:29'),
+	(4, 3, 'https://res.cloudinary.com/ql4hruc3/image/upload/v1794332130/villacorz/services/tuprxy0ps8seo9hl1mne.png', 'villacorz/services/tuprxy0ps8seo9hl1mne', 0, 1, '2026-11-10 09:35:31', '2026-11-11 17:14:29');
 
 -- Dumping structure for table villacorz_db.sessions
 CREATE TABLE IF NOT EXISTS `sessions` (
@@ -254,14 +266,25 @@ CREATE TABLE IF NOT EXISTS `sessions` (
   KEY `sessions_last_activity_index` (`last_activity`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.sessions: ~6 rows (approximately)
+-- Dumping data for table villacorz_db.sessions: ~17 rows (approximately)
 INSERT INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
-	('9CzXioiFNL71Xob1Tlhze5mttSWBqow7wxQ0ErXk', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.145.2 Chrome/150.0.7871.250 Electron/43.8.3 Safari/537.36', 'YTo1OntzOjY6Il90b2tlbiI7czo0MDoiR00yN2JSek91cjVoNVRIWkgxQkhROW9HUDNkaHM2ME5GbnNReDZrUyI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fXM6NTA6ImxvZ2luX3dlYl81OWJhMzZhZGRjMmIyZjk0MDE1ODBmMDE0YzdmNThlYTRlMzA5ODlkIjtpOjE7czoxNzoicGFzc3dvcmRfaGFzaF93ZWIiO3M6NjQ6ImNmZjUyM2IwNzJkNWY5NDUyODU4NWY1ZDQwYmFhOTU3ZjQzMmEwOTUyZDE4YTJmODVjYzUxYzUwMjUxNzkxYjQiO30=', 1794332131),
-	('BFnDcZjPstX2YAbWA3CBfC2fayPLv4F5WwNVO6ZW', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoieWtrRExzTExBUTNaUGVsbXkwWFdQanhVdm9vM2tTMFZGSGxLWmR6ViI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1794331987),
-	('DRlPBYzV4j2x6yDJAMRen2JhSQBPyQDJdNV83wlO', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiUWh3aTJDMURQWGZPYWl3OEhvUzMyTHFrVjhjZ1hmYTBJSDBicFZ2WiI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1794284350),
-	('eOvE630oVk0v40XhoCTUEw6zuJOiF5B3SCBauji5', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiWEtFYlBPc1JLQWwyeGwzcWY3b1NjcEUxZW9KNkJpQUZtTG51RkJ1TSI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1794291741),
-	('FixPNNTVG2bmUshq50OK0eEVNTkaHmTxhB7FofRT', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.145.2 Chrome/150.0.7871.250 Electron/43.8.3 Safari/537.36', 'YTo1OntzOjY6Il90b2tlbiI7czo0MDoiYkhoWmh2VVFwTU9Obkk4OG94UDZqVWJuQ05zQmlsQVJHRUttbTB5dCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fXM6NTA6ImxvZ2luX3dlYl81OWJhMzZhZGRjMmIyZjk0MDE1ODBmMDE0YzdmNThlYTRlMzA5ODlkIjtpOjE7czoxNzoicGFzc3dvcmRfaGFzaF93ZWIiO3M6NjQ6ImNmZjUyM2IwNzJkNWY5NDUyODU4NWY1ZDQwYmFhOTU3ZjQzMmEwOTUyZDE4YTJmODVjYzUxYzUwMjUxNzkxYjQiO30=', 1794288412),
-	('SBvd9FRFIN3n20ChLbcxYiv3AT5kv6eHu9GtEMBm', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', 'YTo1OntzOjY6Il90b2tlbiI7czo0MDoieURNTmxkejdpR0IyY2E1REFTS1NiN3hrWVV1NkhQcTVMVmxVR1pXayI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fXM6NTA6ImxvZ2luX3dlYl81OWJhMzZhZGRjMmIyZjk0MDE1ODBmMDE0YzdmNThlYTRlMzA5ODlkIjtpOjE7czoxNzoicGFzc3dvcmRfaGFzaF93ZWIiO3M6NjQ6ImNmZjUyM2IwNzJkNWY5NDUyODU4NWY1ZDQwYmFhOTU3ZjQzMmEwOTUyZDE4YTJmODVjYzUxYzUwMjUxNzkxYjQiO30=', 1794333478);
+	('2LdAtAsvNwlPPGgz8F2gGyDabLRVTeGPrIohaWSs', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoibWNlbDZORTNEbUlwd05aS2JYbzQxNjQ4SzQ3dmFvczdXaHFkR1JPZyI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794494326),
+	('7KDIPtsBH0sIWb7hgieix2drEJuJNpFGPxKuTVT8', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiczBMMjNqajJlcHFFVndaZXpEdEhVZ3NaWjNkVTZIYmtBaXRnNXJITCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794494181),
+	('8JecLr3PPlgnEht1GJEtjXLMn5Zp0zWe2xYDO1WS', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoianpMRjFER3VSc1pNa3RoYTNPRlNsNDJEWHVXOVBHRlBkSmlUWVF4eiI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794494191),
+	('C9y6ONW1w5zm8MBWkeMoDVOiNbKzkTezzzm813Dg', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiWTZTeXRFU1kwWEpmNFVJdmJKZ2FocnlGYnNYNzc2TlVwWVU0RWdoayI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794494464),
+	('F5sc3ogEYIdEfNdNIhjApJmhF9fF26OsCL6WqaKI', 2, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTo1OntzOjY6Il90b2tlbiI7czo0MDoidkRoWm1TSXJnUDJPTUlTeUI1NHVTaXo4bFFXalNvSzR6Z2RHVTQ1TSI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NTA6ImxvZ2luX3dlYl81OWJhMzZhZGRjMmIyZjk0MDE1ODBmMDE0YzdmNThlYTRlMzA5ODlkIjtpOjI7czoxNzoicGFzc3dvcmRfaGFzaF93ZWIiO3M6NjQ6IjZmNTUwNmVhNzg2MDZlZDQ2MzBkYTQ4MzE5NjE5YTM0ZDk5MzUyNWE0ZTg0MjFiNWQ2ZWUyMjlmM2M3ODY5YWQiO30=', 1794493016),
+	('i1O9djcd1I2C2rCWmn0odkrqRhgEIYefWf2XJGtU', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiR1NiTklDNlVnVDk0UnBUNWFXVGlZdVlQZWxrUDNDamJJNGIxRGJrVCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1794494317),
+	('ixeYztYwDyzVi7cTV3WutfMZfyIL9OKJooiQdJlN', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiWGRiU29rYXF5Z1lmbFBjMFdHc2FGTnVrVEN2TDZKem9seVd5bDJXciI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1794493685),
+	('IZDk90AGwgvRn8S9bwqEDjaLSS5F8fs6DUao0wpM', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiMUw0WEtvUnBaVFVJQ0tyeEgxakVvb1o3cm50YjI5bGc5YldRMkc5ZiI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794493686),
+	('lAeUlmlUqobttSdeeHAFL89B65biuFbuivEFHh7u', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoialcyUmRjTTFxMTNkTUtOYVN4MElBc09jSkpzVDVtc1VSZFBpQXZmWiI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794493685),
+	('loO3fRtv3JQSNEr0xv0yHlOcJPQ20aS6EOVzFwmr', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoid2czaldkYWRISFNldmtKZDdWYUdvOVZaQjJpUERWRkZSS25ldkNLNCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794494464),
+	('mcjaM6Y5IfL6itjfbQQYfo0SUM9HWt7hsHJ1HD5N', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiMTNDRFZBV1pmeEg2WlM4eFhSUTBOU1BiRzl4blhldmZHNkpla1FZOSI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794494192),
+	('MLyzqmv9GtfRPGEgMUyFgTwF26XlmAqKg9PStNVP', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiY0FzcnVFTm5BVlRnMnlDc09LYXNUMlduSDhiSUFVRFF2ZHFjUGZIbiI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794494326),
+	('MN3lANk0KrEyPoZdBqDDc4Yi82Snq41kM2qFA0HV', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiS3ZtUVNEeFVuT2swdVgySm9oSjdtREN3anFXVkdKcmZCaHNHS0hiWCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1794494317),
+	('NUTplUCqPsShCdCy2nBiNLpUKW9QAf4dreRkzXGC', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiUEt1SzF4STlkcWlIWFVVSUJ6OVRzcWlCbEc1TllyQmNiVXV5d1o2bSI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794493698),
+	('qMkyfkYAKbqRCO9jRMqXyxwr66p1CeyGji9VkNIn', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiWlpzMnFlMXFqTWo4RURpSEwxY3BhampxOEl0ejRrbkxXZkZnZmdZUiI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1794493685),
+	('rU3kd8Mc1G89keoY9CJ4nbyP729Lr98pKGzeWXI5', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiWkhFcXAzUlJ3UWVJY3NZUzE4RGhnZmN0U0dlWk9haUNZVFBFOTFveSI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794493697),
+	('wJrRC3l5BxP607d5Jxu65t0g793bWGply9cNjY9i', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.146.0 Chrome/150.0.7871.250 Electron/43.8.6 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiVjlQekRJUjNEbHIzR2w5S3Y5UGxhc2JaTVdIdFdMZDUwUDBySFlDUyI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzQ6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1794494181);
 
 -- Dumping structure for table villacorz_db.users
 CREATE TABLE IF NOT EXISTS `users` (

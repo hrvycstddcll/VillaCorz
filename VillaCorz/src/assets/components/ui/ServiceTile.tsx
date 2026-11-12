@@ -1,4 +1,5 @@
 import { guestCapacity, money } from '../../../lib/format'
+import { ImageOff } from 'lucide-react'
 import star from '../../images/star.png'
 
 export type ServiceTileStay = {
@@ -82,14 +83,25 @@ const ServiceTile = (props: ServiceTileProps) => {
                         type="button"
                         onClick={onSelect}
                         aria-pressed={isSelected}
-                        aria-label="Select the whole villa"
+                        aria-label="View whole villa photos and details"
                         className="block w-full text-left"
                     >
-                        <img
-                            src={isSelected ? activePhoto : stay.image}
-                            alt="Blue-roofed Villa Corz beach house"
-                            className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.01] sm:h-64 lg:h-72"
-                        />
+                        {stay.image ? (
+                            <img
+                                src={isSelected ? activePhoto : stay.image}
+                                alt="Blue-roofed Villa Corz beach house"
+                                className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.01] sm:h-64 lg:h-72"
+                            />
+                        ) : (
+                            <div className="flex h-48 w-full items-center justify-center bg-slate-100 text-slate-400 sm:h-64 lg:h-72">
+                                <div className="flex flex-col items-center gap-2">
+                                    <ImageOff className="size-8" aria-hidden="true" />
+                                    <span className="text-xs font-medium">
+                                        No image
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                         <span className="absolute inset-x-0 bottom-0 flex h-[35%] items-end justify-between gap-2 border-t border-white/25 bg-white/20 px-2 pb-1 pt-1 text-white shadow-[0_-8px_20px_rgba(0,0,0,0.16)] backdrop-blur-[3px] sm:px-2.5">
                             <span
                                 className={`absolute left-0 top-0 inline-flex w-[34%] min-w-55 max-w-90 items-center justify-between gap-2 bg-white px-3 text-[#006dfc] shadow-sm sm:px-3.5 ${
@@ -152,7 +164,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                                     )}
                                 </span>
                                 <span className="rounded-md bg-white px-2.5 py-1 text-[9px] font-semibold text-[#006dfc] shadow-sm sm:px-3 sm:text-[10px]">
-                                    Select room
+                                    View details
                                 </span>
                             </span>
                         </span>
@@ -197,11 +209,22 @@ const ServiceTile = (props: ServiceTileProps) => {
                 aria-label={`View ${stay.title} photo and details`}
                 className="block w-full focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#006dfc]"
             >
-                <img
-                    src={stay.image}
-                    alt={`${stay.title} interior`}
-                    className="h-56 w-full scale-[1.05] object-cover transition duration-500 group-hover:scale-[1.08] sm:h-64 lg:h-72"
-                />
+                {stay.image ? (
+                    <img
+                        src={stay.image}
+                        alt={`${stay.title} interior`}
+                        className="h-56 w-full scale-[1.05] object-cover transition duration-500 group-hover:scale-[1.08] sm:h-64 lg:h-72"
+                    />
+                ) : (
+                    <div className="flex h-56 w-full items-center justify-center bg-slate-100 text-slate-400 sm:h-64 lg:h-72">
+                        <div className="flex flex-col items-center gap-2">
+                            <ImageOff className="size-8" aria-hidden="true" />
+                            <span className="text-xs font-medium">
+                                No image
+                            </span>
+                        </div>
+                    </div>
+                )}
             </button>
             {stay.discountLabel ? <DiscountRibbon label={stay.discountLabel} /> : null}
             {stay.badge ? (
@@ -267,11 +290,15 @@ const ServiceTile = (props: ServiceTileProps) => {
                     <button
                         type="button"
                         onClick={onToggleReservation}
-                        aria-label={`Select ${stay.title}, good for ${guestCapacity(stay)} guests`}
+                        aria-label={
+                            isReservationSelected
+                                ? `${stay.title} is already in your booking`
+                                : `Add ${stay.title} to your booking, good for ${guestCapacity(stay)} guests`
+                        }
                         aria-pressed={isReservationSelected}
-                        className="rounded-md bg-white px-2.5 py-1.5 text-[9px] font-semibold text-[#006dfc] shadow-sm transition duration-200 hover:scale-105 hover:bg-[#006dfc] hover:text-white hover:shadow-md active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3 sm:text-[10px]"
+                        className="min-h-10 rounded-md bg-white px-2.5 py-1.5 text-[9px] font-semibold text-[#006dfc] shadow-sm transition-colors duration-200 hover:bg-[#006dfc] hover:text-white hover:shadow-md active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3 sm:text-[10px]"
                     >
-                        Select room
+                        {isReservationSelected ? 'Added' : 'Add room'}
                     </button>
                 </span>
             </span>
