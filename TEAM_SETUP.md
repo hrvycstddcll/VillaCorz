@@ -109,6 +109,20 @@ Vite process has a native package loaded.
 
 ## Configure and run locally
 
+The backend uses MySQL for local development. XAMPP and Laragon both work;
+start MySQL first, then create the `villacorz_db` database and import the
+dump that ships with the repository:
+
+```sh
+# XAMPP (from the XAMPP control panel, start MySQL, then):
+C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE IF NOT EXISTS villacorz_db"
+C:\xampp\mysql\bin\mysql.exe -u root villacorz_db < database/villacorz_db.sql
+```
+
+You can also import `VillaCorz/database/villacorz_db.sql` through phpMyAdmin
+or HeidiSQL. The dump already creates the database, tables, and the mock
+accounts listed below.
+
 From `VillaCorz/backend`, create a local environment file from the example:
 
 ```sh
@@ -121,18 +135,26 @@ On Windows PowerShell, use:
 Copy-Item .env.example .env
 ```
 
-Then, still in `VillaCorz/backend`, generate the application key and prepare
-the database:
+The example environment already points at MySQL on `127.0.0.1:3306` with the
+XAMPP/Laragon default `root` user and an empty password. Adjust `DB_USERNAME`
+and `DB_PASSWORD` if your MySQL account is different. Then generate the
+application key:
 
 ```sh
 php artisan key:generate
+```
+
+If you imported the dump you do not need to run migrations. If you prefer to
+build the schema from scratch instead, run:
+
+```sh
 php artisan migrate
 ```
 
-The example environment uses SQLite. For email verification and the contact
-form, configure a valid Brevo API key and sender in your private `.env`, or
-configure a local mail catcher. Set `CONTACT_MAIL_TO` to the inbox that should
-receive contact-form messages. Do not commit or share `.env` files or API keys.
+For email verification and the contact form, configure a valid Brevo API key
+and sender in your private `.env`, or configure a local mail catcher. Set
+`CONTACT_MAIL_TO` to the inbox that should receive contact-form messages. Do
+not commit or share `.env` files or API keys.
 
 Manage Offers uploads service photos to Cloudinary. Set
 `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in
@@ -152,8 +174,21 @@ In another terminal, start the frontend from `VillaCorz`:
 npm run dev
 ```
 
-The frontend currently sends API and Sanctum CSRF requests to
-`http://localhost:8000`.
+The frontend sends API and Sanctum CSRF requests to `http://localhost:8000`
+by default. To use a different backend origin, copy `VillaCorz/.env.example`
+to `VillaCorz/.env` and set `VITE_API_URL`.
+
+## Mock accounts (development only)
+
+These accounts are included in `VillaCorz/database/villacorz_db.sql`:
+
+| Role     | Email                    | Password      |
+| -------- | ------------------------ | ------------- |
+| Admin    | dlord0260@gmail.com      | `admin123`    |
+| Customer | dacillohaydee@gmail.com  | `customer123` |
+
+Change or remove these accounts before deploying anywhere public.
+
 
 ## Useful frontend commands
 

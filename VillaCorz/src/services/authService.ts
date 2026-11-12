@@ -1,8 +1,8 @@
 import axios from 'axios'
-import api from './api'
+import api, { API_ORIGIN } from './api'
 
 const csrf = () => {
-    return axios.get('http://localhost:8000/sanctum/csrf-cookie', {
+    return axios.get(`${API_ORIGIN}/sanctum/csrf-cookie`, {
         withCredentials: true,
         withXSRFToken: true,
     })
