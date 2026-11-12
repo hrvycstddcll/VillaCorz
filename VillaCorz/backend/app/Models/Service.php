@@ -10,9 +10,15 @@ class Service extends Model
 {
     protected $fillable = [
         'created_by',
+        'kind',
         'name',
         'description',
         'price',
+        'weekend_price',
+        'weekday_discount_type',
+        'weekday_discount_value',
+        'weekend_discount_type',
+        'weekend_discount_value',
         'pax',
         'features',
         'amenities',
@@ -21,6 +27,9 @@ class Service extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'weekend_price' => 'decimal:2',
+        'weekday_discount_value' => 'decimal:2',
+        'weekend_discount_value' => 'decimal:2',
         'pax' => 'integer',
         'features' => 'array',
         'amenities' => 'array',

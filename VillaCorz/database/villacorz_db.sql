@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS `migrations` (
   `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Dumping data for table villacorz_db.migrations: ~13 rows (approximately)
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
@@ -129,7 +129,12 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(11, '2026_11_07_030630_create_services_table', 5),
 	(12, '2026_11_07_030655_create_service_images_table', 5),
 	(13, '2026_11_10_042215_add_details_to_services_table', 6),
-	(14, '2026_11_11_000000_create_activity_logs_table', 7);
+	(14, '2026_11_11_000000_create_activity_logs_table', 7),
+	(15, '2026_11_11_010000_drop_pending_registrations_table', 7),
+	(16, '2026_11_12_000000_add_discount_to_services_table', 7),
+	(17, '2026_11_12_010000_add_day_discounts_to_services_table', 7),
+	(18, '2026_11_12_020000_add_kind_to_services_table', 8),
+	(19, '2026_11_12_021000_add_weekend_price_to_services_table', 8);
 
 -- Dumping structure for table villacorz_db.password_reset_tokens
 CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
@@ -186,9 +191,15 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 CREATE TABLE IF NOT EXISTS `services` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `created_by` bigint unsigned DEFAULT NULL,
+  `kind` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'room',
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
   `price` decimal(10,2) NOT NULL,
+  `weekend_price` decimal(10,2) DEFAULT NULL,
+  `weekday_discount_type` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `weekday_discount_value` decimal(10,2) DEFAULT NULL,
+  `weekend_discount_type` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `weekend_discount_value` decimal(10,2) DEFAULT NULL,
   `pax` smallint unsigned DEFAULT NULL,
   `features` json DEFAULT NULL,
   `amenities` json DEFAULT NULL,
@@ -197,13 +208,15 @@ CREATE TABLE IF NOT EXISTS `services` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `services_created_by_foreign` (`created_by`),
+  KEY `services_kind_index` (`kind`),
   KEY `services_status_index` (`status`),
   CONSTRAINT `services_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Dumping data for table villacorz_db.services: ~1 rows (approximately)
-INSERT INTO `services` (`id`, `created_by`, `name`, `description`, `price`, `pax`, `features`, `amenities`, `status`, `created_at`, `updated_at`) VALUES
-	(3, 1, 'Room 1', 'Provides a cozy bunk-style setup with air conditioning, a TV, and a private CR, great for small groups and families.', 3000.00, NULL, '[]', '["TV", "Private CR", "Airconditioned"]', 'active', '2026-11-10 09:35:31', '2026-11-10 09:35:31');
+INSERT INTO `services` (`id`, `created_by`, `kind`, `name`, `description`, `price`, `weekend_price`, `pax`, `features`, `amenities`, `status`, `created_at`, `updated_at`) VALUES
+	(3, 1, 'room', 'Room 1', 'Provides a cozy bunk-style setup with air conditioning, a TV, and a private CR, great for small groups and families.', 3000.00, NULL, NULL, '[]', '["TV", "Private CR", "Airconditioned"]', 'active', '2026-11-10 09:35:31', '2026-11-10 09:35:31'),
+	(5, NULL, 'exclusive', 'The Whole Villa', 'Make the whole beach house yours. Gather in the shared spaces, unwind in comfortable rooms, and enjoy an easygoing seaside stay with your group.', 15500.00, 17000.00, NULL, '[]', '["TV", "Private CR", "Airconditioned", "2 Fans"]', 'active', '2026-11-12 04:47:31', '2026-11-12 04:47:31');
 
 -- Dumping structure for table villacorz_db.service_images
 CREATE TABLE IF NOT EXISTS `service_images` (

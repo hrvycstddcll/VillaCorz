@@ -16,6 +16,10 @@ import AddOfferCard from '../offers/AddOfferCard'
 import OfferFormModal from '../offers/OfferFormModal'
 import ConfirmDialog from '../offers/ConfirmDialog'
 import ServiceTile, { type ServiceTileStay } from '../ui/ServiceTile'
+import {
+    getOfferPricing,
+    getOfferBadgeLabel,
+} from '../../../lib/pricing'
 import fallbackOfferImage from '../../images/wholevilla.png'
 
 type Notice = {
@@ -56,12 +60,35 @@ const toServiceTileStay = (service: Service): ServiceTileStay => {
     const primaryImage =
         images.find((image) => image.is_primary) ?? images[0] ?? null
     const photoCount = images.length
+    const weekdayPricing = getOfferPricing(
+        Number(service.price),
+        service.weekday_discount_type,
+        service.weekday_discount_value,
+    )
+    const weekendBase =
+        service.weekend_price != null
+            ? Number(service.weekend_price)
+            : Number(service.price)
+    const weekendPricing = getOfferPricing(
+        weekendBase,
+        service.weekend_discount_type,
+        service.weekend_discount_value,
+    )
+    const pricing = {
+        weekday: weekdayPricing,
+        weekend: weekendPricing,
+        hasDiscount: weekdayPricing.hasDiscount || weekendPricing.hasDiscount,
+    }
 
     return {
         id: String(service.id),
         title: service.name,
         image: primaryImage?.image_url ?? fallbackOfferImage,
-        price: Number(service.price),
+        price: weekdayPricing.price,
+        originalPrice: weekdayPricing.originalPrice ?? undefined,
+        weekendPrice: weekendPricing.price,
+        weekendOriginalPrice: weekendPricing.originalPrice ?? undefined,
+        discountLabel: getOfferBadgeLabel(pricing) || undefined,
         capacity:
             service.pax != null
                 ? `Good for ${service.pax} pax`
@@ -88,6 +115,28 @@ const OfferTile = ({ service, onEdit }: OfferTileProps) => (
             onSelect={() => onEdit(service)}
             onToggleReservation={() => onEdit(service)}
         />
+        <div className="mt-2 flex items-center justify-between gap-2 px-1">
+            <span
+                className={`min-w-0 truncate rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                    service.kind === 'exclusive'
+                        ? 'bg-[#003079] text-white'
+                        : 'bg-slate-100 text-slate-600'
+                }`}
+            >
+                {service.kind === 'exclusive'
+                    ? 'Whole villa'
+                    : 'Room'}
+            </span>
+            <span
+                className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide ${
+                    service.status === 'active'
+                        ? 'text-emerald-600'
+                        : 'text-slate-400'
+                }`}
+            >
+                {service.status}
+            </span>
+        </div>
     </div>
 )
 
@@ -241,6 +290,24 @@ const ManageOffers = () => {
         (service) => service.status === 'active',
     ).length
     const inactiveCount = services.length - activeCount
+    const onSaleCount = services.filter((service) => {
+        const weekday = getOfferPricing(
+            Number(service.price),
+            service.weekday_discount_type,
+            service.weekday_discount_value,
+        )
+        const weekendBase =
+            service.weekend_price != null
+                ? Number(service.weekend_price)
+                : Number(service.price)
+        const weekend = getOfferPricing(
+            weekendBase,
+            service.weekend_discount_type,
+            service.weekend_discount_value,
+        )
+
+        return weekday.hasDiscount || weekend.hasDiscount
+    }).length
     const isEmpty = !loading && services.length === 0
     const filteredServices =
         filter === 'all'
@@ -280,11 +347,12 @@ const ManageOffers = () => {
 
                     <dl
                         aria-label="Offer summary"
-                        className="relative grid grid-cols-3 divide-x divide-white/20 border-t border-white/20 pt-6"
+                        className="relative grid grid-cols-2 gap-y-5 border-t border-white/20 pt-6 sm:grid-cols-4 sm:gap-y-0 sm:divide-x sm:divide-white/20"
                     >
                         {[
                             { label: 'Offers', value: services.length },
                             { label: 'Active', value: activeCount },
+                            { label: 'On sale', value: onSaleCount },
                             { label: 'Inactive', value: inactiveCount },
                         ].map((stat) => (
                             <div

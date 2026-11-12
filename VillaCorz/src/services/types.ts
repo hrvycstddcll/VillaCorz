@@ -8,6 +8,10 @@ export type User = {
 
 export type ServiceStatus = 'active' | 'inactive'
 
+export type ServiceKind = 'room' | 'exclusive'
+
+export type ServiceDiscountType = 'percent' | 'fixed'
+
 export type ServiceImage = {
     id: number
     service_id: number
@@ -22,9 +26,15 @@ export type ServiceImage = {
 export type Service = {
     id: number
     created_by: number | null
+    kind: ServiceKind
     name: string
     description: string | null
     price: string | number
+    weekend_price: string | number | null
+    weekday_discount_type: ServiceDiscountType | null
+    weekday_discount_value: string | number | null
+    weekend_discount_type: ServiceDiscountType | null
+    weekend_discount_value: string | number | null
     pax: number | null
     features: string[] | null
     amenities: string[] | null

@@ -33,6 +33,7 @@ class ServiceController extends Controller
     public function store(Request $request, CloudinaryService $cloudinary): JsonResponse
     {
         $validated = $this->validateService($request);
+        $this->ensureSingleExclusive($validated['kind'] ?? 'room');
 
         $files = $this->uploadedImages($request);
         $orderProvided = $request->boolean('image_order_present') || $request->exists('image_order');
@@ -65,9 +66,19 @@ class ServiceController extends Controller
             $service = DB::transaction(function () use ($request, $validated, $orderTokens, $uploaded) {
                 $service = Service::create([
                     'created_by' => $request->user()?->id,
+                    'kind' => $validated['kind'] ?? 'room',
                     'name' => $validated['name'],
                     'description' => $validated['description'] ?? null,
                     'price' => $validated['price'],
+                    'weekend_price' => $validated['weekend_price'] ?? null,
+                    'weekday_discount_type' => $validated['weekday_discount_type'] ?? null,
+                    'weekday_discount_value' => filled($validated['weekday_discount_type'] ?? null)
+                        ? ($validated['weekday_discount_value'] ?? null)
+                        : null,
+                    'weekend_discount_type' => $validated['weekend_discount_type'] ?? null,
+                    'weekend_discount_value' => filled($validated['weekend_discount_type'] ?? null)
+                        ? ($validated['weekend_discount_value'] ?? null)
+                        : null,
                     'pax' => $validated['pax'] ?? null,
                     'features' => $this->cleanList($validated['features'] ?? []),
                     'amenities' => $this->cleanList($validated['amenities'] ?? []),
@@ -114,8 +125,14 @@ class ServiceController extends Controller
             $service->id,
             [
                 'name' => $service->name,
+                'kind' => $service->kind,
                 'status' => $service->status,
                 'price' => $service->price,
+                'weekend_price' => $service->weekend_price,
+                'weekday_discount_type' => $service->weekday_discount_type,
+                'weekday_discount_value' => $service->weekday_discount_value,
+                'weekend_discount_type' => $service->weekend_discount_type,
+                'weekend_discount_value' => $service->weekend_discount_value,
                 'pax' => $service->pax,
                 'image_count' => $service->images->count(),
             ],
@@ -143,11 +160,21 @@ class ServiceController extends Controller
     {
         $service = Service::with('images')->findOrFail($id);
         $validated = $this->validateService($request);
+        $this->ensureSingleExclusive(
+            $validated['kind'] ?? $service->kind,
+            $service->id,
+        );
 
         $before = $service->only([
             'name',
+            'kind',
             'description',
             'price',
+            'weekend_price',
+            'weekday_discount_type',
+            'weekday_discount_value',
+            'weekend_discount_type',
+            'weekend_discount_value',
             'pax',
             'features',
             'amenities',
@@ -189,6 +216,10 @@ class ServiceController extends Controller
             'pax' => $validated['pax'] ?? null,
         ];
 
+        if ($request->exists('weekend_price')) {
+            $detailUpdates['weekend_price'] = $validated['weekend_price'] ?? null;
+        }
+
         if ($request->boolean('features_present')) {
             $detailUpdates['features'] = $this->cleanList(
                 $validated['features'] ?? [],
@@ -201,6 +232,20 @@ class ServiceController extends Controller
             );
         }
 
+        if ($request->exists('weekday_discount_type') || $request->exists('weekday_discount_value')) {
+            $detailUpdates['weekday_discount_type'] = $validated['weekday_discount_type'] ?? null;
+            $detailUpdates['weekday_discount_value'] = filled($validated['weekday_discount_type'] ?? null)
+                ? ($validated['weekday_discount_value'] ?? null)
+                : null;
+        }
+
+        if ($request->exists('weekend_discount_type') || $request->exists('weekend_discount_value')) {
+            $detailUpdates['weekend_discount_type'] = $validated['weekend_discount_type'] ?? null;
+            $detailUpdates['weekend_discount_value'] = filled($validated['weekend_discount_type'] ?? null)
+                ? ($validated['weekend_discount_value'] ?? null)
+                : null;
+        }
+
         try {
             DB::transaction(function () use (
                 $service,
@@ -211,6 +256,7 @@ class ServiceController extends Controller
                 &$removedPublicIds,
             ) {
                 $service->update(array_merge([
+                    'kind' => $validated['kind'] ?? $service->kind,
                     'name' => $validated['name'],
                     'description' => $validated['description'] ?? null,
                     'price' => $validated['price'],
@@ -358,10 +404,16 @@ class ServiceController extends Controller
      */
     private function validateService(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
+            'kind' => ['sometimes', 'string', 'in:room,exclusive'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'price' => ['required', 'numeric', 'min:0'],
+            'weekend_price' => ['nullable', 'numeric', 'min:0'],
+            'weekday_discount_type' => ['nullable', 'in:percent,fixed'],
+            'weekday_discount_value' => ['nullable', 'numeric', 'min:0'],
+            'weekend_discount_type' => ['nullable', 'in:percent,fixed'],
+            'weekend_discount_value' => ['nullable', 'numeric', 'min:0'],
             'pax' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'features' => ['nullable', 'array', 'max:20'],
             'features.*' => ['string', 'max:80'],
@@ -377,6 +429,81 @@ class ServiceController extends Controller
             'image_order_present' => ['sometimes', 'boolean'],
             'primary_image' => ['nullable', 'string', 'regex:/^(existing:\d+|new:\d+)$/'],
         ]);
+
+        foreach (['weekday', 'weekend'] as $day) {
+            $typeField = "{$day}_discount_type";
+            $valueField = "{$day}_discount_value";
+
+            // Treat an empty type as "no discount" and discard any orphaned
+            // value so the database always stores a clean pair.
+            if (! filled($validated[$typeField] ?? null)) {
+                $validated[$typeField] = null;
+                $validated[$valueField] = null;
+
+                continue;
+            }
+
+            $this->assertValidDiscount(
+                $day,
+                $validated[$typeField],
+                $validated[$valueField] ?? null,
+                (float) $validated['price'],
+            );
+        }
+
+        return $validated;
+    }
+
+    /**
+     * The whole villa is a single exclusive offer, so keep only one.
+     */
+    private function ensureSingleExclusive(?string $kind, ?int $ignoreId = null): void
+    {
+        if ($kind !== 'exclusive') {
+            return;
+        }
+
+        $exists = Service::query()
+            ->where('kind', 'exclusive')
+            ->when($ignoreId !== null, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages([
+                'kind' => 'An exclusive whole-villa offer already exists.',
+            ]);
+        }
+    }
+
+    private function assertValidDiscount(
+        string $day,
+        ?string $type,
+        mixed $value,
+        float $price,
+    ): void {        if ($type === null) {
+            return;
+        }
+
+        $field = "{$day}_discount_value";
+        $amount = (float) ($value ?? 0);
+
+        if ($amount <= 0) {
+            throw ValidationException::withMessages([
+                $field => 'Discount must be greater than zero.',
+            ]);
+        }
+
+        if ($type === 'percent' && $amount > 100) {
+            throw ValidationException::withMessages([
+                $field => 'Percentage discount cannot exceed 100%.',
+            ]);
+        }
+
+        if ($type === 'fixed' && $amount > $price) {
+            throw ValidationException::withMessages([
+                $field => 'Fixed discount cannot exceed the offer price.',
+            ]);
+        }
     }
 
     /**

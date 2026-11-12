@@ -87,6 +87,123 @@ class ServiceManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_create_a_service_with_day_discounts(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        $response = $this->actingAs($admin)->postJson('/api/services', [
+            'name' => 'Weekday Escape',
+            'description' => 'A midweek stay with a discount.',
+            'price' => 2000,
+            'status' => 'active',
+            'weekday_discount_type' => 'percent',
+            'weekday_discount_value' => 20,
+            'weekend_discount_type' => 'fixed',
+            'weekend_discount_value' => 300,
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.weekday_discount_type', 'percent')
+            ->assertJsonPath('data.weekday_discount_value', '20.00')
+            ->assertJsonPath('data.weekend_discount_type', 'fixed')
+            ->assertJsonPath('data.weekend_discount_value', '300.00');
+
+        $this->assertDatabaseHas('services', [
+            'name' => 'Weekday Escape',
+            'weekday_discount_type' => 'percent',
+            'weekday_discount_value' => 20,
+            'weekend_discount_type' => 'fixed',
+            'weekend_discount_value' => 300,
+        ]);
+    }
+
+    public function test_admin_can_update_one_day_discount_and_clear_the_other(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        $service = Service::create([
+            'created_by' => $admin->id,
+            'name' => 'Long Weekend',
+            'description' => 'A discounted weekend stay.',
+            'price' => 5000,
+            'status' => 'active',
+            'weekday_discount_type' => 'percent',
+            'weekday_discount_value' => 15,
+            'weekend_discount_type' => 'percent',
+            'weekend_discount_value' => 10,
+        ]);
+
+        $this->actingAs($admin)
+            ->putJson("/api/services/{$service->id}", [
+                'name' => 'Long Weekend',
+                'description' => 'A discounted weekend stay.',
+                'price' => 5000,
+                'status' => 'active',
+                'weekday_discount_type' => 'fixed',
+                'weekday_discount_value' => 500,
+                'weekend_discount_type' => 'percent',
+                'weekend_discount_value' => 10,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.weekday_discount_type', 'fixed')
+            ->assertJsonPath('data.weekday_discount_value', '500.00')
+            ->assertJsonPath('data.weekend_discount_type', 'percent')
+            ->assertJsonPath('data.weekend_discount_value', '10.00');
+
+        $this->actingAs($admin)
+            ->putJson("/api/services/{$service->id}", [
+                'name' => 'Long Weekend',
+                'description' => 'A discounted weekend stay.',
+                'price' => 5000,
+                'status' => 'active',
+                'weekday_discount_type' => 'fixed',
+                'weekday_discount_value' => 500,
+                'weekend_discount_type' => '',
+                'weekend_discount_value' => '',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.weekday_discount_type', 'fixed')
+            ->assertJsonPath('data.weekday_discount_value', '500.00')
+            ->assertJsonPath('data.weekend_discount_type', null)
+            ->assertJsonPath('data.weekend_discount_value', null);
+
+        $this->assertDatabaseHas('services', [
+            'id' => $service->id,
+            'weekday_discount_type' => 'fixed',
+            'weekday_discount_value' => 500,
+            'weekend_discount_type' => null,
+            'weekend_discount_value' => null,
+        ]);
+    }
+
+    public function test_day_discount_validation_rejects_invalid_values(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        $this->actingAs($admin)
+            ->postJson('/api/services', [
+                'name' => 'Too Much Off',
+                'price' => 2000,
+                'status' => 'active',
+                'weekday_discount_type' => 'percent',
+                'weekday_discount_value' => 150,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('weekday_discount_value');
+
+        $this->actingAs($admin)
+            ->postJson('/api/services', [
+                'name' => 'Over The Price',
+                'price' => 1000,
+                'status' => 'active',
+                'weekend_discount_type' => 'fixed',
+                'weekend_discount_value' => 1500,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('weekend_discount_value');
+    }
+
     public function test_admin_can_create_a_service_with_ordered_images_and_primary(): void
     {
         $admin = $this->makeUser('admin');

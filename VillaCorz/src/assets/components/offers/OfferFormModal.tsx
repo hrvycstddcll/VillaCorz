@@ -10,11 +10,21 @@ import { Fan, Loader2, Trash2, X } from 'lucide-react'
 import acIcon from '../../images/AC.png'
 import crIcon from '../../images/Cr.png'
 import tvIcon from '../../images/Tv.png'
-import type { Service, ServiceStatus } from '../../../services/types'
+import type {
+    Service,
+    ServiceDiscountType,
+    ServiceKind,
+    ServiceStatus,
+} from '../../../services/types'
 import {
     createService,
     updateService,
 } from '../../../services/serviceService'
+import { money } from '../../../lib/format'
+import {
+    getOfferPricing,
+    type OfferPricing,
+} from '../../../lib/pricing'
 import OfferImageManager, {
     type ManagedOfferImage,
 } from './OfferImageManager'
@@ -27,6 +37,35 @@ type OfferFormModalProps = {
 }
 
 type FieldErrors = Record<string, string>
+
+type DiscountEntry = {
+    type: ServiceDiscountType | 'none'
+    value: string
+}
+
+const roundMoney = (value: number) =>
+    Math.round((value + Number.EPSILON) * 100) / 100
+
+const toDiscountEntry = (
+    type: ServiceDiscountType | null | undefined,
+    value: string | number | null | undefined,
+    price: number,
+): DiscountEntry => {
+    // Older offers may store the discount as a percentage. Show it as the
+    // equivalent peso value; the percent is derived again for display.
+    if (type === 'percent' && value != null) {
+        return {
+            type: 'fixed',
+            value: String(roundMoney((price * Number(value)) / 100)),
+        }
+    }
+
+    return {
+        type: type === 'fixed' ? 'fixed' : 'none',
+        value:
+            type === 'fixed' && value != null ? String(Number(value)) : '',
+    }
+}
 
 const focusRing =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
@@ -79,12 +118,20 @@ const OfferFormModal = ({
     )
 
     const [name, setName] = useState(service?.name ?? '')
+    const [kind, setKind] = useState<ServiceKind>(service?.kind ?? 'room')
     const [description, setDescription] = useState(service?.description ?? '')
     const [price, setPrice] = useState(
         service ? String(Number(service.price)) : '',
     )
     const [status, setStatus] = useState<ServiceStatus>(
         service?.status ?? 'active',
+    )
+    const [weekdayDiscount, setWeekdayDiscount] = useState<DiscountEntry>(() =>
+        toDiscountEntry(
+            service?.weekday_discount_type,
+            service?.weekday_discount_value,
+            Number(service?.price ?? 0),
+        ),
     )
     const [pax, setPax] = useState(
         service?.pax != null ? String(service.pax) : '',
@@ -162,6 +209,26 @@ const OfferFormModal = ({
         clearFieldError('amenities')
     }
 
+    const priceNumber = Number(price)
+    const safePrice = Number.isFinite(priceNumber) ? priceNumber : 0
+    const weekendBase =
+        service?.weekend_price != null
+            ? Number(service.weekend_price)
+            : safePrice
+    const safeWeekendPrice = Number.isFinite(weekendBase)
+        ? weekendBase
+        : safePrice
+    const weekdayPricing = getOfferPricing(
+        safePrice,
+        weekdayDiscount.type === 'none' ? null : weekdayDiscount.type,
+        weekdayDiscount.value,
+    )
+    const dayPricing = {
+        weekday: weekdayPricing,
+        weekend: getOfferPricing(safeWeekendPrice, null, null),
+        hasDiscount: weekdayPricing.hasDiscount,
+    }
+
     const validate = () => {
         const errors: FieldErrors = {}
 
@@ -173,6 +240,29 @@ const OfferFormModal = ({
             errors.price = 'Enter a valid price.'
         } else if (Number(price) < 0) {
             errors.price = 'Price cannot be negative.'
+        }
+
+        const entry = weekdayDiscount
+        const valueField = 'weekday_discount_value'
+        const label = 'weekday'
+
+        if (entry.type !== 'none') {
+            const value = Number(entry.value)
+            const field = valueField
+
+            if (entry.value.trim() === '' || Number.isNaN(value)) {
+                errors[field] = `Enter a ${label} discount value.`
+            } else if (value <= 0) {
+                errors[field] = 'Discount must be greater than zero.'
+            } else if (entry.type === 'percent' && value > 100) {
+                errors[field] = 'Percentage discount cannot exceed 100%.'
+            } else if (
+                entry.type === 'fixed' &&
+                !Number.isNaN(priceNumber) &&
+                value > priceNumber
+            ) {
+                errors[field] = 'Discount cannot exceed the offer price.'
+            }
         }
 
         if (pax.trim() !== '') {
@@ -202,8 +292,19 @@ const OfferFormModal = ({
 
         const payload = new FormData()
         payload.append('name', name.trim())
+        payload.append('kind', kind)
         payload.append('description', description.trim())
         payload.append('price', price)
+        payload.append(
+            'weekday_discount_type',
+            weekdayDiscount.type === 'none' ? '' : weekdayDiscount.type,
+        )
+        payload.append(
+            'weekday_discount_value',
+            weekdayDiscount.type === 'none' ? '' : weekdayDiscount.value,
+        )
+        payload.append('weekend_discount_type', '')
+        payload.append('weekend_discount_value', '')
         payload.append('pax', pax.trim())
         payload.append('amenities_present', '1')
         amenities.forEach((amenity) => payload.append('amenities[]', amenity))
@@ -288,8 +389,13 @@ const OfferFormModal = ({
                         } else if (
                             [
                                 'name',
+                                'kind',
                                 'description',
                                 'price',
+                                'weekday_discount_type',
+                                'weekday_discount_value',
+                                'weekend_discount_type',
+                                'weekend_discount_value',
                                 'status',
                                 'pax',
                                 'amenities',
@@ -337,6 +443,177 @@ const OfferFormModal = ({
         } finally {
             setSubmitting(false)
         }
+    }
+
+    const renderDayDiscount = ({
+        group,
+        title,
+        hint,
+        entry,
+        setEntry,
+        pricing,
+    }: {
+        group: 'weekday' | 'weekend'
+        title: string
+        hint: string
+        entry: DiscountEntry
+        setEntry: (next: DiscountEntry) => void
+        pricing: OfferPricing
+    }) => {
+        const typeField = `${group}_discount_type`
+        const valueField = `${group}_discount_value`
+        const typeError = fieldErrors[typeField]
+        const valueError = fieldErrors[valueField]
+
+        const changeType = (type: ServiceDiscountType | 'none') => {
+            setEntry({ type, value: '' })
+            setFieldErrors((current) => {
+                if (!current[typeField] && !current[valueField]) {
+                    return current
+                }
+
+                const next = { ...current }
+                delete next[typeField]
+                delete next[valueField]
+                return next
+            })
+        }
+
+        return (
+            <div
+                key={group}
+                className="rounded-xl border border-slate-200 bg-white p-3.5"
+            >
+                <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-xs font-semibold text-[#003079]">
+                        {title}
+                    </p>
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                        {hint}
+                    </span>
+                </div>
+
+                <div className="mt-2">
+                    <label
+                        htmlFor={`offer-${group}-discount-type`}
+                        className="text-xs font-semibold text-slate-600"
+                    >
+                        Discount type
+                    </label>
+                    <select
+                        id={`offer-${group}-discount-type`}
+                        value={entry.type}
+                        disabled={submitting}
+                        onChange={(event) =>
+                            changeType(
+                                event.target.value as
+                                    | ServiceDiscountType
+                                    | 'none',
+                            )
+                        }
+                        className={inputClass(Boolean(typeError))}
+                    >
+                        <option value="none">No discount</option>
+                        <option value="fixed">Discount value (₱)</option>
+                    </select>
+                    {typeError && (
+                        <p className="mt-1.5 text-xs text-rose-600">
+                            {typeError}
+                        </p>
+                    )}
+                </div>
+
+                {entry.type !== 'none' && (
+                    <div className="mt-3">
+                        <label
+                            htmlFor={`offer-${group}-discount-value`}
+                            className="text-xs font-semibold text-slate-600"
+                        >
+                            Discount value{' '}
+                            <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                            {entry.type === 'fixed' && (
+                                <span
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400"
+                                >
+                                    ₱
+                                </span>
+                            )}
+                            <input
+                                id={`offer-${group}-discount-value`}
+                                type="number"
+                                min="0"
+                                max={
+                                    entry.type === 'percent'
+                                        ? 100
+                                        : safePrice > 0
+                                          ? safePrice
+                                          : undefined
+                                }
+                                step="0.01"
+                                inputMode="decimal"
+                                disabled={submitting}
+                                value={entry.value}
+                                onChange={(event) => {
+                                    setEntry({
+                                        ...entry,
+                                        value: event.target.value,
+                                    })
+                                    clearFieldError(valueField)
+                                }}
+                                placeholder={
+                                    entry.type === 'percent'
+                                        ? 'e.g. 20'
+                                        : 'e.g. 500'
+                                }
+                                aria-invalid={Boolean(valueError)}
+                                className={`${inputClass(Boolean(valueError))} ${
+                                    entry.type === 'fixed' ? 'pl-8' : 'pr-8'
+                                }`}
+                            />
+                            {entry.type === 'percent' && (
+                                <span
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400"
+                                >
+                                    %
+                                </span>
+                            )}
+                        </div>
+                        {valueError && (
+                            <p className="mt-1.5 text-xs text-rose-600">
+                                {valueError}
+                            </p>
+                        )}
+                    </div>
+                )}
+
+                <p className="mt-2 text-[11px] leading-5 text-slate-500">
+                    {pricing.hasDiscount ? (
+                        <>
+                            Sale price{' '}
+                            <span className="font-semibold text-[#003079]">
+                                {money(pricing.price)}
+                            </span>{' '}
+                            · save{' '}
+                            <span className="font-semibold text-emerald-600">
+                                {money(pricing.discountAmount)}
+                            </span>{' '}
+                            · {pricing.discountPercent}% off
+                        </>
+                    ) : (
+                        <>
+                            Regular price{' '}
+                            <span className="font-semibold text-[#003079]">
+                                {money(safePrice)}
+                            </span>
+                        </>
+                    )}
+                </p>
+            </div>
+        )
     }
 
     return (
@@ -412,7 +689,55 @@ const OfferFormModal = ({
                             )}
                         </div>
 
-                        <div className="grid gap-5 sm:grid-cols-3">
+                        <div
+                            className={`grid gap-5 ${
+                                isEditing
+                                    ? 'sm:grid-cols-3'
+                                    : 'sm:grid-cols-2'
+                            }`}
+                        >
+                        {!isEditing && (
+                            <div>
+                                <label
+                                    htmlFor="offer-kind"
+                                    className="text-xs font-semibold text-slate-600"
+                                >
+                                    Accommodation type{' '}
+                                    <span className="text-rose-500">*</span>
+                                </label>
+                                <select
+                                    id="offer-kind"
+                                    value={kind}
+                                    disabled={submitting}
+                                    onChange={(event) =>
+                                        setKind(event.target.value as ServiceKind)
+                                    }
+                                    className={inputClass(Boolean(fieldErrors.kind))}
+                                >
+                                    <option value="room">Room</option>
+                                    <option value="exclusive">
+                                        Whole villa
+                                    </option>
+                                </select>
+                                {fieldErrors.kind && (
+                                    <p className="mt-1.5 text-xs text-rose-600">
+                                        {fieldErrors.kind}
+                                    </p>
+                                )}
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Only one whole-villa offer can exist.
+                                </p>
+                            </div>
+                        )}
+
+                                {fieldErrors.price && (
+                                    <p className="mt-1.5 text-xs text-rose-600">
+                                        {fieldErrors.price}
+                                    </p>
+                                )}
+                            </div>
+
+
                             <div>
                                 <label
                                     htmlFor="offer-price"
@@ -425,7 +750,7 @@ const OfferFormModal = ({
                                         aria-hidden="true"
                                         className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400"
                                     >
-                                        ₱
+                                        &#8369;
                                     </span>
                                     <input
                                         id="offer-price"
@@ -450,32 +775,34 @@ const OfferFormModal = ({
                                 )}
                             </div>
 
-                            <div>
-                                <label
-                                    htmlFor="offer-status"
-                                    className="text-xs font-semibold text-slate-600"
-                                >
-                                    Status <span className="text-rose-500">*</span>
-                                </label>
-                                <select
-                                    id="offer-status"
-                                    value={status}
-                                    onChange={(event) =>
-                                        setStatus(
-                                            event.target.value as ServiceStatus,
-                                        )
-                                    }
-                                    className={inputClass(Boolean(fieldErrors.status))}
-                                >
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                </select>
-                                {fieldErrors.status && (
-                                    <p className="mt-1.5 text-xs text-rose-600">
-                                        {fieldErrors.status}
-                                    </p>
-                                )}
-                            </div>
+                            {!isEditing ? null : (
+                                <div>
+                                    <label
+                                        htmlFor="offer-status"
+                                        className="text-xs font-semibold text-slate-600"
+                                    >
+                                        Status <span className="text-rose-500">*</span>
+                                    </label>
+                                    <select
+                                        id="offer-status"
+                                        value={status}
+                                        onChange={(event) =>
+                                            setStatus(
+                                                event.target.value as ServiceStatus,
+                                            )
+                                        }
+                                        className={inputClass(Boolean(fieldErrors.status))}
+                                    >
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                    {fieldErrors.status && (
+                                        <p className="mt-1.5 text-xs text-rose-600">
+                                            {fieldErrors.status}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             <div>
                                 <label
@@ -508,7 +835,27 @@ const OfferFormModal = ({
                             </div>
                         </div>
 
-                        <fieldset>
+
+                        <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                        <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                            <legend className="px-1 text-xs font-semibold text-slate-600">
+                                Sale / discount
+                            </legend>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                                One discount for weekday stays (Mon-Thu). Weekends use the regular price.
+                            </p>
+                            <div className="mt-3">
+                                {renderDayDiscount({
+                                    group: 'weekday',
+                                    title: 'Discount',
+                                    hint: 'Mon-Thu',
+                                    entry: weekdayDiscount,
+                                    setEntry: setWeekdayDiscount,
+                                    pricing: dayPricing.weekday,
+                                })}
+                            </div>
+                        </fieldset>
+
                             <legend className="text-xs font-semibold text-slate-600">
                                 Room Features
                             </legend>
@@ -597,49 +944,37 @@ const OfferFormModal = ({
                                 disabled={submitting}
                                 error={fieldErrors.images}
                             />
-                        </div>
                     </div>
 
                     <footer className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                        {isEditing ? (
+                        {isEditing && (
                             <button
                                 type="button"
                                 onClick={() => onDelete(service)}
                                 disabled={submitting}
-                                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50 ${focusRing}`}
+                                className="inline-flex min-h-10 items-center justify-center rounded-xl border border-rose-200 bg-white px-4 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-40"
                             >
-                                <Trash2 className="size-4" aria-hidden="true" />
-                                Delete offer
+                                <Trash2 className="mr-2 size-4" aria-hidden="true" />
+                                Delete
                             </button>
-                        ) : null}
-
-                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                disabled={submitting}
-                                className={`inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 ${focusRing}`}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#006dfc] px-5 text-sm font-semibold text-white shadow-[0_5px_15px_rgba(0,109,252,0.25)] transition hover:bg-[#0059cf] disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
-                            >
-                                {submitting && (
-                                    <Loader2
-                                        className="size-4 animate-spin"
-                                        aria-hidden="true"
-                                    />
-                                )}
-                                {submitting
-                                    ? 'Saving…'
-                                    : isEditing
-                                      ? 'Save changes'
-                                      : 'Create offer'}
-                            </button>
-                        </div>
+                        )}
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[#006dfc] px-5 text-xs font-semibold text-white transition hover:bg-[#0058cc] disabled:opacity-60"
+                        >
+                            {submitting && (
+                                <Loader2
+                                    className="mr-2 size-4 animate-spin"
+                                    aria-hidden="true"
+                                />
+                            )}
+                            {submitting
+                                ? 'Saving...'
+                                : isEditing
+                                  ? 'Save changes'
+                                  : 'Create offer'}
+                        </button>
                     </footer>
                 </form>
             </section>

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronDown, ChevronUp, Fan } from 'lucide-react'
 import ServicesFooter, {
@@ -6,21 +6,16 @@ import ServicesFooter, {
 } from '../ui/ServicesFooter'
 import BookingCalendarPanel from '../ui/BookingCalendarPanel'
 import ServiceTile from '../ui/ServiceTile'
-import { guestCapacity, money } from '../../../lib/format'
+import { money } from '../../../lib/format'
+import { getOfferPricing, getOfferBadgeLabel } from '../../../lib/pricing'
+import { getServices } from '../../../services/serviceService'
+import type { Service } from '../../../services/types'
 import PaymentSuccessView from './PaymentSuccessView'
 import wholeVilla from '../../images/wholevilla.png'
-import wholeVilla1 from '../../images/wholevilla1.png'
-import wholeVilla2 from '../../images/wholevilla2.png'
-import wholeVilla3 from '../../images/wholevilla3.png'
 import room1 from '../../images/room1.png'
-import room2 from '../../images/room2.png'
-import room3 from '../../images/room3.png'
-import room4 from '../../images/room4.png'
-import room5 from '../../images/room5.png'
 import airConditioningIcon from '../../images/AC.png'
 import tvIcon from '../../images/Tv.png'
 import privateBathroomIcon from '../../images/Cr.png'
-import villaFont from '../../images/villafont.png'
 import gcashLogo from '../../images/gcash.png'
 import mayaLogo from '../../images/maya.png'
 import paypalLogo from '../../images/paypal.png'
@@ -40,36 +35,132 @@ type Stay = {
     gallery: string[]
     price: number
     weekendPrice?: number
+    originalPrice?: number
+    weekendOriginalPrice?: number
+    discountLabel?: string
     description: string
+    amenities: string[]
     capacity: string
     rating?: string
     badge?: string
 }
 
-const wholeVillaStay: Stay = {
-    id: 'whole-villa',
-    title: 'The Whole Villa',
-    category: 'exclusive',
-    image: wholeVilla,
-    gallery: [wholeVilla, wholeVilla1, wholeVilla2, wholeVilla3, room1, room2, room3, room4, room5],
-    price: 15500,
-    weekendPrice: 17000,
+const fallbackRoomImage = room1
+
+const exclusiveDefaults = {
+    badge: 'Best Value',
+    rating: '4.3',
+    capacity: 'Good for 30-35 pax',
     description:
         'Make the whole beach house yours. Gather in the shared spaces, unwind in comfortable rooms, and enjoy an easygoing seaside stay with your group.',
-    capacity: 'Good for 30-35 pax',
-    rating: '4.3',
-    badge: 'Best Value',
+    amenities: ['TV', 'Private CR', 'Airconditioned', '2 Fans'],
 }
 
-const roomStays: Stay[] = [
-    { id: 'room-1', title: 'Room 1', category: 'public', image: room1, gallery: [room1, wholeVilla1], price: 2500, weekendPrice: 3000, description: 'A cool, comfortable room with a sturdy bunk bed and room to settle in after a day by the sea.', capacity: 'Good for 2-4 pax', rating: '4.3', badge: 'Best Seller' },
-    { id: 'room-2', title: 'Room 2', category: 'public', image: room2, gallery: [room2, wholeVilla2], price: 2500, weekendPrice: 3000, description: 'A bright and welcoming room for a relaxed beach-house stay.', capacity: 'Good for 2-4 pax', rating: '4.3', badge: 'Popular' },
-    { id: 'room-3', title: 'Room 3', category: 'public', image: room3, gallery: [room3, wholeVilla3], price: 2500, weekendPrice: 3000, description: 'A comfortable private room with the essentials for a restful getaway.', capacity: 'Good for 2-4 pax', rating: '4.3', badge: 'Trending' },
-    { id: 'room-4', title: 'Room 4', category: 'public', image: room4, gallery: [room4, wholeVilla1], price: 3500, weekendPrice: 4000, description: 'Settle into a clean, air-conditioned room close to the shared spaces.', capacity: 'Good for 6-10 pax', rating: '4.3', badge: 'Best Value' },
-    { id: 'room-5', title: 'Room 5', category: 'public', image: room5, gallery: [room5, wholeVilla2], price: 3500, weekendPrice: 4000, description: 'A simple, comfortable room for a restful stay near the shore.', capacity: 'Good for 6-10 pax', rating: '4.3', badge: 'Best Value' },
-]
+const toStay = (service: Service): Stay => {
+    const images = [...(service.images ?? [])].sort(
+        (a, b) => a.sort_order - b.sort_order,
+    )
+    const primaryImage =
+        images.find((image) => image.is_primary)?.image_url ??
+        images[0]?.image_url ??
+        fallbackRoomImage
+    const gallery = images.map((image) => image.image_url)
+    const weekdayPricing = getOfferPricing(
+        Number(service.price),
+        service.weekday_discount_type,
+        service.weekday_discount_value,
+    )
+    const weekendBase =
+        service.weekend_price != null
+            ? Number(service.weekend_price)
+            : Number(service.price)
+    const weekendPricing = getOfferPricing(
+        weekendBase,
+        service.weekend_discount_type,
+        service.weekend_discount_value,
+    )
+    const pricing = {
+        weekday: weekdayPricing,
+        weekend: weekendPricing,
+        hasDiscount: weekdayPricing.hasDiscount || weekendPricing.hasDiscount,
+    }
 
-const roomChoices = [...roomStays, wholeVillaStay]
+    return {
+        id: String(service.id),
+        title: service.name,
+        category: 'public',
+        image: primaryImage,
+        gallery: gallery.length > 0 ? gallery : [primaryImage],
+        price: pricing.weekday.price,
+        weekendPrice: pricing.weekend.price,
+        originalPrice: pricing.weekday.originalPrice ?? undefined,
+        weekendOriginalPrice: pricing.weekend.originalPrice ?? undefined,
+        discountLabel: getOfferBadgeLabel(pricing) || undefined,
+        description:
+            service.description?.trim() ||
+            'A comfortable room for a relaxed beach-house stay.',
+        amenities: service.amenities ?? [],
+        capacity:
+            service.pax != null
+                ? `Good for ${service.pax} pax`
+                : 'Good for 2-4 pax',
+    }
+}
+
+const toExclusiveStay = (service: Service): Stay => {
+    const images = [...(service.images ?? [])].sort(
+        (a, b) => a.sort_order - b.sort_order,
+    )
+    const primaryImage =
+        images.find((image) => image.is_primary)?.image_url ??
+        images[0]?.image_url ??
+        fallbackRoomImage
+    const gallery =
+        images.length > 0
+            ? images.map((image) => image.image_url)
+            : []
+    const weekdayPricing = getOfferPricing(
+        Number(service.price),
+        service.weekday_discount_type,
+        service.weekday_discount_value,
+    )
+    const weekendBase =
+        service.weekend_price != null
+            ? Number(service.weekend_price)
+            : Number(service.price)
+    const weekendPricing = getOfferPricing(
+        weekendBase,
+        service.weekend_discount_type,
+        service.weekend_discount_value,
+    )
+    const pricing = {
+        weekday: weekdayPricing,
+        weekend: weekendPricing,
+        hasDiscount: weekdayPricing.hasDiscount || weekendPricing.hasDiscount,
+    }
+
+    return {
+        id: String(service.id),
+        title: service.name,
+        category: 'exclusive',
+        image: primaryImage,
+        gallery,
+        price: weekdayPricing.price,
+        weekendPrice: weekendPricing.price,
+        originalPrice: weekdayPricing.originalPrice ?? undefined,
+        weekendOriginalPrice: weekendPricing.originalPrice ?? undefined,
+        discountLabel: getOfferBadgeLabel(pricing) || undefined,
+        description:
+            service.description?.trim() || exclusiveDefaults.description,
+        amenities: service.amenities ?? exclusiveDefaults.amenities,
+        capacity:
+            service.pax != null
+                ? `Good for ${service.pax} pax`
+                : exclusiveDefaults.capacity,
+        rating: exclusiveDefaults.rating,
+        badge: exclusiveDefaults.badge,
+    }
+}
 
 const dateParts = (value: string) => {
     if (!value) return { day: '--', monthYear: 'Select date', weekday: '' }
@@ -85,19 +176,23 @@ const dateParts = (value: string) => {
     }
 }
 
-const reservationAmenities = (stay: Stay) => {
-    switch (stay.id) {
-        case 'room-1':
-        case 'room-2':
-        case 'room-3':
-            return 'Airconditioned, TV, private CR.'
-        case 'room-4':
-            return 'AC. No TV, no private CR.'
-        case 'room-5':
-            return 'Airconditioned, 2 fans.'
-        default:
-            return stay.description
+type AmenityIcon = 'tv' | 'cr' | 'ac' | 'fan'
+
+const amenityIcon = (amenity: string): AmenityIcon | null => {
+    const value = amenity.toLowerCase()
+
+    if (value.includes('tv') || value.includes('television')) return 'tv'
+    if (
+        value.includes('cr') ||
+        value.includes('bath') ||
+        value.includes('toilet')
+    ) {
+        return 'cr'
     }
+    if (value.includes('fan')) return 'fan'
+    if (value.includes('air') || value.includes('ac')) return 'ac'
+
+    return null
 }
 
 const getReservationPrice = (stay: Stay, checkIn: string, checkOut: string) => {
@@ -130,24 +225,26 @@ const getReservationPrice = (stay: Stay, checkIn: string, checkOut: string) => {
 }
 
 function PublicAccommodationSection({
+    rooms,
+    loading,
+    error,
+    onRetry,
     selectedStay,
+    selectedRoomIds,
     onSelectStay,
     onReserve,
-    checkIn,
-    checkOut,
 }: {
-    selectedStay: Stay
+    rooms: Stay[]
+    loading: boolean
+    error: string
+    onRetry: () => void
+    selectedStay: Stay | null
+    selectedRoomIds: string[]
     onSelectStay: (stay: Stay) => void
     onReserve: (stay: Stay) => void
-    checkIn: string
-    checkOut: string
 }) {
     const [showAllRooms, setShowAllRooms] = useState(false)
-    const [reservationStay, setReservationStay] = useState<Stay | null>(null)
-    const visibleRooms = showAllRooms ? roomStays : roomStays.slice(0, 4)
-    const reservationPrice = reservationStay
-        ? getReservationPrice(reservationStay, checkIn, checkOut)
-        : null
+    const visibleRooms = showAllRooms ? rooms : rooms.slice(0, 4)
 
     return (
         <section aria-labelledby="public-title" className="mb-8 sm:mb-11">
@@ -157,88 +254,59 @@ function PublicAccommodationSection({
                         Public accommodation
                     </h2>
                     <p className="mt-0.5 text-[10px] text-slate-500 sm:text-xs">
-                        Select a room to view its photos and details.
+                        Select a room to add it to your booking.
                     </p>
                 </div>
                 <span className="hidden text-[10px] text-slate-500 sm:block">
-                    {roomStays.length} rooms
+                    {loading ? 'Loading rooms…' : `${rooms.length} rooms`}
                 </span>
             </div>
 
-            <div className="-mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 2xl:grid-cols-4">
-                {visibleRooms.map((stay) => (
-                    <ServiceTile
-                        key={stay.id}
-                        variant="room"
-                        stay={stay}
-                        isSelected={selectedStay.id === stay.id}
-                        isReservationSelected={reservationStay?.id === stay.id}
-                        onSelect={() => onSelectStay(stay)}
-                        onToggleReservation={() =>
-                            setReservationStay((current) =>
-                                current?.id === stay.id ? null : stay,
-                            )
-                        }
-                    />
-                ))}
-            </div>
-            {reservationStay && reservationPrice && (
-                <section
-                    aria-label={`${reservationStay.title} reservation`}
-                    aria-live="polite"
-                    className="mt-3 grid overflow-hidden rounded-lg border border-slate-200 bg-[#f7f7f8] text-slate-600 shadow-[0_3px_12px_rgba(15,23,42,0.12)] sm:grid-cols-[1.45fr_0.55fr_1.2fr_1fr]"
-                >
-                    <div className="border-b border-slate-200 px-4 py-3 sm:border-b-0 sm:border-r">
-                        <p className="text-[10px]">Rate</p>
-                        <p className="mt-2 text-sm font-bold text-slate-700">
-                            {reservationStay.title}
-                        </p>
-                        <p className="mt-1 text-[10px] leading-4 text-slate-600">
-                            {reservationAmenities(reservationStay)} {reservationStay.capacity}.
-                        </p>
-                    </div>
-                    <div className="border-b border-slate-200 px-4 py-3 sm:border-b-0 sm:border-r">
-                        <p className="text-[10px]">Guest</p>
-                        <p className="mt-4 text-xs text-slate-700">
-                            {guestCapacity(reservationStay)}
-                        </p>
-                    </div>
-                    <div className="border-b border-slate-200 px-4 py-3 sm:border-b-0 sm:border-r">
-                        <p className="text-[10px]">
-                            Price for {reservationPrice.nights}{' '}
-                            {reservationPrice.nights === 1 ? 'night' : 'nights'}
-                        </p>
-                        <p className="mt-2 flex items-center gap-2">
-                            <span className="text-lg font-bold text-slate-600">
-                                {money(reservationPrice.total)}
-                            </span>
-                        </p>
-                        <p className="text-[10px] text-[#006dfc]">
-                            {checkIn && checkOut ? 'based on selected dates' : 'weekdays'}
-                        </p>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 px-4 py-3 sm:flex-col sm:justify-center">
-                        <div className="text-left sm:text-center">
-                            <p className="text-[10px]">1 Room</p>
-                            <p className="text-lg font-bold text-slate-600">
-                                {money(reservationPrice.total)}
-                            </p>
-                            <p className="text-[10px]">
-                                for {reservationPrice.nights}{' '}
-                                {reservationPrice.nights === 1 ? 'night' : 'nights'}
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => onReserve(reservationStay)}
-                            className="rounded-md bg-[#0875f9] px-6 py-2 text-[10px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:scale-105 hover:bg-blue-700 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-                        >
-                            Reserve
-                        </button>
-                    </div>
-                </section>
+            {loading ? (
+                <div className="-mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 2xl:grid-cols-4">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                        <div
+                            key={index}
+                            className="h-56 min-w-[72vw] animate-pulse rounded-xl bg-slate-100 sm:h-64 sm:min-w-0 lg:h-72"
+                        />
+                    ))}
+                </div>
+            ) : error ? (
+                <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-8 text-center">
+                    <p className="text-sm font-medium text-rose-700">{error}</p>
+                    <button
+                        type="button"
+                        onClick={onRetry}
+                        className="mt-3 rounded-full bg-[#006dfc] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                    >
+                        Try again
+                    </button>
+                </div>
+            ) : rooms.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
+                    <p className="text-sm font-medium text-slate-600">
+                        No rooms are available right now. Please check back soon.
+                    </p>
+                </div>
+            ) : (
+                <div className="-mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 2xl:grid-cols-4">
+                    {visibleRooms.map((stay) => (
+                        <ServiceTile
+                            key={stay.id}
+                            variant="room"
+                            stay={stay}
+                            isSelected={selectedStay?.id === stay.id}
+                            isReservationSelected={selectedRoomIds.includes(
+                                stay.id,
+                            )}
+                            onSelect={() => onSelectStay(stay)}
+                            onToggleReservation={() => onReserve(stay)}
+                        />
+                    ))}
+                </div>
             )}
-            {!showAllRooms && (
+
+            {!loading && !error && rooms.length > 4 && !showAllRooms && (
                 <div className="mt-1 flex justify-center">
                     <button
                         type="button"
@@ -254,12 +322,14 @@ function PublicAccommodationSection({
 }
 
 function ExclusiveAccommodationSection({
+    stay,
     selectedStay,
     activePhoto,
     onSelectStay,
     onSelectPhoto,
 }: {
-    selectedStay: Stay
+    stay: Stay
+    selectedStay: Stay | null
     activePhoto: string
     onSelectStay: (stay: Stay) => void
     onSelectPhoto: (image: string) => void
@@ -276,11 +346,11 @@ function ExclusiveAccommodationSection({
             </div>
             <ServiceTile
                 variant="exclusive"
-                stay={wholeVillaStay}
-                isSelected={selectedStay.id === wholeVillaStay.id}
+                stay={stay}
+                isSelected={selectedStay?.id === stay.id}
                 activePhoto={activePhoto}
-                gallery={wholeVillaStay.gallery}
-                onSelect={() => onSelectStay(wholeVillaStay)}
+                gallery={stay.gallery}
+                onSelect={() => onSelectStay(stay)}
                 onSelectPhoto={onSelectPhoto}
             />
         </section>
@@ -298,20 +368,9 @@ function RoomDetailView({
     onSelectPhoto: (photo: string) => void
     onBack: () => void
 }) {
-    const gallery = [wholeVilla3, room3, villaFont]
-    const description = stay.id === 'room-2'
-        ? 'Offers rustic wooden bunk beds and modern comforts, including AC, TV, and a private CR, for a relaxing stay with your barkada.'
-        : stay.id === 'room-3'
-            ? 'Combines a warm, homey atmosphere with essential amenities like AC, TV, and a private CR, perfect for 2 to 4 guests.'
-            : stay.id === 'whole-villa'
-                ? 'Combines a warm, homey atmosphere with essential amenities like AC, TV, and private CRs, making it a comfortable stay for your group.'
-            : stay.id === 'room-4'
-                ? 'Offers warm wooden bunk beds and air-conditioned comfort, an ideal pick for guests who want a simple, peaceful retreat without the extras.'
-                : stay.id === 'room-5'
-                    ? 'Features a spacious, comfy bed with air conditioning and two fans, giving you budget-friendly comfort and a relaxing, easygoing stay.'
-                    : 'Provides a cozy bunk-style setup with air conditioning, a TV, and a private CR, great for small groups and families.'
     const titleId = `${stay.id}-detail-title`
-    const detailTitle = stay.id === 'whole-villa' ? 'Whole Villa' : stay.title
+    const gallery = stay.gallery.slice(0, 3)
+    const hasAmenities = stay.amenities.length > 0
 
     return (
         <section aria-labelledby={titleId} className="mb-8">
@@ -334,111 +393,74 @@ function RoomDetailView({
                             id={titleId}
                             className="text-xl font-bold leading-tight text-[#006dfc]"
                         >
-                            {detailTitle}
+                            {stay.title}
                         </h2>
                         <p className="mt-1 text-xs text-slate-600">
                             {stay.capacity}
-                            {stay.id !== 'room-4' && stay.id !== 'room-5' && (
-                                <><span className="mx-1">•</span> With AC</>
-                            )}
                         </p>
                     </div>
 
-                    <div className="mt-4">
-                        <h3 className="text-sm font-semibold text-slate-700">
-                            Room Features
-                        </h3>
-                        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-2 text-[10px] font-semibold text-emerald-500 sm:text-xs">
-                            {stay.id === 'whole-villa' ? (
-                                <>
-                                    <span className="inline-flex items-center gap-1">
-                                        <img src={tvIcon} alt="" className="size-4 object-contain" />
-                                        TV
-                                    </span>
-                                    <span className="inline-flex items-center gap-1">
-                                        <img
-                                            src={privateBathroomIcon}
-                                            alt=""
-                                            className="size-4 object-contain"
-                                        />
-                                        Private CR
-                                    </span>
-                                    <span className="inline-flex items-center gap-1">
-                                        <img
-                                            src={airConditioningIcon}
-                                            alt=""
-                                            className="size-4 object-contain"
-                                        />
-                                        Airconditioned
-                                    </span>
-                                    <span className="inline-flex items-center gap-1">
-                                        <Fan aria-hidden="true" className="size-4" />
-                                        2 Fans
-                                    </span>
-                                </>
-                            ) : stay.id === 'room-4' ? (
-                                <span className="inline-flex items-center gap-1">
-                                    <img
-                                        src={airConditioningIcon}
-                                        alt=""
-                                        className="size-4 object-contain"
-                                    />
-                                    Airconditioned
-                                </span>
-                            ) : stay.id === 'room-5' ? (
-                                <>
-                                    <span className="inline-flex items-center gap-1">
-                                        <Fan aria-hidden="true" className="size-4" />
-                                        2 Fans
-                                    </span>
-                                    <span className="inline-flex items-center gap-1">
-                                        <img
-                                            src={airConditioningIcon}
-                                            alt=""
-                                            className="size-4 object-contain"
-                                        />
-                                        Airconditioned
-                                    </span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="inline-flex items-center gap-1">
-                                        <img src={tvIcon} alt="" className="size-4 object-contain" />
-                                        TV
-                                    </span>
-                                    <span className="inline-flex items-center gap-1">
-                                        <img
-                                            src={privateBathroomIcon}
-                                            alt=""
-                                            className="size-4 object-contain"
-                                        />
-                                        Private CR
-                                    </span>
-                                    <span className="inline-flex items-center gap-1">
-                                        <img
-                                            src={airConditioningIcon}
-                                            alt=""
-                                            className="size-4 object-contain"
-                                        />
-                                        Airconditioned
-                                    </span>
-                                </>
-                            )}
+                    {hasAmenities && (
+                        <div className="mt-4">
+                            <h3 className="text-sm font-semibold text-slate-700">
+                                Room Features
+                            </h3>
+                            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-2 text-[10px] font-semibold text-emerald-500 sm:text-xs">
+                                {stay.amenities.map((amenity, index) => {
+                                    const icon = amenityIcon(amenity)
+
+                                    return (
+                                        <span
+                                            key={`${amenity}-${index}`}
+                                            className="inline-flex items-center gap-1"
+                                        >
+                                            {icon === 'tv' && (
+                                                <img
+                                                    src={tvIcon}
+                                                    alt=""
+                                                    className="size-4 object-contain"
+                                                />
+                                            )}
+                                            {icon === 'cr' && (
+                                                <img
+                                                    src={privateBathroomIcon}
+                                                    alt=""
+                                                    className="size-4 object-contain"
+                                                />
+                                            )}
+                                            {icon === 'ac' && (
+                                                <img
+                                                    src={airConditioningIcon}
+                                                    alt=""
+                                                    className="size-4 object-contain"
+                                                />
+                                            )}
+                                            {icon === 'fan' && (
+                                                <Fan
+                                                    aria-hidden="true"
+                                                    className="size-4"
+                                                />
+                                            )}
+                                            {amenity}
+                                        </span>
+                                    )
+                                })}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <p className="mt-6 text-[11px] leading-5 text-slate-600">
-                        {description}
+                        {stay.description}
                     </p>
 
-                    {stay.id !== 'whole-villa' && stay.id !== 'room-4' && stay.id !== 'room-5' && (
+                    {gallery.length > 1 && (
                         <div className="mt-auto grid grid-cols-3 gap-2 pt-5">
                             {gallery.map((image, index) => (
                                 <button
                                     key={image}
                                     type="button"
                                     onClick={() => onSelectPhoto(image)}
-                                    aria-label={`Show ${stay.title} photo ${index + 2}`}
+                                    aria-label={`Show ${stay.title} photo ${index + 1}`}
                                     aria-pressed={selectedPhoto === image}
                                     className={`overflow-hidden rounded-md ring-2 transition ${
                                         selectedPhoto === image
@@ -973,13 +995,21 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
     const location = useLocation()
     const incomingBooking = (location.state as ServicesRouteState | null)?.booking
     const [activeFilter, setActiveFilter] = useState<'all' | StayCategory>('all')
-    const [selectedStay, setSelectedStay] = useState<Stay>(() =>
-        roomChoices.find((stay) => stay.id === incomingBooking?.rooms.find((room) => room.stayId)?.stayId)
-            ?? wholeVillaStay,
-    )
-    const [activePhoto, setActivePhoto] = useState(selectedStay.image)
+    const [rooms, setRooms] = useState<{
+        key: number
+        services: Service[]
+        error: string
+    } | null>(null)
+    const [reloadKey, setReloadKey] = useState(0)
+    const services = useMemo(() => rooms?.services ?? [], [rooms])
+    const roomsLoading = rooms?.key !== reloadKey
+    const roomsError = rooms?.key === reloadKey ? rooms.error : ''
+    const [selectedStay, setSelectedStay] = useState<Stay | null>(null)
+    const [activePhoto, setActivePhoto] = useState(wholeVilla)
     const [isRoomDetailOpen, setIsRoomDetailOpen] = useState(false)
-    const [selectedRoomPhoto, setSelectedRoomPhoto] = useState(room1)
+    const [selectedRoomPhoto, setSelectedRoomPhoto] = useState(
+        wholeVilla,
+    )
     const [checkIn, setCheckIn] = useState(incomingBooking?.checkIn ?? '')
     const [checkOut, setCheckOut] = useState(incomingBooking?.checkOut ?? '')
     const [roomGuests, setRoomGuests] = useState<RoomGuests[]>(
@@ -988,6 +1018,90 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
     const [selectedRoomIndex, setSelectedRoomIndex] = useState(0)
     const [notice, setNotice] = useState('')
     const [isReservationOpen, setIsReservationOpen] = useState(false)
+
+    useEffect(() => {
+        let active = true
+
+        getServices()
+            .then((response) => {
+                if (!active) return
+                setRooms({
+                    key: reloadKey,
+                    services: response.data.data ?? [],
+                    error: '',
+                })
+            })
+            .catch(() => {
+                if (!active) return
+                setRooms({
+                    key: reloadKey,
+                    services: [],
+                    error: 'Unable to load rooms right now. Please try again.',
+                })
+            })
+
+        return () => {
+            active = false
+        }
+    }, [reloadKey])
+
+    const publicRooms = useMemo(
+        () =>
+            services
+                .filter(
+                    (service) =>
+                        service.kind === 'room' && service.status === 'active',
+                )
+                .map(toStay),
+        [services],
+    )
+
+    const exclusiveService = useMemo(
+        () =>
+            services.find(
+                (service) =>
+                    service.kind === 'exclusive' && service.status === 'active',
+            ) ?? null,
+        [services],
+    )
+
+    const exclusiveStay = useMemo(
+        () =>
+            exclusiveService ? toExclusiveStay(exclusiveService) : null,
+        [exclusiveService],
+    )
+
+    if (exclusiveStay && selectedStay === null) {
+        setSelectedStay(exclusiveStay)
+        setActivePhoto(exclusiveStay.image)
+        setSelectedRoomPhoto(exclusiveStay.image)
+    }
+
+    const roomChoices = useMemo(
+        () => [...publicRooms, ...(exclusiveStay ? [exclusiveStay] : [])],
+        [publicRooms, exclusiveStay],
+    )
+
+    const selectedRoomIds = roomGuests.flatMap((room) =>
+        room.stayId ? [room.stayId] : [],
+    )
+
+    const [resolvedIncomingId, setResolvedIncomingId] = useState<string | null>(
+        null,
+    )
+    const incomingStayId =
+        incomingBooking?.rooms.find((room) => room.stayId)?.stayId ?? null
+
+    if (incomingStayId && resolvedIncomingId !== incomingStayId) {
+        const match = roomChoices.find((stay) => stay.id === incomingStayId)
+
+        if (match) {
+            setResolvedIncomingId(incomingStayId)
+            setSelectedStay(match)
+            setActivePhoto(match.image)
+            setSelectedRoomPhoto(match.image)
+        }
+    }
 
     const nights = useMemo(() => {
         if (!checkIn || !checkOut) return 0
@@ -1002,9 +1116,7 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
         setActivePhoto(stay.image)
         setSelectedRoomPhoto(stay.image)
         setNotice('')
-        setIsRoomDetailOpen(
-            ['room-1', 'room-2', 'room-3', 'room-4', 'room-5', 'whole-villa'].includes(stay.id),
-        )
+        setIsRoomDetailOpen(true)
     }
 
     const reserveStay = (stay: Stay) => {
@@ -1013,21 +1125,30 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
         )
         if (alreadySelectedIndex !== -1) {
             setSelectedRoomIndex(alreadySelectedIndex)
-            setNotice(`${stay.title} is already selected in Room ${alreadySelectedIndex + 1}.`)
+            setNotice(
+                `${stay.title} is already selected in Room ${alreadySelectedIndex + 1}.`,
+            )
             return
         }
 
-        const targetIndex = Math.max(
-            0,
-            Math.min(selectedRoomIndex, roomGuests.length - 1),
-        )
-        setRoomGuests((current) =>
-            current.length === 0
-                ? [{ stayId: stay.id, adults: 2, kids: 0 }]
-                : current.map((room, index) =>
-                      index === targetIndex ? { ...room, stayId: stay.id } : room,
-                  ),
-        )
+        const emptyIndex = roomGuests.findIndex((room) => !room.stayId)
+        const targetIndex = emptyIndex === -1 ? roomGuests.length : emptyIndex
+
+        setRoomGuests((current) => {
+            if (current.length === 0) {
+                return [{ stayId: stay.id, adults: 2, kids: 0 }]
+            }
+
+            const empty = current.findIndex((room) => !room.stayId)
+
+            if (empty !== -1) {
+                return current.map((room, index) =>
+                    index === empty ? { ...room, stayId: stay.id } : room,
+                )
+            }
+
+            return [...current, { stayId: stay.id, adults: 2, kids: 0 }]
+        })
         setSelectedRoomIndex(targetIndex)
         setNotice(`${stay.title} added to your booking.`)
     }
@@ -1088,7 +1209,7 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
                     onCheckAvailability={handleCheckAvailability}
                 />
                 <div className="min-w-0">
-                {isRoomDetailOpen ? (
+                {isRoomDetailOpen && selectedStay ? (
                     <RoomDetailView
                         stay={selectedStay}
                         selectedPhoto={selectedRoomPhoto}
@@ -1132,21 +1253,25 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
 
                 {showPublic && (
                     <PublicAccommodationSection
+                        rooms={publicRooms}
+                        loading={roomsLoading}
+                        error={roomsError}
+                        onRetry={() => setReloadKey((key) => key + 1)}
                         selectedStay={selectedStay}
+                        selectedRoomIds={selectedRoomIds}
                         onSelectStay={selectStay}
                         onReserve={reserveStay}
-                        checkIn={checkIn}
-                        checkOut={checkOut}
                     />
                 )}
 
-                {showExclusive && (
+                {showExclusive && exclusiveStay && (
                     <ExclusiveAccommodationSection
+                        stay={exclusiveStay}
                         selectedStay={selectedStay}
                         activePhoto={activePhoto}
                         onSelectStay={selectStay}
                         onSelectPhoto={(image) => {
-                            setSelectedStay(wholeVillaStay)
+                            if (exclusiveStay) setSelectedStay(exclusiveStay)
                             setActivePhoto(image)
                             setSelectedRoomPhoto(image)
                             setNotice('')

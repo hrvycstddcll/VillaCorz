@@ -1,6 +1,4 @@
 import { guestCapacity, money } from '../../../lib/format'
-import discountBadge from '../../images/discount-20.png'
-import bestSellerBadge from '../../images/bestselling.png'
 import star from '../../images/star.png'
 
 export type ServiceTileStay = {
@@ -9,6 +7,9 @@ export type ServiceTileStay = {
     image: string
     price: number
     weekendPrice?: number
+    originalPrice?: number
+    weekendOriginalPrice?: number
+    discountLabel?: string
     capacity: string
     rating?: string
     badge?: string
@@ -35,9 +36,44 @@ type ExclusiveTileProps = {
 
 type ServiceTileProps = RoomTileProps | ExclusiveTileProps
 
+const DiscountRibbon = ({ label }: { label: string }) => {
+    const percent = label.match(/(\d+(?:\.\d+)?)\s*%/)?.[1]
+    const isUpTo = label.toLowerCase().startsWith('up to')
+
+    return (
+        <span className="pointer-events-none absolute right-0 top-0 z-10 flex h-[5.5rem] w-[5.5rem] flex-col items-end bg-[#006dfc] pr-2 pt-2 text-white [clip-path:polygon(100%_0,0_0,100%_100%)] sm:h-24 sm:w-24 sm:pr-2.5 sm:pt-2.5">
+            {percent ? (
+                <>
+                    {isUpTo && (
+                        <span className="text-[7px] font-semibold uppercase leading-none tracking-[0.1em] text-white/80 sm:text-[8px]">
+                            Up to
+                        </span>
+                    )}
+                    <span className="text-base font-bold leading-none sm:text-lg">
+                        {percent}%
+                    </span>
+                    <span className="pt-0.5 text-[7px] font-bold uppercase leading-none tracking-[0.2em] text-white/90 sm:text-[8px]">
+                        Off
+                    </span>
+                </>
+            ) : (
+                <span className="max-w-12 text-right text-[8px] font-bold uppercase leading-tight sm:max-w-14 sm:text-[9px]">
+                    {label}
+                </span>
+            )}
+        </span>
+    )
+}
+
 const ServiceTile = (props: ServiceTileProps) => {
     if (props.variant === 'exclusive') {
         const { stay, isSelected, activePhoto, gallery, onSelect, onSelectPhoto } = props
+        const hasWeekdayOriginal =
+            stay.originalPrice != null && stay.originalPrice > stay.price
+        const weekendPrice = stay.weekendPrice ?? stay.price
+        const hasWeekendOriginal =
+            stay.weekendOriginalPrice != null &&
+            stay.weekendOriginalPrice > weekendPrice
 
         return (
             <>
@@ -55,7 +91,13 @@ const ServiceTile = (props: ServiceTileProps) => {
                             className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.01] sm:h-64 lg:h-72"
                         />
                         <span className="absolute inset-x-0 bottom-0 flex h-[35%] items-end justify-between gap-2 border-t border-white/25 bg-white/20 px-2 pb-1 pt-1 text-white shadow-[0_-8px_20px_rgba(0,0,0,0.16)] backdrop-blur-[3px] sm:px-2.5">
-                            <span className="absolute left-0 top-0 inline-flex h-8 w-[34%] min-w-55 max-w-90 items-center justify-between gap-2 bg-white px-3 py-0.5 text-[#006dfc] shadow-sm sm:h-10 sm:px-3.5 sm:py-1">
+                            <span
+                                className={`absolute left-0 top-0 inline-flex w-[34%] min-w-55 max-w-90 items-center justify-between gap-2 bg-white px-3 text-[#006dfc] shadow-sm sm:px-3.5 ${
+                                    hasWeekdayOriginal
+                                        ? 'h-auto py-1'
+                                        : 'h-8 py-0.5 sm:h-10 sm:py-1'
+                                }`}
+                            >
                                 <span className="shrink-0 text-left text-[11px] font-semibold italic leading-[1.05] sm:text-sm">
                                     Weekdays
                                     <span className="block text-[9px] font-medium sm:text-[10px]">Mon - Thu</span>
@@ -67,19 +109,32 @@ const ServiceTile = (props: ServiceTileProps) => {
                                     <span className="block whitespace-nowrap text-lg font-bold leading-none sm:text-2xl">
                                         {money(stay.price)}
                                     </span>
+                                    {hasWeekdayOriginal && (
+                                        <span className="block whitespace-nowrap text-[7px] font-medium leading-none text-[#003079]/55 line-through sm:text-[8px]">
+                                            {money(stay.originalPrice!)}
+                                        </span>
+                                    )}
                                 </span>
                             </span>
                             <span className="absolute right-2 -top-9 rounded-full bg-white/95 px-2.5 py-1 text-[9px] font-semibold text-[#006dfc] shadow-sm sm:right-3 sm:text-[10px]">
                                 {stay.badge}
                             </span>
-                            <span className="flex min-w-0 flex-col items-start gap-0.5 pt-7">
+                            <span className="flex min-w-0 flex-col items-start gap-0.5 pt-9 sm:pt-11">
                                 <span className="block text-xs font-bold leading-tight sm:text-sm">
                                     Whole Villa
                                 </span>
                                 <span className="flex items-center gap-1 truncate text-[8px] leading-tight text-white/95 sm:text-[9px]">
                                     <span>{stay.capacity}</span>
-                                    <img src={star} alt="" className="size-3 shrink-0 object-contain" />
-                                    <span>{stay.rating}</span>
+                                    {stay.rating && (
+                                        <>
+                                            <img
+                                                src={star}
+                                                alt=""
+                                                className="size-3 shrink-0 object-contain"
+                                            />
+                                            <span>{stay.rating}</span>
+                                        </>
+                                    )}
                                 </span>
                             </span>
                             <span className="flex shrink-0 flex-col items-end gap-1">
@@ -90,6 +145,11 @@ const ServiceTile = (props: ServiceTileProps) => {
                                     <span className="block text-xs font-bold leading-tight sm:text-sm">
                                         {money(stay.weekendPrice ?? stay.price)}
                                     </span>
+                                    {hasWeekendOriginal && (
+                                        <span className="block whitespace-nowrap text-[7px] font-medium leading-tight text-white/70 line-through sm:text-[8px]">
+                                            {money(stay.weekendOriginalPrice!)}
+                                        </span>
+                                    )}
                                 </span>
                                 <span className="rounded-md bg-white px-2.5 py-1 text-[9px] font-semibold text-[#006dfc] shadow-sm sm:px-3 sm:text-[10px]">
                                     Select room
@@ -97,6 +157,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                             </span>
                         </span>
                     </button>
+                    {stay.discountLabel ? <DiscountRibbon label={stay.discountLabel} /> : null}
                 </div>
                 <div className="mt-2 flex gap-2 overflow-x-auto pb-2">
                     {gallery.map((image, index) => (
@@ -142,18 +203,8 @@ const ServiceTile = (props: ServiceTileProps) => {
                     className="h-56 w-full scale-[1.05] object-cover transition duration-500 group-hover:scale-[1.08] sm:h-64 lg:h-72"
                 />
             </button>
-            <img
-                src={discountBadge}
-                alt="20% off"
-                className="pointer-events-none absolute right-0 top-0 z-10 h-14 w-14 object-contain sm:h-16 sm:w-16"
-            />
-            {stay.id === 'room-1' ? (
-                <img
-                    src={bestSellerBadge}
-                    alt="Best seller"
-                    className="pointer-events-none absolute -left-1 -top-1 z-20 h-14 w-14 object-contain drop-shadow-md sm:h-16 sm:w-16"
-                />
-            ) : stay.badge ? (
+            {stay.discountLabel ? <DiscountRibbon label={stay.discountLabel} /> : null}
+            {stay.badge ? (
                 <span className="pointer-events-none absolute right-2 top-[46%] z-20 rounded-full bg-white/95 px-2.5 py-1 text-[9px] font-semibold leading-tight text-[#006dfc] shadow-sm sm:text-[10px]">
                     {stay.badge}
                 </span>
@@ -171,16 +222,30 @@ const ServiceTile = (props: ServiceTileProps) => {
                         <span className="block whitespace-nowrap text-xs font-bold leading-none sm:text-sm">
                             {money(stay.price)}
                         </span>
+                        {stay.originalPrice != null &&
+                            stay.originalPrice > stay.price && (
+                                <span className="block whitespace-nowrap text-[7px] font-medium leading-none text-[#003079]/55 line-through sm:text-[8px]">
+                                    {money(stay.originalPrice)}
+                                </span>
+                            )}
                     </span>
                 </span>
-                <span className="absolute left-2 top-7 min-w-0 text-left sm:left-2.5 sm:top-8">
+                <span className="absolute left-2 top-11 min-w-0 text-left sm:left-2.5 sm:top-12">
                     <span className="block text-xs font-bold leading-tight sm:text-sm">
                         {stay.title}
                     </span>
                     <span className="flex items-center gap-1 truncate text-[8px] leading-tight text-white/95 sm:text-[9px]">
                         <span>{stay.capacity}</span>
-                        <img src={star} alt="" className="size-3 shrink-0 object-contain" />
-                        <span>{stay.rating}</span>
+                        {stay.rating && (
+                            <>
+                                <img
+                                    src={star}
+                                    alt=""
+                                    className="size-3 shrink-0 object-contain"
+                                />
+                                <span>{stay.rating}</span>
+                            </>
+                        )}
                     </span>
                 </span>
                 <span className="absolute bottom-2 right-2 flex shrink-0 flex-col items-end gap-1.5 sm:right-2.5">
@@ -191,6 +256,13 @@ const ServiceTile = (props: ServiceTileProps) => {
                         <span className="block text-xs font-bold leading-tight sm:text-sm">
                             {money(stay.weekendPrice ?? stay.price)}
                         </span>
+                        {stay.weekendOriginalPrice != null &&
+                            stay.weekendOriginalPrice >
+                                (stay.weekendPrice ?? stay.price) && (
+                                <span className="block whitespace-nowrap text-[7px] font-medium leading-tight text-white/70 line-through sm:text-[8px]">
+                                    {money(stay.weekendOriginalPrice)}
+                                </span>
+                            )}
                     </span>
                     <button
                         type="button"
