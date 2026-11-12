@@ -134,7 +134,7 @@ const BookingCalendarPanel = ({
             aria-label="Booking calendar"
             className="h-fit w-full self-start overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,0.12)] sm:p-5 lg:sticky lg:top-24 lg:w-auto"
         >
-            <p className="mb-4 text-xs font-semibold text-[#006dfc]">Select dates</p>
+            <p className="mb-4 text-xs font-semibold text-[#006dfc]">Your booking</p>
 
             <div className="mb-3 flex items-center justify-between">
                 <button
@@ -330,7 +330,7 @@ const BookingCalendarPanel = ({
                             }}
                             className="mb-2 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] text-slate-700 focus:border-[#0875f9] focus:outline-none"
                         >
-                            <option value="">Choose a room</option>
+                            <option value="">Choose room or villa</option>
                             {roomChoices.map((choice) => {
                                 const selectedElsewhere = roomGuests.some(
                                     (otherRoom, otherIndex) =>

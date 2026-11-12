@@ -12,6 +12,7 @@ import Reports from './assets/components/pages/Reports'
 import HomePage from './assets/components/pages/HomePage'
 import AboutUs from './assets/components/pages/AboutUs'
 import Services from './assets/components/pages/Services'
+import Payment from './assets/components/pages/Payment'
 import ManageOffers from './assets/components/pages/Offers'
 import Contact from './assets/components/pages/Contact'
 import Navbar from './assets/components/ui/Navbar'
@@ -172,6 +173,8 @@ function AppRoutes() {
                 </Route>
 
                 <Route path="/services" element={<Services />} />
+                <Route path="/payment" element={<Payment />} />
+                <Route path="/payment/confirm" element={<Payment />} />
                 <Route path="/home" element={<Navigate to="/" replace />} />
 
                 <Route

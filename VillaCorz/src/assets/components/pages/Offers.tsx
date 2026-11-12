@@ -20,7 +20,6 @@ import {
     getOfferPricing,
     getOfferBadgeLabel,
 } from '../../../lib/pricing'
-import fallbackOfferImage from '../../images/wholevilla.png'
 
 type Notice = {
     type: 'success' | 'error'
@@ -83,7 +82,7 @@ const toServiceTileStay = (service: Service): ServiceTileStay => {
     return {
         id: String(service.id),
         title: service.name,
-        image: primaryImage?.image_url ?? fallbackOfferImage,
+        image: primaryImage?.image_url ?? '',
         price: weekdayPricing.price,
         originalPrice: weekdayPricing.originalPrice ?? undefined,
         weekendPrice: weekendPricing.price,
