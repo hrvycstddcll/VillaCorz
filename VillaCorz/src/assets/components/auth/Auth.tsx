@@ -66,7 +66,14 @@ const AuthLeftPanel = () => (
     </aside>
 )
 
-const FormLogin = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType }: FormProps) => (
+const FormLogin = ({
+    onSwitch,
+    onForgot,
+    onSubmit,
+    isSubmitting,
+    feedback,
+    feedbackType,
+}: FormProps & { onForgot: () => void }) => (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-6 sm:gap-8">
         <header className="flex w-full flex-col items-start gap-2">
             <h1 className="text-3xl font-extrabold tracking-tight text-[#5571ff] sm:text-[2.7rem]">
@@ -107,6 +114,7 @@ const FormLogin = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType }:
 
             <button
                 type="button"
+                onClick={onForgot}
                 className="self-end text-sm text-gray-500 transition hover:text-[#0866e8]"
             >
                 Forgot password?
@@ -376,6 +384,7 @@ const Auth = () => {
                     ) : (
                         <FormLogin
                             onSwitch={switchForm}
+                            onForgot={() => navigate('/forgot-password')}
                             onSubmit={handleSubmit}
                             isSubmitting={isSubmitting}
                             feedback={feedback}

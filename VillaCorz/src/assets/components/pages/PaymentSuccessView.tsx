@@ -139,7 +139,11 @@ function PaymentSuccessView({
                 <button
                     type="button"
                     onClick={onConfirm}
-                    className="mt-4 min-h-10 w-full rounded-full bg-[#0875f9] px-4 text-[10px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                    className={`mt-4 inline-flex min-h-11 w-full items-center justify-center px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] ${
+                        isSuccessful
+                            ? 'rounded-full bg-[#0875f9] px-4 text-[10px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] hover:bg-blue-700 focus-visible:outline-blue-700'
+                            : 'rounded-lg text-slate-600 hover:bg-white hover:text-slate-900'
+                    }`}
                 >
                     {isSuccessful ? 'Return to services' : 'Back to booking'}
                 </button>

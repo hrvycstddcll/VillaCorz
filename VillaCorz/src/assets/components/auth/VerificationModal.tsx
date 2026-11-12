@@ -390,7 +390,7 @@ const VerificationModal = ({
                             <button
                                 type="button"
                                 onClick={handleClose}
-                                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#006dfc] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_5px_12px_rgba(0,109,252,0.25)] transition duration-200 hover:bg-[#0056cc] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006dfc] focus-visible:ring-offset-2"
+                                className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                             >
                                 Back to registration
                             </button>

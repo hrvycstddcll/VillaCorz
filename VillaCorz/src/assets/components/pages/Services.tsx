@@ -355,9 +355,9 @@ function RoomDetailView({
             <button
                 type="button"
                 onClick={onBack}
-                className="mb-3 text-xs font-medium text-[#006dfc] transition hover:underline"
+                className="mb-3 inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
             >
-                ← Back to rooms
+                Back to rooms
             </button>
             <div className="grid overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_4px_18px_rgba(15,23,42,0.12)] md:grid-cols-[minmax(0,1.6fr)_minmax(260px,1fr)]">
                 {selectedPhoto ? (
@@ -557,9 +557,9 @@ function ReservationView({
                                 } satisfies ServicesRouteState,
                             })
                         }
-                        className="min-h-11 font-medium text-[#0875f9] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0875f9]"
+                        className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                     >
-                        ← Back to services
+                        Back to services
                     </button>
                     <span aria-hidden="true" className="text-slate-400">/</span>
                     <span aria-current="step" className="font-semibold text-slate-800">

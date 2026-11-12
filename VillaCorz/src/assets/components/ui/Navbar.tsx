@@ -342,14 +342,16 @@ const Navbar = () => {
 
                 {!loading &&
                     (user ? (
-                        <DirectionalButton
-                            fillColor="#ffffff"
-                            textColor="#006dfc"
-                            onClick={requestLogout}
-                            className="absolute right-0 top-1/2 hidden -translate-y-1/2 bg-[#006dfc] px-5 py-2.5 font-poppins text-[clamp(0.6875rem,0.8vw,0.75rem)] font-semibold tracking-wide text-white lg:inline-flex"
-                        >
-                            LOGOUT
-                        </DirectionalButton>
+                        <div className="absolute right-0 top-1/2 hidden -translate-y-1/2 items-center gap-2 lg:flex">
+                            <DirectionalButton
+                                fillColor="#ffffff"
+                                textColor="#006dfc"
+                                onClick={requestLogout}
+                                className="bg-[#006dfc] px-5 py-2.5 font-poppins text-[clamp(0.6875rem,0.8vw,0.75rem)] font-semibold tracking-wide text-white"
+                            >
+                                LOGOUT
+                            </DirectionalButton>
+                        </div>
                     ) : (
                         <DirectionalButton
                             fillColor="#ffffff"
@@ -374,6 +376,26 @@ const Navbar = () => {
                 >
                     <div className="max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain p-2">
                         <ul className="flex flex-col gap-1">
+                            {user && (
+                                <li>
+                                    <Link
+                                        to="/account/settings"
+                                        onClick={closeMobile}
+                                        aria-current={
+                                            location.pathname === '/account/settings'
+                                                ? 'page'
+                                                : undefined
+                                        }
+                                        className={`${mobileItemClassName} ${
+                                            location.pathname === '/account/settings'
+                                                ? mobileSubItemActiveClassName
+                                                : ''
+                                        }`}
+                                    >
+                                        Account settings
+                                    </Link>
+                                </li>
+                            )}
                             <li>
                                 <Link
                                     to="/#home"
