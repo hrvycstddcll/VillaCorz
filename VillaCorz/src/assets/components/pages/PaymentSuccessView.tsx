@@ -60,9 +60,8 @@ function PaymentSuccessView({
                     className="relative flex min-h-40 flex-col items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-white px-4 py-4 shadow-[0_3px_12px_rgba(15,23,42,0.18)]"
                 >
                     <div
-                        className={`grid size-14 place-items-center rounded-full ${
-                            isSuccessful ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                        }`}
+                        className={`grid size-14 place-items-center rounded-full ${isSuccessful ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                            }`}
                     >
                         {isSuccessful ? (
                             <Check aria-hidden="true" className="size-8 stroke-[3]" />
@@ -72,9 +71,8 @@ function PaymentSuccessView({
                     </div>
                     <h1
                         id="payment-success-title"
-                        className={`mt-2 text-center text-sm font-bold ${
-                            isSuccessful ? 'text-emerald-700' : 'text-amber-700'
-                        }`}
+                        className={`mt-2 text-center text-sm font-bold ${isSuccessful ? 'text-emerald-700' : 'text-amber-700'
+                            }`}
                     >
                         {isSuccessful ? 'Demo payment successful' : 'Waiting for QR scan'}
                     </h1>
