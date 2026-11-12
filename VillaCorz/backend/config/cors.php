@@ -19,9 +19,24 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:5173'],
+    'allowed_origins' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', env(
+            'CORS_ALLOWED_ORIGINS',
+            'http://localhost:5173,http://127.0.0.1:5173',
+        )),
+    ))),
 
-    'allowed_origins_patterns' => [],
+    // During local development Vite can pick the next free port (5174, 5175,
+    // ...) and the app can be opened through either localhost or 127.0.0.1.
+    // Allow any local development port so the browser is not blocked by CORS.
+    'allowed_origins_patterns' => env('APP_ENV', 'production') === 'local'
+        ? [
+            '#^http://localhost(:\d+)?$#',
+            '#^http://127\.0\.0\.1(:\d+)?$#',
+            '#^http://\[::1\](:\d+)?$#',
+        ]
+        : [],
 
     'allowed_headers' => ['*'],
 
