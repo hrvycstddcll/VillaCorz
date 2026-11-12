@@ -258,15 +258,43 @@ const Auth = () => {
                 const response = await login(email, password)
 
                 setUser(response.data.user)
-                const requestedPath = (
-                    location.state as { from?: { pathname?: string } } | null
-                )?.from?.pathname
+                const requestedLocation = (
+                    location.state as {
+                        from?: {
+                          pathname?: string
+                          search?: string
+                          hash?: string
+                          state?: unknown
+                        }
+                    } | null
+                )?.from
+                const requestedPath = requestedLocation?.pathname
                 const adminPaths = ['/dashboard', '/manageOffers', '/reports']
-                navigate(
-                    response.data.user.role === 'admin'
+                const requestedBookingPath =
+                    requestedPath === '/reservation' ||
+                    requestedPath === '/payment'
+                const destination =
+                    requestedBookingPath
+                        ? requestedPath
+                        : response.data.user.role === 'admin'
                         ? adminPaths.find((path) => path === requestedPath) ??
                         '/dashboard'
-                        : '/',
+                        : '/'
+
+                navigate(
+                    requestedBookingPath
+                        ? {
+                            pathname: destination,
+                            search: requestedLocation?.search,
+                            hash: requestedLocation?.hash,
+                        }
+                        : destination,
+                    {
+                        state: requestedBookingPath
+                          ? requestedLocation?.state
+                          : undefined,
+                        replace: true,
+                    },
                 )
                 return
             }

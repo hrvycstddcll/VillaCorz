@@ -27,7 +27,11 @@ import onlineBankLogo from '../../images/onlinebank.png'
 
 type StayCategory = 'public' | 'exclusive'
 type BookingRequest = { checkIn: string; checkOut: string; rooms: RoomGuests[] }
-type ServicesRouteState = { booking?: BookingRequest }
+type ReservationRequest = BookingRequest & { roomChoices: Stay[] }
+type ServicesRouteState = {
+    booking?: BookingRequest
+    reservation?: ReservationRequest
+}
 type Stay = {
     id: string
     title: string
@@ -536,6 +540,34 @@ function ReservationView({
             />
             <div aria-hidden="true" className="absolute inset-0 bg-white/65" />
             <div className="relative mx-auto grid max-w-5xl items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] md:gap-5">
+                <nav
+                    aria-label="Booking steps"
+                    className="col-span-full flex flex-wrap items-center gap-x-3 gap-y-2 text-xs"
+                >
+                    <button
+                        type="button"
+                        onClick={() =>
+                            navigate('/services', {
+                                state: {
+                                    booking: {
+                                        checkIn,
+                                        checkOut,
+                                        rooms: roomGuests,
+                                    },
+                                } satisfies ServicesRouteState,
+                            })
+                        }
+                        className="min-h-11 font-medium text-[#0875f9] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0875f9]"
+                    >
+                        ← Back to services
+                    </button>
+                    <span aria-hidden="true" className="text-slate-400">/</span>
+                    <span aria-current="step" className="font-semibold text-slate-800">
+                        Your reservation
+                    </span>
+                    <span aria-hidden="true" className="text-slate-400">/</span>
+                    <span className="text-slate-500">Payment</span>
+                </nav>
                 <section
                     aria-labelledby="reservation-title"
                     className="rounded-2xl bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,0.2)] sm:p-5"
@@ -890,10 +922,18 @@ function ReservationView({
     )
 }
 
-function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
+function Services({
+    bookingOnly = false,
+    reservationOnly = false,
+}: {
+    bookingOnly?: boolean
+    reservationOnly?: boolean
+}) {
     const navigate = useNavigate()
     const location = useLocation()
-    const incomingBooking = (location.state as ServicesRouteState | null)?.booking
+    const routeState = (location.state as ServicesRouteState | null) ?? null
+    const incomingBooking = routeState?.booking
+    const incomingReservation = routeState?.reservation
     const [activeFilter, setActiveFilter] = useState<'all' | StayCategory>('all')
     const [rooms, setRooms] = useState<{
         key: number
@@ -910,14 +950,18 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
     const [selectedRoomPhoto, setSelectedRoomPhoto] = useState(
         wholeVilla,
     )
-    const [checkIn, setCheckIn] = useState(incomingBooking?.checkIn ?? '')
-    const [checkOut, setCheckOut] = useState(incomingBooking?.checkOut ?? '')
+    const [checkIn, setCheckIn] = useState(
+        incomingReservation?.checkIn ?? incomingBooking?.checkIn ?? '',
+    )
+    const [checkOut, setCheckOut] = useState(
+        incomingReservation?.checkOut ?? incomingBooking?.checkOut ?? '',
+    )
     const [roomGuests, setRoomGuests] = useState<RoomGuests[]>(
-        incomingBooking?.rooms ?? [{ stayId: null, adults: 2, kids: 0 }],
+        incomingReservation?.rooms ??
+            incomingBooking?.rooms ?? [{ stayId: null, adults: 2, kids: 0 }],
     )
     const [selectedRoomIndex, setSelectedRoomIndex] = useState(0)
     const [notice, setNotice] = useState('')
-    const [isReservationOpen, setIsReservationOpen] = useState(false)
 
     useEffect(() => {
         let active = true
@@ -944,6 +988,12 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
             active = false
         }
     }, [reloadKey])
+
+    useEffect(() => {
+        if (reservationOnly && !incomingReservation) {
+            navigate('/services', { replace: true })
+        }
+    }, [incomingReservation, navigate, reservationOnly])
 
     const publicRooms = useMemo(
         () =>
@@ -978,8 +1028,10 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
     }
 
     const roomChoices = useMemo(
-        () => [...publicRooms, ...(exclusiveStay ? [exclusiveStay] : [])],
-        [publicRooms, exclusiveStay],
+        () =>
+            incomingReservation?.roomChoices ??
+            [...publicRooms, ...(exclusiveStay ? [exclusiveStay] : [])],
+        [incomingReservation, publicRooms, exclusiveStay],
     )
 
     const selectedRoomIds = roomGuests.flatMap((room) =>
@@ -1074,7 +1126,16 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
         }
 
         setNotice('')
-        setIsReservationOpen(true)
+        navigate('/reservation', {
+            state: {
+                reservation: {
+                    checkIn,
+                    checkOut,
+                    rooms: roomGuests,
+                    roomChoices,
+                },
+            } satisfies ServicesRouteState,
+        })
     }
 
     const showPublic = activeFilter !== 'exclusive'
@@ -1082,15 +1143,15 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
 
     return (
         <>
-        {!bookingOnly && isReservationOpen && (
+        {reservationOnly && incomingReservation && (
             <ReservationView
-                checkIn={checkIn}
-                checkOut={checkOut}
-                roomGuests={roomGuests}
-                roomChoices={roomChoices}
+                checkIn={incomingReservation.checkIn}
+                checkOut={incomingReservation.checkOut}
+                roomGuests={incomingReservation.rooms}
+                roomChoices={incomingReservation.roomChoices}
             />
         )}
-        {!bookingOnly && !isReservationOpen && (
+        {!bookingOnly && !reservationOnly && (
         <main className="min-h-svh bg-white px-4 pb-12 pt-24 font-poppins sm:px-7 sm:pt-28">
             <div className="mx-auto grid max-w-7xl items-start gap-7 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-9">
                 <BookingCalendarPanel
@@ -1122,13 +1183,6 @@ function Services({ bookingOnly = false }: { bookingOnly?: boolean }) {
                     />
                 ) : (
                     <>
-                <button
-                    type="button"
-                    onClick={() => navigate(-1)}
-                    className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#006dfc] transition hover:underline"
-                >
-                    ← Back
-                </button>
                 <header className="mb-7 sm:mb-9">
                     <div>
                         <h1 className="font-poppins text-2xl font-bold leading-tight tracking-[-0.03em] text-[#171717] sm:text-3xl">
