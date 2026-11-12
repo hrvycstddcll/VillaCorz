@@ -16,7 +16,7 @@
 
 
 -- Dumping database structure for villacorz_db
-CREATE DATABASE IF NOT EXISTS `villacorz_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+CREATE DATABASE IF NOT EXISTS `villacorz_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
 USE `villacorz_db`;
 
 -- Dumping structure for table villacorz_db.activity_logs

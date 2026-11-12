@@ -28,7 +28,9 @@ class ActivityLogController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        return response()->json(array_merge([
+        
+        
+            return response()->json(array_merge([
             'success' => true,
         ], $logs->toArray()));
     }
