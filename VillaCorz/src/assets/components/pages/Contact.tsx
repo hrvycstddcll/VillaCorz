@@ -3,7 +3,6 @@ import {
     useEffect,
     useRef,
     useState,
-    type CSSProperties,
     type FormEvent,
     type ReactNode,
 } from 'react'
@@ -32,7 +31,6 @@ import {
 } from 'lucide-react'
 import 'leaflet/dist/leaflet.css'
 import './Contact.css'
-import contactReef from '../../images/contact-reef.png'
 
 gsap.registerPlugin(ScrollTrigger, SplitText)
 
@@ -81,43 +79,6 @@ const VILLA_LOCATION: Coordinates = {
 }
 
 const VILLA_NAME = 'VillaCorz'
-
-type BubbleSpec = {
-    id: string
-    top: number
-    left: number
-    size: number
-    travel: number
-    drift: number
-    opacity: number
-    tone?: 'azure' | 'bright'
-}
-
-/**
- * Decorative bubbles are laid out as percentages so they spread evenly
- * across the section regardless of its rendered height.
- */
-const BUBBLES: BubbleSpec[] = [
-    { id: 'b01', top: 3, left: 4, size: 42, travel: 90, drift: 26, opacity: 0.55 },
-    { id: 'b02', top: 6, left: 82, size: 22, travel: 150, drift: 18, opacity: 0.5 },
-    { id: 'b03', top: 9, left: 34, size: 10, travel: 70, drift: 14, opacity: 0.6, tone: 'bright' },
-    { id: 'b04', top: 13, left: 60, size: 64, travel: 200, drift: 34, opacity: 0.45, tone: 'azure' },
-    { id: 'b05', top: 17, left: 12, size: 16, travel: 110, drift: 20, opacity: 0.55 },
-    { id: 'b06', top: 22, left: 90, size: 34, travel: 170, drift: 28, opacity: 0.5 },
-    { id: 'b07', top: 27, left: 46, size: 8, travel: 80, drift: 12, opacity: 0.65, tone: 'bright' },
-    { id: 'b08', top: 32, left: 22, size: 56, travel: 190, drift: 36, opacity: 0.4 },
-    { id: 'b09', top: 38, left: 74, size: 20, travel: 120, drift: 22, opacity: 0.55, tone: 'azure' },
-    { id: 'b10', top: 44, left: 8, size: 26, travel: 140, drift: 24, opacity: 0.5 },
-    { id: 'b11', top: 49, left: 56, size: 12, travel: 90, drift: 14, opacity: 0.6, tone: 'bright' },
-    { id: 'b12', top: 55, left: 88, size: 72, travel: 220, drift: 42, opacity: 0.35, tone: 'azure' },
-    { id: 'b13', top: 61, left: 30, size: 18, travel: 110, drift: 18, opacity: 0.5 },
-    { id: 'b14', top: 67, left: 68, size: 38, travel: 160, drift: 30, opacity: 0.45 },
-    { id: 'b15', top: 73, left: 4, size: 14, travel: 90, drift: 16, opacity: 0.55 },
-    { id: 'b16', top: 79, left: 48, size: 10, travel: 70, drift: 12, opacity: 0.6, tone: 'bright' },
-    { id: 'b17', top: 85, left: 84, size: 48, travel: 180, drift: 34, opacity: 0.4, tone: 'azure' },
-    { id: 'b18', top: 91, left: 18, size: 28, travel: 130, drift: 24, opacity: 0.45 },
-    { id: 'b19', top: 95, left: 62, size: 16, travel: 100, drift: 18, opacity: 0.5 },
-]
 
 function MapViewport({
     userLocation,
@@ -420,7 +381,6 @@ const Contact = () => {
 
         const media = gsap.matchMedia()
         const splits: SplitText[] = []
-        let removePointerListener: (() => void) | undefined
 
         media.add('(prefers-reduced-motion: no-preference)', () => {
             // Editorial line-by-line reveals for the display text.
@@ -487,129 +447,7 @@ const Contact = () => {
                 })
             }
 
-            // Ambient light shafts drifting from the top of the section.
-            section
-                .querySelectorAll<HTMLElement>('[data-beam]')
-                .forEach((beam, index) => {
-                    gsap.to(beam, {
-                        xPercent: index % 2 === 0 ? 9 : -9,
-                        opacity: index % 2 === 0 ? 0.55 : 0.32,
-                        duration: 10 + index * 2.6,
-                        delay: index * 0.9,
-                        repeat: -1,
-                        yoyo: true,
-                        ease: 'sine.inOut',
-                    })
-
-                    gsap.to(beam, {
-                        yPercent: 10 + index * 3,
-                        ease: 'none',
-                        scrollTrigger: {
-                            trigger: section,
-                            start: 'top bottom',
-                            end: 'bottom top',
-                            scrub: 1.6,
-                        },
-                    })
-                })
-
-            // Scroll parallax + gentle drift for each bubble.
-            const bubbles = section.querySelectorAll<HTMLElement>('[data-bubble]')
-
-            bubbles.forEach((bubble, index) => {
-                const travel = Number(bubble.dataset.bubbleTravel) || 120
-                const drift = Number(bubble.dataset.bubbleDrift) || 24
-
-                gsap.fromTo(
-                    bubble,
-                    { y: travel * 0.45 },
-                    {
-                        y: travel * -0.55,
-                        ease: 'none',
-                        scrollTrigger: {
-                            trigger: section,
-                            start: 'top bottom',
-                            end: 'bottom top',
-                            scrub: 1.1,
-                            invalidateOnRefresh: true,
-                        },
-                    },
-                )
-
-                gsap.to(bubble, {
-                    x: drift,
-                    duration: 6 + (index % 5) * 1.4,
-                    delay: index * 0.22,
-                    repeat: -1,
-                    yoyo: true,
-                    ease: 'sine.inOut',
-                })
-            })
-
-            // Reef and glows move at a slower rate to add depth.
-            const reef = section.querySelector<HTMLElement>('.contact-reef')
-
-            if (reef) {
-                gsap.fromTo(
-                    reef,
-                    { yPercent: -5 },
-                    {
-                        yPercent: 5,
-                        ease: 'none',
-                        scrollTrigger: {
-                            trigger: section,
-                            start: 'top bottom',
-                            end: 'bottom top',
-                            scrub: 1.2,
-                        },
-                    },
-                )
-            }
-
-            section
-                .querySelectorAll<HTMLElement>('.contact-glow')
-                .forEach((glow, index) => {
-                    gsap.to(glow, {
-                        yPercent: index === 0 ? -16 : 16,
-                        ease: 'none',
-                        scrollTrigger: {
-                            trigger: section,
-                            start: 'top bottom',
-                            end: 'bottom top',
-                            scrub: 1.4,
-                        },
-                    })
-                })
-
-            // Pointer parallax for the whole bubble field (desktop only).
-            const bubbleField = section.querySelector<HTMLElement>(
-                '[data-bubble-field]',
-            )
-            const hasFinePointer = window.matchMedia('(pointer: fine)').matches
-
-            if (bubbleField && hasFinePointer) {
-                const xTo = gsap.quickTo(bubbleField, 'x', {
-                    duration: 0.9,
-                    ease: 'power3',
-                })
-                const yTo = gsap.quickTo(bubbleField, 'y', {
-                    duration: 0.9,
-                    ease: 'power3',
-                })
-
-                const handlePointerMove = (event: PointerEvent) => {
-                    xTo((event.clientX / window.innerWidth - 0.5) * -34)
-                    yTo((event.clientY / window.innerHeight - 0.5) * -24)
-                }
-
-                section.addEventListener('pointermove', handlePointerMove)
-                removePointerListener = () =>
-                    section.removeEventListener('pointermove', handlePointerMove)
-            }
-
             return () => {
-                removePointerListener?.()
-                removePointerListener = undefined
                 splits.forEach((split) => split.revert())
                 splits.length = 0
             }
@@ -857,82 +695,6 @@ const Contact = () => {
             id="contact"
             className="contact-section"
         >
-            <div
-                aria-hidden="true"
-                className="contact-beams"
-            >
-                <span
-                    data-beam
-                    className="contact-beam contact-beam--one"
-                />
-                <span
-                    data-beam
-                    className="contact-beam contact-beam--two"
-                />
-                <span
-                    data-beam
-                    className="contact-beam contact-beam--three"
-                />
-                <span
-                    data-beam
-                    className="contact-beam contact-beam--four"
-                />
-            </div>
-
-            <div
-                aria-hidden="true"
-                className="contact-glow contact-glow--top"
-            />
-
-            <div
-                aria-hidden="true"
-                className="contact-glow contact-glow--bottom"
-            />
-
-            <img
-                src={contactReef}
-                alt=""
-                aria-hidden="true"
-                className="contact-reef"
-            />
-
-            <div
-                aria-hidden="true"
-                className="contact-bubbles"
-            >
-                <div
-                    className="contact-bubbles__field"
-                    data-bubble-field
-                >
-                    {BUBBLES.map((bubble) => (
-                        <span
-                            key={bubble.id}
-                            data-bubble
-                            data-bubble-travel={bubble.travel}
-                            data-bubble-drift={bubble.drift}
-                            style={
-                                {
-                                    '--bubble-top': `${bubble.top}%`,
-                                    '--bubble-left': `${bubble.left}%`,
-                                    '--bubble-size': `${bubble.size}px`,
-                                    '--bubble-opacity': bubble.opacity,
-                                } as CSSProperties
-                            }
-                            className={`contact-bubble${
-                                bubble.tone
-                                    ? ` contact-bubble--${bubble.tone}`
-                                    : ''
-                            }`}
-                        />
-                    ))}
-                </div>
-            </div>
-
-            <div
-                aria-hidden="true"
-                className="contact-grain"
-            />
-
             <div className="contact-container">
 
                 <header className="contact-heading">
