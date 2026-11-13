@@ -4,6 +4,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\ServiceController;
@@ -12,6 +13,19 @@ use App\Http\Controllers\Api\ServiceController;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::middleware('auth:sanctum')->prefix('account')->group(function () {
+    Route::put('/profile', [AccountController::class, 'updateProfile'])
+        ->middleware('throttle:10,1');
+    Route::put('/password', [AccountController::class, 'changePassword'])
+        ->middleware('throttle:5,1');
+});
+
+Route::post('/forgot-password', [AccountController::class, 'sendPasswordResetCode'])
+    ->middleware('throttle:3,1');
+
+Route::post('/reset-password', [AccountController::class, 'resetPassword'])
+    ->middleware('throttle:10,1');
 
 // Registration and email verification
 Route::post('/register', [AuthController::class, 'register'])

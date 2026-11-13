@@ -13,9 +13,12 @@ import HomePage from './assets/components/pages/HomePage'
 import AboutUs from './assets/components/pages/AboutUs'
 import Services from './assets/components/pages/Services'
 import Payment from './assets/components/pages/Payment'
+import AccountSettings from './assets/components/pages/AccountSettings'
+import PasswordRecovery from './assets/components/pages/PasswordRecovery'
 import ManageOffers from './assets/components/pages/Offers'
 import Contact from './assets/components/pages/Contact'
 import Navbar from './assets/components/ui/Navbar'
+import SettingsNotch from './assets/components/ui/SettingsNotch'
 import Auth from './assets/components/auth/Auth'
 import { AuthProvider } from './services/AuthContext'
 import { useAuth } from './services/useAuth'
@@ -102,6 +105,7 @@ function AdminLayout() {
         <div className="min-h-screen bg-slate-50 text-slate-800">
             <NavbarSpacer />
             <Outlet />
+            <SettingsNotch />
         </div>
     )
 }
@@ -144,13 +148,14 @@ function HashScroll() {
 function SiteLayout() {
     const { loading } = useAuth()
     const { pathname } = useLocation()
-    const hideNavbar = pathname === '/auth'
+    const hideNavbar = pathname === '/auth' || pathname === '/account/settings'
 
     return (
         <>
             {!hideNavbar && <Navbar />}
             <HashScroll />
             {loading ? <LoadingPanel /> : <Outlet />}
+            <SettingsNotch />
         </>
     )
 }
@@ -216,12 +221,14 @@ function AppRoutes() {
 
                 <Route path="/services" element={<Services />} />
                 <Route path="/payment/confirm" element={<Payment />} />
+                <Route path="/forgot-password" element={<PasswordRecovery />} />
                 <Route element={<AuthenticatedRoute />}>
                     <Route
                         path="/reservation"
                         element={<Services reservationOnly />}
                     />
                     <Route path="/payment" element={<Payment />} />
+                    <Route path="/account/settings" element={<AccountSettings />} />
                 </Route>
                 <Route path="/home" element={<Navigate to="/" replace />} />
 
