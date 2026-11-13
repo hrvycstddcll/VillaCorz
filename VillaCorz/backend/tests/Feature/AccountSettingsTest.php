@@ -33,13 +33,13 @@ class AccountSettingsTest extends TestCase
         $this->actingAs($user)
             ->putJson('/api/account/profile', $this->profileData())
             ->assertOk()
-            ->assertJsonPath('user.phone_number', '+1 (415) 555-0132');
+            ->assertJsonPath('user.phone_number', '+639171234567');
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
             'firstname' => 'Updated',
             'lastname' => 'Guest',
-            'phone_number' => '+1 (415) 555-0132',
+            'phone_number' => '+639171234567',
         ]);
     }
 
@@ -155,7 +155,7 @@ class AccountSettingsTest extends TestCase
         return [
             'firstname' => 'Updated',
             'lastname' => 'Guest',
-            'phone_number' => '+1 (415) 555-0132',
+            'phone_number' => '0917 123 4567',
             'current_password' => 'CurrentPassword123',
         ];
     }

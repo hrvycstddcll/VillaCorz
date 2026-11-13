@@ -23,13 +23,11 @@ const requestCsrfCookie = () =>
 export const updateAccountProfile = (
     firstname: string,
     lastname: string,
-    phoneNumber: string,
     currentPassword: string,
 ) =>
     api.put<AccountResponse>('/account/profile', {
         firstname,
         lastname,
-        phone_number: phoneNumber || null,
         current_password: currentPassword,
     })
 

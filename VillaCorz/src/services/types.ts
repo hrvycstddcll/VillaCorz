@@ -1,9 +1,17 @@
+export type UserPhoneNumber = {
+    id: number
+    phone_number: string
+    is_primary: boolean
+    verified_at: string | null
+}
+
 export type User = {
     id: number
     firstname: string
     lastname: string
     email: string
     phone_number?: string | null
+    phone_numbers?: UserPhoneNumber[]
     role: string
 }
 
@@ -49,6 +57,81 @@ export type ApiEnvelope<T> = {
     success: boolean
     message?: string
     data: T
+}
+
+export type BookingStatus = 'pending_payment' | 'confirmed' | 'expired' | 'cancelled'
+
+export type BookingRoom = {
+    service_id: number | null
+    name: string
+    kind: 'room' | 'exclusive'
+    adults: number
+    kids: number
+    weekday_price: string
+    weekend_price: string
+    line_total: string
+}
+
+export type BookingPayment = {
+    reference: string
+    provider: string
+    method: string
+    amount: string
+    currency: string
+    status: 'pending' | 'paid' | 'expired' | 'cancelled'
+    qr_url: string
+    qr_expires_at: string | null
+    paid_at: string | null
+    is_expired: boolean
+}
+
+export type Booking = {
+    reference: string
+    status: BookingStatus
+    check_in: string
+    check_out: string
+    nights: number
+    adults: number
+    kids: number
+    subtotal: string
+    total: string
+    currency: string
+    payment_method: string | null
+    confirmed_at: string | null
+    confirmation_email_sent_at: string | null
+    contact: {
+        name: string
+        email: string
+        phone: string | null
+    }
+    rooms: BookingRoom[]
+    payment: BookingPayment | null
+    created_at: string
+}
+
+export type CreateBookingInput = {
+    check_in: string
+    check_out: string
+    rooms: Array<{ service_id: number; adults: number; kids: number }>
+    contact_name: string
+    contact_email: string
+    contact_phone: string
+    payment_method: string
+}
+
+export type PaymentStatus = {
+    reference: string
+    booking_reference: string | null
+    status: 'pending' | 'paid' | 'expired' | 'cancelled'
+    booking_status: BookingStatus | null
+    amount: string
+    currency: string
+    method: string
+    qr_url: string
+    qr_expires_at: string | null
+    paid_at: string | null
+    is_expired: boolean
+    email_sent: boolean
 }
 
 export type ActivityLogUser = {

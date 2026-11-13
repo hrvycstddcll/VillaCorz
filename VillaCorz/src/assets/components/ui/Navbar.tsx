@@ -376,26 +376,6 @@ const Navbar = () => {
                 >
                     <div className="max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain p-2">
                         <ul className="flex flex-col gap-1">
-                            {user && (
-                                <li>
-                                    <Link
-                                        to="/account/settings"
-                                        onClick={closeMobile}
-                                        aria-current={
-                                            location.pathname === '/account/settings'
-                                                ? 'page'
-                                                : undefined
-                                        }
-                                        className={`${mobileItemClassName} ${
-                                            location.pathname === '/account/settings'
-                                                ? mobileSubItemActiveClassName
-                                                : ''
-                                        }`}
-                                    >
-                                        Account settings
-                                    </Link>
-                                </li>
-                            )}
                             <li>
                                 <Link
                                     to="/#home"
@@ -478,6 +458,28 @@ const Navbar = () => {
                                     className={mobileItemClassName}
                                 >
                                     Contact
+                                </Link>
+                            </li>
+                            <li>
+                                <Link
+                                    to={
+                                        user
+                                            ? '/account/settings'
+                                            : '/auth?mode=login'
+                                    }
+                                    onClick={closeMobile}
+                                    aria-current={
+                                        location.pathname === '/account/settings'
+                                            ? 'page'
+                                            : undefined
+                                    }
+                                    className={`${mobileItemClassName} ${
+                                        location.pathname === '/account/settings'
+                                            ? mobileSubItemActiveClassName
+                                            : ''
+                                    }`}
+                                >
+                                    Settings
                                 </Link>
                             </li>
                         </ul>

@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Mail\PasswordResetCode;
 use App\Models\User;
+use App\Rules\PhoneNumberRule;
 use App\Services\ActivityLogger;
+use App\Services\PhoneNumberService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,12 +25,14 @@ class AccountController extends Controller
 
     private const MAX_RESET_ATTEMPTS = 5;
 
-    public function updateProfile(Request $request): JsonResponse
-    {
+    public function updateProfile(
+        Request $request,
+        PhoneNumberService $phones,
+    ): JsonResponse {
         $validated = $request->validate([
             'firstname' => ['required', 'string', 'max:255'],
             'lastname' => ['required', 'string', 'max:255'],
-            'phone_number' => ['nullable', 'string', 'max:32', 'regex:/^\+?[0-9\s().-]{7,32}$/'],
+            'phone_number' => ['sometimes', 'nullable', 'string', 'max:32', new PhoneNumberRule()],
             'current_password' => ['required', 'string'],
         ]);
 
@@ -38,8 +42,13 @@ class AccountController extends Controller
         $user->fill([
             'firstname' => $validated['firstname'],
             'lastname' => $validated['lastname'],
-            'phone_number' => $validated['phone_number'] ?? null,
         ])->save();
+
+        // Older clients still send one phone number. Sync it into the new
+        // multi-number table instead of writing the legacy column directly.
+        if ($request->has('phone_number')) {
+            $phones->replacePrimary($user, $validated['phone_number'] ?? null);
+        }
 
         ActivityLogger::record(
             'account_profile_updated',
@@ -215,14 +224,7 @@ class AccountController extends Controller
 
     private function userPayload(User $user): array
     {
-        return [
-            'id' => $user->id,
-            'firstname' => $user->firstname,
-            'lastname' => $user->lastname,
-            'email' => $user->email,
-            'phone_number' => $user->phone_number,
-            'role' => $user->role,
-        ];
+        return $user->accountPayload();
     }
 
     private function resetCacheKey(string $resetId): string

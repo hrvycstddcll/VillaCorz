@@ -6,12 +6,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PhoneNumberController;
 use App\Http\Controllers\Api\ServiceController;
 
 // Authenticated user
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+    return $request->user()->accountPayload();
 });
 
 Route::middleware('auth:sanctum')->prefix('account')->group(function () {
@@ -19,6 +22,17 @@ Route::middleware('auth:sanctum')->prefix('account')->group(function () {
         ->middleware('throttle:10,1');
     Route::put('/password', [AccountController::class, 'changePassword'])
         ->middleware('throttle:5,1');
+
+    Route::get('/phone-numbers', [PhoneNumberController::class, 'index']);
+    Route::post('/phone-numbers', [PhoneNumberController::class, 'store'])
+        ->middleware('throttle:10,1');
+    Route::put('/phone-numbers/{phoneNumber}', [PhoneNumberController::class, 'update'])
+        ->middleware('throttle:10,1');
+    Route::delete('/phone-numbers/{phoneNumber}', [PhoneNumberController::class, 'destroy']);
+    Route::post('/phone-numbers/{phoneNumber}/verification', [PhoneNumberController::class, 'sendVerification'])
+        ->middleware('throttle:3,1');
+    Route::post('/phone-numbers/{phoneNumber}/verification/confirm', [PhoneNumberController::class, 'confirmVerification'])
+        ->middleware('throttle:10,1');
 });
 
 Route::post('/forgot-password', [AccountController::class, 'sendPasswordResetCode'])
@@ -42,6 +56,16 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::post('/logout', [AuthController::class, 'logout'])
     ->middleware('auth:sanctum');
+
+// Booking and demo payment flow
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/bookings', [BookingController::class, 'index']);
+    Route::post('/bookings', [BookingController::class, 'store'])
+        ->middleware('throttle:10,1');
+    Route::get('/bookings/{reference}', [BookingController::class, 'show']);
+
+    Route::get('/payments/{reference}/status', [PaymentController::class, 'status']);
+});
 
 // Public service routes
 Route::get('/services', [ServiceController::class, 'index']);

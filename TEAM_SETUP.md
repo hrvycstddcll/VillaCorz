@@ -168,6 +168,22 @@ Start the backend from `VillaCorz/backend`:
 php artisan serve
 ```
 
+For a phone demo of the payment QR flow, start the backend so it is
+reachable from the phone instead:
+
+```sh
+php artisan demo:serve
+```
+
+This detects the machine's LAN IP, writes it to `PAYMENT_PUBLIC_URL`, and
+binds the server to `0.0.0.0`. Open `http://<LAN IP>:8000/demo/health` on
+the phone to confirm connectivity before scanning a QR code. If the phone
+still cannot connect, allow port 8000 through Windows Firewall:
+
+```sh
+netsh advfirewall firewall add rule name="VillaCorz Demo 8000" dir=in action=allow protocol=TCP localport=8000
+```
+
 In another terminal, start the frontend from `VillaCorz`:
 
 ```sh

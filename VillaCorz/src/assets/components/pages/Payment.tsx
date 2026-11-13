@@ -1,166 +1,272 @@
-import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { getReservationPrice } from '../../../lib/reservation'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { getApiErrorMessage } from '../../../lib/apiError'
+import { getBooking } from '../../../services/bookingService'
+import { getPaymentStatus } from '../../../services/paymentService'
+import type { Booking } from '../../../services/types'
 import PaymentSuccessView from './PaymentSuccessView'
 
-type PaymentState = {
-    bookingId?: string
-    checkIn: string
-    checkOut: string
-    roomGuests: { stayId: string | null; adults: number; kids: number }[]
-    roomChoices: { id: string; title: string; price: number; weekendPrice?: number }[]
-    firstName?: string
-    lastName?: string
-    email?: string
-    phoneNumber?: string
-    paymentMethod?: string
-}
-
-type ScanState = 'success' | 'invalid'
-
-const demoPaymentChannel = (bookingId: string) =>
-    `villacorz.demo-payment.${bookingId}`
+const POLL_INTERVAL_MS = 2500
 
 const Payment = () => {
     const navigate = useNavigate()
-    const location = useLocation()
-    const state = (location.state as PaymentState | null) ?? null
-    const isScanConfirmation = location.pathname === '/payment/confirm'
-    const scanBookingId = new URLSearchParams(location.search).get('bookingId')
-    const [generatedBookingId] = useState(() => window.crypto.randomUUID())
-    const bookingId = state?.bookingId ?? generatedBookingId
-    const [paymentStatus, setPaymentStatus] = useState<'pending' | 'success'>(
-        'pending',
-    )
+    const { reference } = useParams<{ reference: string }>()
+    const [booking, setBooking] = useState<Booking | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState('')
+
+    const loadBooking = useCallback(async () => {
+        if (!reference) {
+            throw new Error('Missing booking reference.')
+        }
+
+        const response = await getBooking(reference)
+        setBooking(response.data.data)
+
+        return response.data.data
+    }, [reference])
 
     useEffect(() => {
-        if (!isScanConfirmation || !scanBookingId) return
+        if (!reference) return
 
-        if (typeof BroadcastChannel === 'undefined') return
-        const channel = new BroadcastChannel(demoPaymentChannel(scanBookingId))
-        channel.postMessage('success')
-        channel.close()
-    }, [isScanConfirmation, scanBookingId])
+        let active = true
+
+        getBooking(reference)
+            .then((response) => {
+                if (!active) return
+                setBooking(response.data.data)
+            })
+            .catch((requestError: unknown) => {
+                if (!active) return
+                setError(
+                    getApiErrorMessage(
+                        requestError,
+                        'Unable to load this booking.',
+                    ),
+                )
+            })
+            .finally(() => {
+                if (active) setLoading(false)
+            })
+
+        return () => {
+            active = false
+        }
+    }, [reference])
+
+    const paymentReference = booking?.payment?.reference
+    const paymentStatus = booking?.payment?.status
+    const paymentIsExpired = booking?.payment?.is_expired
 
     useEffect(() => {
-        if (!state || isScanConfirmation || typeof BroadcastChannel === 'undefined') {
+        if (
+            !paymentReference ||
+            paymentStatus === 'paid' ||
+            paymentStatus === 'expired' ||
+            paymentStatus === 'cancelled' ||
+            paymentIsExpired
+        ) {
             return
         }
 
-        const channel = new BroadcastChannel(demoPaymentChannel(bookingId))
-        const handleMessage = (event: MessageEvent) => {
-            if (event.data === 'success') {
-                setPaymentStatus('success')
+        let active = true
+
+        const applyStatus = (
+            status: 'pending' | 'paid' | 'expired' | 'cancelled',
+            paidAt: string | null,
+            isExpired: boolean,
+        ) => {
+            setBooking((current) => {
+                if (!current || !current.payment) return current
+
+                return {
+                    ...current,
+                    status:
+                        status === 'paid'
+                            ? 'confirmed'
+                            : status === 'expired'
+                              ? 'expired'
+                              : status === 'cancelled'
+                                ? 'cancelled'
+                                : current.status,
+                    confirmed_at:
+                        status === 'paid'
+                            ? paidAt
+                            : current.confirmed_at,
+                    payment: {
+                        ...current.payment,
+                        status,
+                        paid_at: paidAt,
+                        is_expired: isExpired,
+                    },
+                }
+            })
+        }
+
+        const poll = async () => {
+            try {
+                const { data } = await getPaymentStatus(paymentReference)
+
+                if (!active) return
+
+                applyStatus(
+                    data.data.status,
+                    data.data.paid_at,
+                    data.data.is_expired,
+                )
+            } catch {
+                // A transient network error should not stop the polling loop.
             }
         }
 
-        channel.addEventListener('message', handleMessage)
-        return () => channel.close()
-    }, [bookingId, isScanConfirmation, state])
+        void poll()
+        const timer = window.setInterval(() => {
+            void poll()
+        }, POLL_INTERVAL_MS)
 
-    useEffect(() => {
-        if (!state && !isScanConfirmation) {
-            navigate('/services', { replace: true })
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible') {
+                void poll()
+            }
         }
-    }, [isScanConfirmation, navigate, state])
 
-    if (isScanConfirmation) {
-        const visibleScanState: ScanState = scanBookingId ? 'success' : 'invalid'
-        const message = {
-            success: 'The QR was opened and this demo booking is marked successful.',
-            invalid: 'This QR link is missing a booking reference.',
-        }[visibleScanState]
+        document.addEventListener('visibilitychange', handleVisibility)
 
+        return () => {
+            active = false
+            window.clearInterval(timer)
+            document.removeEventListener('visibilitychange', handleVisibility)
+        }
+    }, [paymentIsExpired, paymentReference, paymentStatus])
+
+    if (!reference) {
         return (
-            <main className="grid min-h-svh place-items-center bg-slate-50 px-4 py-10 font-poppins">
-                <section
-                    aria-labelledby="scan-confirmation-title"
-                    className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-[0_8px_28px_rgba(15,23,42,0.12)] sm:p-8"
-                >
-                    <h1
-                        id="scan-confirmation-title"
-                        className={`text-xl font-bold ${
-                            visibleScanState === 'success'
-                                ? 'text-emerald-700'
-                                : visibleScanState === 'invalid'
-                                  ? 'text-rose-700'
-                                  : 'text-slate-800'
-                        }`}
-                    >
-                        {visibleScanState === 'success'
-                            ? 'Demo payment successful'
-                            : 'Unable to confirm scan'}
+            <main className="grid min-h-dvh place-items-center bg-[#f7f6fa] px-4 py-8 font-poppins">
+                <section className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-[0_3px_12px_rgba(15,23,42,0.08)] sm:p-8">
+                    <h1 className="text-xl font-semibold text-rose-800">
+                        Unable to open payment
                     </h1>
-                    <p role="status" className="mt-2 text-sm leading-6 text-slate-600">
-                        {message}
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                        No booking reference was provided.
                     </p>
-                    {scanBookingId && (
-                        <p className="mt-3 text-xs text-slate-500">
-                            Booking reference: {scanBookingId}
-                        </p>
-                    )}
-                    <p className="mt-4 text-xs leading-5 text-amber-800">
-                        Demo only. No real payment was processed or verified.
-                    </p>
-                    <Link
-                        to="/services"
-                        className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-[#0875f9] px-5 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                    <button
+                        type="button"
+                        onClick={() => navigate('/services')}
+                        className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-[#0875f9] px-4 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
                     >
                         Return to services
-                    </Link>
+                    </button>
                 </section>
             </main>
         )
     }
 
-    if (!state) return null
+    if (loading) {
+        return (
+            <main className="grid min-h-dvh place-items-center bg-[#f7f6fa] px-4 py-8 font-poppins">
+                <p role="status" aria-live="polite" className="text-sm text-slate-600">
+                    Loading your booking…
+                </p>
+            </main>
+        )
+    }
 
-    const assignedRooms = state.roomGuests.flatMap((room) => {
-        const stay = state.roomChoices.find((choice) => choice.id === room.stayId)
-        return stay ? [{ room, stay }] : []
-    })
+    if (!booking) {
+        return (
+            <main className="grid min-h-dvh place-items-center bg-[#f7f6fa] px-4 py-8 font-poppins">
+                <section className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-[0_3px_12px_rgba(15,23,42,0.08)] sm:p-8">
+                    <h1 className="text-xl font-semibold text-rose-800">
+                        Unable to open payment
+                    </h1>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                        {error || 'This booking could not be found.'}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/services')}
+                        className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-[#0875f9] px-4 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                    >
+                        Return to services
+                    </button>
+                </section>
+            </main>
+        )
+    }
 
-    const nights = Math.max(
-        1,
-        Math.round(
-            (new Date(`${state.checkOut}T00:00:00`).getTime() -
-                new Date(`${state.checkIn}T00:00:00`).getTime()) /
-                86_400_000,
-        ),
-    )
+    const payment = booking.payment
 
-    const total = assignedRooms.reduce(
-        (sum, { stay }) =>
-            sum + getReservationPrice(stay, state.checkIn, state.checkOut).total,
-        0,
-    )
-    const qrUrl = new URL('/payment/confirm', window.location.origin)
-    qrUrl.searchParams.set('bookingId', bookingId)
+    if (!payment) {
+        return (
+            <main className="grid min-h-dvh place-items-center bg-[#f7f6fa] px-4 py-8 font-poppins">
+                <section className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-[0_3px_12px_rgba(15,23,42,0.08)] sm:p-8">
+                    <h1 className="text-xl font-semibold text-rose-800">
+                        Payment record missing
+                    </h1>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                        This booking does not have a payment record yet.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/services')}
+                        className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-[#0875f9] px-4 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                    >
+                        Return to services
+                    </button>
+                </section>
+            </main>
+        )
+    }
+
+    const viewStatus =
+        payment.status === 'paid'
+            ? 'success'
+            : payment.status === 'cancelled' || booking.status === 'cancelled'
+              ? 'cancelled'
+              : payment.status === 'expired' || payment.is_expired
+                ? 'expired'
+                : 'pending'
+
+    const handleRefresh = async () => {
+        try {
+            setError('')
+            await loadBooking()
+        } catch (requestError) {
+            setError(
+                getApiErrorMessage(
+                    requestError,
+                    'Unable to refresh the payment status.',
+                ),
+            )
+        }
+    }
 
     return (
         <PaymentSuccessView
-            status={paymentStatus}
-            firstName={state.firstName ?? ''}
-            lastName={state.lastName ?? ''}
-            email={state.email ?? ''}
-            phoneNumber={state.phoneNumber ?? ''}
-            bookingId={bookingId}
-            qrValue={qrUrl.toString()}
-            checkIn={state.checkIn}
-            checkOut={state.checkOut}
-            nights={nights}
-            rooms={assignedRooms.map(({ room, stay }) => ({
-                name: stay.title,
+            status={viewStatus}
+            guestName={booking.contact.name}
+            email={booking.contact.email}
+            phoneNumber={booking.contact.phone ?? ''}
+            bookingId={booking.reference}
+            qrValue={payment.qr_url}
+            checkIn={booking.check_in}
+            checkOut={booking.check_out}
+            nights={booking.nights}
+            rooms={booking.rooms.map((room) => ({
+                name: room.name,
                 adults: room.adults,
                 kids: room.kids,
             }))}
-            total={total}
+            total={Number(booking.total)}
+            error={error}
             onConfirm={() => {
-                if (paymentStatus === 'success') {
+                if (viewStatus === 'success') {
                     navigate('/services')
                 } else {
                     navigate(-1)
                 }
+            }}
+            onRefresh={() => {
+                void handleRefresh()
             }}
         />
     )

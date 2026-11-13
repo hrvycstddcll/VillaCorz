@@ -28,6 +28,8 @@ import {
     scrollToTop,
 } from './lib/smoothScroll'
 
+const HASH_SCROLL_RESIZE_SETTLE_MS = 300
+
 function LoadingPanel() {
     return (
         <div className="grid min-h-svh place-items-center p-6 pt-24">
@@ -122,23 +124,31 @@ function HashScroll() {
             return
         }
 
-        // Sections can mount a frame or two after the route does, so retry
-        // briefly instead of silently skipping the scroll.
+        // Let Lenis finish its debounced resize after route content mounts;
+        // a resize during its scroll animation resets the animation target.
         let frame = 0
         let cancelled = false
+        let animationFrame: number | undefined
 
         const attempt = () => {
             if (cancelled) return
             if (scrollToHash(location.hash)) return
             if (frame >= 30) return
             frame += 1
-            requestAnimationFrame(attempt)
+            animationFrame = requestAnimationFrame(attempt)
         }
 
-        attempt()
+        const timeout = window.setTimeout(
+            attempt,
+            HASH_SCROLL_RESIZE_SETTLE_MS,
+        )
 
         return () => {
             cancelled = true
+            window.clearTimeout(timeout)
+            if (animationFrame !== undefined) {
+                cancelAnimationFrame(animationFrame)
+            }
         }
     }, [location.pathname, location.hash, location.key, loading])
 
@@ -148,14 +158,19 @@ function HashScroll() {
 function SiteLayout() {
     const { loading } = useAuth()
     const { pathname } = useLocation()
-    const hideNavbar = pathname === '/auth' || pathname === '/account/settings'
+    const hidePaymentChrome = pathname.startsWith('/payment')
+    const hideNavbar =
+        pathname === '/auth' ||
+        pathname === '/account/settings' ||
+        pathname === '/reservation' ||
+        hidePaymentChrome
 
     return (
         <>
             {!hideNavbar && <Navbar />}
             <HashScroll />
             {loading ? <LoadingPanel /> : <Outlet />}
-            <SettingsNotch />
+            {!hidePaymentChrome && <SettingsNotch />}
         </>
     )
 }
@@ -180,7 +195,8 @@ function AuthRoute() {
             } | null
         )?.from
         const returnToBooking =
-            from?.pathname === '/reservation' || from?.pathname === '/payment'
+            from?.pathname === '/reservation' ||
+            from?.pathname?.startsWith('/payment')
 
         return (
             <Navigate
@@ -220,14 +236,14 @@ function AppRoutes() {
                 </Route>
 
                 <Route path="/services" element={<Services />} />
-                <Route path="/payment/confirm" element={<Payment />} />
                 <Route path="/forgot-password" element={<PasswordRecovery />} />
                 <Route element={<AuthenticatedRoute />}>
                     <Route
                         path="/reservation"
                         element={<Services reservationOnly />}
                     />
-                    <Route path="/payment" element={<Payment />} />
+                    <Route path="/payment" element={<Navigate to="/services" replace />} />
+                    <Route path="/payment/:reference" element={<Payment />} />
                     <Route path="/account/settings" element={<AccountSettings />} />
                 </Route>
                 <Route path="/home" element={<Navigate to="/" replace />} />

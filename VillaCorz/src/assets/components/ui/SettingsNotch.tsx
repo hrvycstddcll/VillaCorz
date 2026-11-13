@@ -52,7 +52,7 @@ const SettingsNotch = () => {
             }}
             aria-label="Open settings"
             title="Settings"
-            className={`fixed right-6 top-1/2 z-50 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-2xl bg-[#006dfc] text-white shadow-[0_8px_24px_rgba(0,109,252,0.35)] transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] ${
+            className={`fixed right-6 top-1/2 z-50 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-2xl bg-[#006dfc] text-white shadow-[0_8px_24px_rgba(0,109,252,0.35)] transition-all duration-300 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] lg:flex ${
                 visible
                     ? 'translate-x-0 opacity-100'
                     : 'translate-x-[140%] opacity-0 pointer-events-none'

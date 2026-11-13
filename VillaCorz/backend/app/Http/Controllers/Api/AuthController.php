@@ -171,14 +171,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Email verified and account created successfully.',
-            'user' => [
-                'id' => $user->id,
-                'firstname' => $user->firstname,
-                'lastname' => $user->lastname,
-                'email' => $user->email,
-                'phone_number' => $user->phone_number,
-                'role' => $user->role,
-            ],
+            'user' => $user->accountPayload(),
         ], 201);
     }
 
@@ -281,14 +274,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Login successful.',
-            'user' => [
-                'id' => $user->id,
-                'firstname' => $user->firstname,
-                'lastname' => $user->lastname,
-                'email' => $user->email,
-                'phone_number' => $user->phone_number,
-                'role' => $user->role,
-            ],
+            'user' => $user->accountPayload(),
         ]);
     }
 

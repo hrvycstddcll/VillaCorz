@@ -1,11 +1,12 @@
-import { Check, Clock3 } from 'lucide-react'
+import { ArrowLeft, Check, Clock3, RefreshCw } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { money } from '../../../lib/format'
 
+type PaymentViewStatus = 'pending' | 'success' | 'expired' | 'cancelled'
+
 type PaymentSuccessViewProps = {
-    status: 'pending' | 'success'
-    firstName: string
-    lastName: string
+    status: PaymentViewStatus
+    guestName: string
     email: string
     phoneNumber: string
     bookingId: string
@@ -15,7 +16,9 @@ type PaymentSuccessViewProps = {
     nights: number
     rooms: Array<{ name: string; adults: number; kids: number }>
     total: number
+    error?: string
     onConfirm: () => void
+    onRefresh: () => void
 }
 
 function formatReceiptDate(value: string) {
@@ -34,8 +37,7 @@ function formatReceiptDate(value: string) {
 
 function PaymentSuccessView({
     status,
-    firstName,
-    lastName,
+    guestName,
     email,
     phoneNumber,
     bookingId,
@@ -45,106 +47,225 @@ function PaymentSuccessView({
     nights,
     rooms,
     total,
+    error,
     onConfirm,
+    onRefresh,
 }: PaymentSuccessViewProps) {
-    const guestName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ')
-    const guestCount = rooms.reduce((sum, room) => sum + room.adults + room.kids, 0)
+    const guestCount = rooms.reduce(
+        (sum, room) => sum + room.adults + room.kids,
+        0,
+    )
     const roomCount = rooms.length
     const isSuccessful = status === 'success'
+    const isExpired = status === 'expired'
+    const isCancelled = status === 'cancelled'
+
+    const heading = isSuccessful
+        ? 'Reservation confirmed'
+        : isCancelled
+          ? 'Reservation unavailable'
+          : isExpired
+            ? 'Payment QR expired'
+            : 'Waiting for QR scan'
+
+    const description = isSuccessful
+        ? `Payment received. Your confirmation email was sent to ${email || 'your email'}.`
+        : isCancelled
+          ? 'Another guest confirmed these dates before you did. You were not charged. Go back and choose different dates.'
+          : isExpired
+            ? 'This payment link has expired. Go back and create a new booking to get a fresh QR code.'
+            : 'Scan the QR code with your phone to confirm this reservation. Your dates are reserved after confirmation.'
 
     return (
-        <main className="fixed inset-0 z-[80] overflow-y-auto bg-[#f7f6fa] px-3 py-5 font-poppins sm:px-5 sm:py-8">
-            <div className="mx-auto w-full max-w-[410px] border-t-2 border-[#b994ff] bg-white px-3 pb-5 pt-4 shadow-[0_8px_28px_rgba(70,50,100,0.12)] sm:px-5">
+        <main className="min-h-dvh bg-[#f7f6fa] px-4 py-6 font-poppins sm:px-6 sm:py-8">
+            <div className="mx-auto w-full max-w-5xl">
+                {error && (
+                    <p
+                        role="alert"
+                        className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-5 text-rose-800"
+                    >
+                        {error}
+                    </p>
+                )}
+                <nav aria-label="Booking progress" className="mb-5">
+                    <ol className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
+                        <li>Reservation</li>
+                        <li aria-hidden="true">/</li>
+                        <li aria-current="step" className="text-slate-800">
+                            Payment
+                        </li>
+                    </ol>
+                </nav>
+
                 <section
                     aria-labelledby="payment-success-title"
-                    className="relative flex min-h-40 flex-col items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-white px-4 py-4 shadow-[0_3px_12px_rgba(15,23,42,0.18)]"
+                    aria-live="polite"
+                    aria-atomic="true"
+                    className="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_3px_12px_rgba(15,23,42,0.08)] sm:p-5"
                 >
                     <div
-                        className={`grid size-14 place-items-center rounded-full ${isSuccessful ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                            }`}
+                        aria-hidden="true"
+                        className={`grid size-12 shrink-0 place-items-center rounded-full ${
+                            isSuccessful
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : isExpired || isCancelled
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : 'bg-amber-100 text-amber-700'
+                        }`}
                     >
                         {isSuccessful ? (
-                            <Check aria-hidden="true" className="size-8 stroke-[3]" />
+                            <Check className="size-6 stroke-[3]" />
                         ) : (
-                            <Clock3 aria-hidden="true" className="size-7" />
+                            <Clock3 className="size-6" />
                         )}
                     </div>
-                    <h1
-                        id="payment-success-title"
-                        className={`mt-2 text-center text-sm font-bold ${isSuccessful ? 'text-emerald-700' : 'text-amber-700'
-                            }`}
-                    >
-                        {isSuccessful ? 'Demo payment successful' : 'Waiting for QR scan'}
-                    </h1>
-                    <p className="mt-1 text-center text-[10px] leading-4 text-slate-600">
-                        {isSuccessful
-                            ? 'The QR was opened and this demo booking was marked successful.'
-                            : 'Scan the QR code below to mark this demo booking successful.'}
-                    </p>
-                </section>
-
-                {!isSuccessful && (
-                    <section
-                        aria-label="Demo payment QR code"
-                        className="mt-3 flex flex-col items-center rounded-lg border border-slate-100 bg-white px-3 py-3 shadow-[0_3px_12px_rgba(15,23,42,0.18)]"
-                    >
-                        <p className="text-xs font-semibold text-slate-700">Scan to confirm this booking</p>
-                        <QRCodeSVG
-                            aria-label="Scannable Villa Corz demo payment confirmation QR code"
-                            className="my-3 size-40"
-                            value={qrValue}
-                            size={176}
-                            level="M"
-                            marginSize={4}
-                        />
-                        <a
-                            href={qrValue}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="min-h-10 inline-flex items-center text-xs font-semibold text-[#0875f9] underline underline-offset-2"
-                        >
-                            Test the scan confirmation
-                        </a>
-                        <p className="mt-2 max-w-xs text-center text-[10px] leading-4 text-amber-800">
-                            Demo only: this does not process a real payment. The success state is local to the browser that opens the QR.
+                    <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Villa Corz · Booking update
                         </p>
-                    </section>
-                )}
-
-                <section
-                    aria-label="Payment receipt details"
-                    className="mt-3 rounded-lg border border-slate-100 bg-white px-3 py-3 shadow-[0_3px_12px_rgba(15,23,42,0.18)]"
-                >
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[9px] leading-tight">
-                        <ReceiptField label="Name" value={guestName || 'Guest'} />
-                        <ReceiptField label="Email" value={email || 'Not provided'} />
-                        <ReceiptField label="Phone Number" value={phoneNumber || 'Not provided'} />
-                        <ReceiptField label="Checkin" value={formatReceiptDate(checkIn)} />
-                        <ReceiptField label="Checkout" value={formatReceiptDate(checkOut)} />
-                        <ReceiptField label="Services" value={rooms.map((room) => room.name).join(', ') || 'No room selected'} />
-                        <ReceiptField
-                            label="You Selected"
-                            value={`${nights} night${nights === 1 ? '' : 's'}, ${roomCount} room${roomCount === 1 ? '' : 's'} · ${guestCount} guest${guestCount === 1 ? '' : 's'}`}
-                        />
-                    </div>
-                    <p className="mt-2 text-[8px] text-slate-500">
-                        Demo booking reference: {bookingId}
-                    </p>
-                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
-                        <span className="text-[9px] text-slate-600">Total amount sent</span>
-                        <strong className="text-lg font-bold text-[#3d6dff]">{money(total)}</strong>
+                        <h1
+                            id="payment-success-title"
+                            className={`mt-1 text-xl font-semibold leading-tight sm:text-2xl ${
+                                isSuccessful
+                                    ? 'text-emerald-800'
+                                    : isExpired || isCancelled
+                                      ? 'text-rose-800'
+                                      : 'text-slate-800'
+                            }`}
+                        >
+                            {heading}
+                        </h1>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                            {description}
+                        </p>
                     </div>
                 </section>
+
+                <div
+                    className={`mt-5 grid items-start gap-5 ${
+                        status === 'pending'
+                            ? 'md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]'
+                            : 'md:grid-cols-1'
+                    }`}
+                >
+                    {status === 'pending' && (
+                        <section
+                            aria-labelledby="payment-qr-title"
+                            className="flex min-w-0 flex-col items-center rounded-xl border border-slate-200 bg-white p-4 shadow-[0_3px_12px_rgba(15,23,42,0.08)] sm:p-5"
+                        >
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Demo payment
+                            </p>
+                            <h2
+                                id="payment-qr-title"
+                                className="mt-1 text-lg font-semibold text-slate-800"
+                            >
+                                Scan to confirm
+                            </h2>
+                            <p className="mt-1 text-center text-sm leading-5 text-slate-600">
+                                Open your phone camera and scan this code.
+                            </p>
+                            <QRCodeSVG
+                                aria-label="Scannable Villa Corz demo payment confirmation QR code"
+                                className="my-5 size-52 max-w-full sm:size-56"
+                                value={qrValue}
+                                size={224}
+                                level="Q"
+                                marginSize={4}
+                            />
+                            <a
+                                href={qrValue}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-sm font-semibold text-[#0875f9] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                            >
+                                Open confirmation link
+                            </a>
+
+                            <button
+                                type="button"
+                                onClick={onRefresh}
+                                className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-[#0875f9]/40 hover:text-[#0875f9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                            >
+                                <RefreshCw
+                                    className="size-4"
+                                    aria-hidden="true"
+                                />
+                                Check payment status
+                            </button>
+
+                            <p className="mt-4 w-full rounded-lg bg-amber-50 px-3 py-3 text-xs leading-5 text-amber-900">
+                                Demo only: no real payment is processed. Complete
+                                the confirmation on your phone to reserve these
+                                dates.
+                            </p>
+                        </section>
+                    )}
+
+                    <section
+                        aria-labelledby="receipt-title"
+                        className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_3px_12px_rgba(15,23,42,0.08)] sm:p-5"
+                    >
+                        <h2
+                            id="receipt-title"
+                            className="text-lg font-semibold text-slate-800"
+                        >
+                            Reservation details
+                        </h2>
+                        <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                            <ReceiptField label="Guest name" value={guestName || 'Guest'} />
+                            <ReceiptField label="Email" value={email || 'Not provided'} />
+                            <ReceiptField
+                                label="Phone number"
+                                value={phoneNumber || 'Not provided'}
+                            />
+                            <ReceiptField
+                                label="Check-in"
+                                value={formatReceiptDate(checkIn)}
+                            />
+                            <ReceiptField
+                                label="Check-out"
+                                value={formatReceiptDate(checkOut)}
+                            />
+                            <ReceiptField
+                                label="Accommodation"
+                                value={
+                                    rooms.map((room) => room.name).join(', ') ||
+                                    'No room selected'
+                                }
+                            />
+                            <ReceiptField
+                                label="Stay"
+                                value={`${nights} night${nights === 1 ? '' : 's'} · ${roomCount} room${roomCount === 1 ? '' : 's'} · ${guestCount} guest${guestCount === 1 ? '' : 's'}`}
+                            />
+                        </dl>
+                        <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">
+                            Booking reference
+                            <strong className="mt-1 block break-words font-medium text-slate-700 [overflow-wrap:anywhere]">
+                                {bookingId}
+                            </strong>
+                        </p>
+                        <div className="mt-5 flex items-center justify-between gap-4 border-t border-slate-100 pt-4">
+                            <span className="text-sm font-medium text-slate-600">
+                                Total amount
+                            </span>
+                            <strong className="text-xl font-semibold tabular-nums text-[#0875f9]">
+                                {money(total)}
+                            </strong>
+                        </div>
+                    </section>
+                </div>
 
                 <button
                     type="button"
                     onClick={onConfirm}
-                    className={`mt-4 inline-flex min-h-11 w-full items-center justify-center px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] ${
+                    className={`mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:w-auto ${
                         isSuccessful
-                            ? 'rounded-full bg-[#0875f9] px-4 text-[10px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] hover:bg-blue-700 focus-visible:outline-blue-700'
-                            : 'rounded-lg text-slate-600 hover:bg-white hover:text-slate-900'
+                            ? 'bg-[#0875f9] text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] hover:bg-blue-700 focus-visible:outline-blue-700'
+                            : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                     }`}
                 >
+                    {!isSuccessful && <ArrowLeft aria-hidden="true" className="size-4" />}
                     {isSuccessful ? 'Return to services' : 'Back to booking'}
                 </button>
             </div>
@@ -155,8 +276,10 @@ function PaymentSuccessView({
 function ReceiptField({ label, value }: { label: string; value: string }) {
     return (
         <div className="min-w-0">
-            <span className="block text-[8px] text-slate-500">{label}</span>
-            <strong className="block break-words font-semibold text-slate-800">{value}</strong>
+            <dt className="text-xs font-medium text-slate-500">{label}</dt>
+            <dd className="mt-1 break-words text-sm font-medium leading-5 text-slate-800 [overflow-wrap:anywhere]">
+                {value}
+            </dd>
         </div>
     )
 }

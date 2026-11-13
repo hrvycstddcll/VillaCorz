@@ -34,6 +34,8 @@ export const scrollToHash = (hash: string): boolean => {
     const element = document.getElementById(id)
     if (!element) return false
 
+    activeLenis?.resize()
+
     const top = Math.max(
         0,
         element.getBoundingClientRect().top + window.scrollY - navbarOffset(),

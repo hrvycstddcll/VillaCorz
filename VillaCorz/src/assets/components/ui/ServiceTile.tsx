@@ -171,7 +171,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                     </button>
                     {stay.discountLabel ? <DiscountRibbon label={stay.discountLabel} /> : null}
                 </div>
-                <div className="mt-2 flex gap-2 overflow-x-auto pb-2">
+                <div className="mt-2 flex flex-wrap gap-2 pb-2">
                     {gallery.map((image, index) => (
                         <button
                             key={image}
@@ -197,7 +197,7 @@ const ServiceTile = (props: ServiceTileProps) => {
 
     return (
         <article
-            className={`group relative min-w-[72vw] snap-start overflow-hidden rounded-xl bg-white text-left shadow-md ring-1 sm:min-w-0 ${
+            className={`group relative overflow-hidden rounded-xl bg-white text-left shadow-md ring-1 ${
                 isSelected || isReservationSelected
                     ? 'ring-2 ring-[#006dfc]'
                     : 'ring-black/5'
