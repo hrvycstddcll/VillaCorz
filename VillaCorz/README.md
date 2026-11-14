@@ -1,78 +1,52 @@
-# React + TypeScript + Vite
+# VillaCorz
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Beach-house booking, payment, and admin demo (Laravel API + React/Vite frontend).
 
-Currently, two official plugins are available:
+## Stack
+- Backend: Laravel 11 (PHP 8.3), MySQL, Sanctum
+- Frontend: React 19, TypeScript, Vite, Tailwind CSS v4
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Local setup
 
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+### Backend
+```bash
+cd VillaCorz/backend
+composer install
+cp .env.example .env
+php artisan key:generate
+# configure DB_* in .env (default: villacorz_db on 127.0.0.1)
+php artisan migrate
+php artisan storage:link
+php artisan db:seed
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+### Frontend
+```bash
+cd VillaCorz
+npm install
+npm run dev   # http://localhost:5173
 ```
+
+## Demo run
+Start both servers for phone demos:
+```bash
+cd VillaCorz/backend
+php artisan demo:serve   # rewrites PAYMENT_PUBLIC_URL to the LAN IP
+cd VillaCorz
+npm run dev -- --host
+```
+React runs at `http://localhost:5173`, Laravel at the LAN IP on port 8000.
+Set `FRONTEND_URL` in `.env` to the LAN IP when testing the phone "Return to VillaCorz" link.
+
+## Tests
+```bash
+cd VillaCorz/backend && php artisan test
+cd VillaCorz && npm run test          # vitest
+cd VillaCorz && npm run build         # tsc + vite
+cd VillaCorz && npm run lint
+```
+
+## Security notes
+- `storage:link` is required for cancellation proof uploads.
+- HSTS is only sent over HTTPS; the demo runs over HTTP on the LAN.
+- Admin routes are gated by the `admin` middleware.

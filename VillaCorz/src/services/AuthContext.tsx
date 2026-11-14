@@ -1,4 +1,5 @@
 import {
+    useCallback,
     useEffect,
     useState,
     type ReactNode,
@@ -43,12 +44,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUserState] = useState<User | null>(() => readCachedUser())
     const [loading, setLoading] = useState(true)
 
-    const setUser = (nextUser: User | null) => {
+    const setUser = useCallback((nextUser: User | null) => {
         writeCachedUser(nextUser)
         setUserState(nextUser)
-    }
+    }, [])
 
-    const refreshUser = async () => {
+    const refreshUser = useCallback(async () => {
         try {
             const response = await getUser()
             setUser(response.data)
@@ -57,7 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setLoading(false)
         }
-    }
+    }, [setUser])
 
     const handleLogout = async () => {
         await logout()
@@ -73,7 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         }
         void init()
-    }, [])
+    }, [refreshUser])
 
     return (
         <AuthContext.Provider value={{ user, loading, refreshUser, setUser, logout:handleLogout }}>

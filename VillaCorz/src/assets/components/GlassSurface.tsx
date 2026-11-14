@@ -430,6 +430,24 @@ const GlassSurface = ({
 }: GlassSurfaceProps) => {
   const uniqueId = useId().replace(/:/g, '-');
   const filterId = `glass-filter-${uniqueId}`;
+
+  const supportsSVGFilters = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return false;
+    }
+
+    const isWebkit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+    const isFirefox = /Firefox/.test(navigator.userAgent);
+
+    if (isWebkit || isFirefox) {
+      return false;
+    }
+
+    const div = document.createElement('div');
+    div.style.backdropFilter = `url(#${filterId})`;
+
+    return div.style.backdropFilter !== '';
+  };
   const redGradId = `red-grad-${uniqueId}`;
   const blueGradId = `blue-grad-${uniqueId}`;
   const softId = `soft-${uniqueId}`;
@@ -453,6 +471,7 @@ const GlassSurface = ({
   const mapUrlRef = useRef('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const settingsRef = useRef<GlassSettings | null>(null);
+  // eslint-disable-next-line react-hooks/refs
   settingsRef.current = {
     backdrop,
     displace,
@@ -592,6 +611,7 @@ const GlassSurface = ({
     else if (shape && loaded.src === shape) setArt({ src: shape, failed: true });
   }, [shape, loaded, boxSize, borderWidth, blur, opacity, brightness]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setSvgSupported(supportsSVGFilters());
     setBlurSupported(
@@ -599,6 +619,7 @@ const GlassSurface = ({
     );
     setChecked(true);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const webgl =
     checked &&
@@ -833,23 +854,6 @@ const GlassSurface = ({
     };
   }, [webgl]);
 
-  const supportsSVGFilters = () => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
-      return false;
-    }
-
-    const isWebkit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-    const isFirefox = /Firefox/.test(navigator.userAgent);
-
-    if (isWebkit || isFirefox) {
-      return false;
-    }
-
-    const div = document.createElement('div');
-    div.style.backdropFilter = `url(#${filterId})`;
-
-    return div.style.backdropFilter !== '';
-  };
 
   const outline = shape && art?.src === shape && !art.failed ? art : null;
   const maskUrl = outline ? `url("${outline.src.replace(/"/g, '%22').replace(/[\n\r]+/g, '')}")` : '';
