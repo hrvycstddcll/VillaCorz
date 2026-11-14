@@ -281,23 +281,17 @@ function PublicAccommodationSection({
             ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                     {visibleRooms.map((stay) => (
-                        <div key={stay.id} className="flex flex-col gap-2">
-                            <ServiceTile
-                                variant="room"
-                                stay={stay}
-                                isSelected={selectedStay?.id === stay.id}
-                                isReservationSelected={selectedRoomIds.includes(
-                                    stay.id,
-                                )}
-                                onSelect={() => onSelectStay(stay)}
-                                onToggleReservation={() => onReserve(stay)}
-                            />
-                            <ServiceReviews
-                                serviceId={Number(stay.id)}
-                                averageRating={stay.ratingAverage ?? null}
-                                reviewsCount={stay.reviewsCount ?? 0}
-                            />
-                        </div>
+                        <ServiceTile
+                            key={stay.id}
+                            variant="room"
+                            stay={stay}
+                            isSelected={selectedStay?.id === stay.id}
+                            isReservationSelected={selectedRoomIds.includes(
+                                stay.id,
+                            )}
+                            onSelect={() => onSelectStay(stay)}
+                            onToggleReservation={() => onReserve(stay)}
+                        />
                     ))}
                 </div>
             )}
@@ -458,6 +452,12 @@ function RoomDetailView({
                     <p className="mt-6 text-[11px] leading-5 text-slate-600">
                         {stay.description}
                     </p>
+
+                    <ServiceReviews
+                        serviceId={Number(stay.id)}
+                        averageRating={stay.ratingAverage ?? null}
+                        reviewsCount={stay.reviewsCount ?? 0}
+                    />
 
                     <button
                         type="button"
