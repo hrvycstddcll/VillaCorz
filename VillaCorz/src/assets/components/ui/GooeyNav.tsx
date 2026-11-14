@@ -5,6 +5,7 @@ import {
     useRef,
     useState,
     type CSSProperties,
+    type ReactNode,
 } from 'react'
 import { ChevronDown } from 'lucide-react'
 import './GooeyNav.css'
@@ -12,6 +13,12 @@ import './GooeyNav.css'
 export type GooeyNavChild = {
     label: string
     href: string
+    /** Supporting line shown under the label in the dropdown panel. */
+    description?: string
+    /** Optional leading icon rendered inside the dropdown row. */
+    icon?: ReactNode
+    /** Optional group heading; consecutive children with the same group share one. */
+    group?: string
 }
 
 export type GooeyNavItem = {
@@ -50,6 +57,23 @@ type GooeyNavProps = {
     linkClassName?: string
     panelClassName?: string
     childLinkClassName?: string
+    /**
+     * Controlled dropdown index. Pass `null` for closed. When provided the host
+     * owns the dropdown state and renders the panel itself (see `renderPanels`).
+     */
+    dropdownOpenIndex?: number | null
+    /** Pointer entered a dropdown trigger. */
+    onDropdownHover?: (index: number) => void
+    /** Pointer left a dropdown trigger or moved onto a plain item. */
+    onDropdownLeave?: () => void
+    /** Trigger was activated by click or keyboard. */
+    onDropdownToggle?: (index: number, open: boolean) => void
+    /** Escape pressed while a dropdown was open. */
+    onDropdownDismiss?: () => void
+    /** Set false when the host renders the dropdown panel outside this component. */
+    renderPanels?: boolean
+    /** Id of the host panel, used for `aria-controls` while controlled. */
+    dropdownPanelId?: string
 }
 
 const MAX_DROPS = 32
@@ -72,10 +96,10 @@ const isPlainClick = (event: {
     event.button === 0
 
 const defaultPanelClassName =
-    'absolute top-full z-50 mt-2.5 w-max min-w-[12rem] rounded-b-2xl bg-white p-1.5'
+    'absolute top-full z-50 mt-2.5 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-black/[0.06] bg-white p-1.5 shadow-[0_18px_40px_-16px_rgba(15,23,42,0.35),0_2px_8px_rgba(15,23,42,0.06)]'
 
 const defaultChildLinkClassName =
-    'flex min-h-11 items-center rounded-lg px-3 font-poppins text-[0.8125rem] uppercase tracking-[0.1em] text-gray-600 transition-colors hover:bg-[#006dfc]/10 hover:text-[#003079] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#006dfc]/60 aria-[current=page]:bg-[#006dfc]/10 aria-[current=page]:font-semibold aria-[current=page]:text-[#003079]'
+    'flex min-h-11 items-start gap-3 rounded-xl px-3 py-2.5 font-poppins text-[0.8125rem] uppercase tracking-[0.1em] text-gray-600 transition-[color,background-color] duration-150 hover:bg-[#006dfc]/8 hover:text-[#003079] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#006dfc]/60 aria-[current=page]:bg-[#006dfc]/10 aria-[current=page]:font-semibold aria-[current=page]:text-[#003079]'
 
 const VERTEX = `#version 300 es
 in vec2 aPosition;
@@ -353,6 +377,13 @@ const GooeyNav = ({
     linkClassName = '',
     panelClassName = '',
     childLinkClassName = '',
+    dropdownOpenIndex,
+    onDropdownHover,
+    onDropdownLeave,
+    onDropdownToggle,
+    onDropdownDismiss,
+    renderPanels = true,
+    dropdownPanelId,
 }: GooeyNavProps) => {
     const [innerIndex, setInnerIndex] = useState(initialActiveIndex)
     const current = Math.min(
@@ -360,14 +391,18 @@ const GooeyNav = ({
         Math.max(0, items.length - 1),
     )
     const baseId = useId()
+    const controlledDropdown = dropdownOpenIndex !== undefined
     // Remember which active section the open panel belongs to. When the route
     // changes, the derived `openIndex` turns null and the panel closes itself.
     const [openState, setOpenState] = useState<{
         index: number
         active: number
     } | null>(null)
-    const openIndex =
-        openState && openState.active === current ? openState.index : null
+    const openIndex = controlledDropdown
+        ? (dropdownOpenIndex ?? null)
+        : openState && openState.active === current
+          ? openState.index
+          : null
     const hoverOpenedRef = useRef(false)
     const closeTimerRef = useRef<number | null>(null)
     const triggerRefs = useRef<(HTMLButtonElement | null)[]>([])
@@ -435,17 +470,29 @@ const GooeyNav = ({
 
     const openPanel = (index: number) => {
         clearCloseTimer()
+        if (controlledDropdown) {
+            onDropdownHover?.(index)
+            return
+        }
         setOpenState({ index, active: current })
     }
 
     const closePanel = () => {
         clearCloseTimer()
         hoverOpenedRef.current = false
+        if (controlledDropdown) {
+            onDropdownDismiss?.()
+            return
+        }
         setOpenState(null)
     }
 
     const scheduleClose = () => {
         clearCloseTimer()
+        if (controlledDropdown) {
+            onDropdownLeave?.()
+            return
+        }
         closeTimerRef.current = window.setTimeout(() => {
             closeTimerRef.current = null
             hoverOpenedRef.current = false
@@ -463,6 +510,8 @@ const GooeyNav = ({
 
     useEffect(() => {
         if (openIndex === null) return
+        // In controlled mode the host renders the panel, so it owns dismissal.
+        if (controlledDropdown) return
 
         const handlePointerDown = (event: PointerEvent) => {
             if (stageRef.current?.contains(event.target as Node)) return
@@ -473,7 +522,7 @@ const GooeyNav = ({
         document.addEventListener('pointerdown', handlePointerDown)
         return () =>
             document.removeEventListener('pointerdown', handlePointerDown)
-    }, [openIndex])
+    }, [openIndex, controlledDropdown])
 
     useLayoutEffect(() => {
         const stage = stageRef.current
@@ -1106,6 +1155,9 @@ const GooeyNav = ({
                     const hasChildren = children.length > 0
                     const open = openIndex === index
                     const panelId = `${baseId}-menu-${index}`
+                    const controlsId = controlledDropdown
+                        ? (dropdownPanelId ?? `${baseId}-menu-panel`)
+                        : panelId
 
                     return (
                         <li
@@ -1114,8 +1166,11 @@ const GooeyNav = ({
                             data-active={index === current ? '' : undefined}
                             className="relative"
                             onPointerEnter={(event) => {
-                                if (!hasChildren) return
                                 if (event.pointerType !== 'mouse') return
+                                if (!hasChildren) {
+                                    if (openIndex !== null) scheduleClose()
+                                    return
+                                }
                                 hoverOpenedRef.current = true
                                 openPanel(index)
                             }}
@@ -1126,6 +1181,7 @@ const GooeyNav = ({
                             }}
                             onBlur={(event) => {
                                 if (!hasChildren) return
+                                if (controlledDropdown) return
                                 if (
                                     event.currentTarget.contains(
                                         event.relatedTarget as Node,
@@ -1153,10 +1209,14 @@ const GooeyNav = ({
                                     type="button"
                                     className={`cursor-pointer ${linkClassName}`.trim()}
                                     aria-expanded={open}
-                                    aria-controls={panelId}
+                                    aria-controls={controlsId}
                                     onClick={(event) => {
                                         if (hoverOpenedRef.current) {
                                             hoverOpenedRef.current = false
+                                            return
+                                        }
+                                        if (controlledDropdown) {
+                                            onDropdownToggle?.(index, !open)
                                             return
                                         }
                                         if (open && event.detail > 0) {
@@ -1193,7 +1253,7 @@ const GooeyNav = ({
                                 </a>
                             )}
 
-                            {hasChildren && (
+                            {hasChildren && renderPanels && (
                                 <div
                                     id={panelId}
                                     inert={!open}
@@ -1202,40 +1262,78 @@ const GooeyNav = ({
                                         item.align === 'end'
                                             ? 'right-0'
                                             : 'left-0'
-                                    } transition-opacity duration-150 ease-out motion-reduce:transition-none ${
+                                    } origin-top transition-[opacity,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${
                                         open
-                                            ? 'pointer-events-auto opacity-100'
-                                            : 'pointer-events-none opacity-0'
+                                            ? 'pointer-events-auto translate-y-0 opacity-100'
+                                            : 'pointer-events-none -translate-y-1 opacity-0'
                                     } ${panelClassName}`.trim()}
                                 >
                                     <ul className="flex flex-col gap-0.5">
-                                        {children.map((child) => (
-                                            <li key={child.href}>
-                                                <a
-                                                    href={child.href}
-                                                    aria-current={
-                                                        child.href ===
-                                                        activeHref
-                                                            ? 'page'
-                                                            : undefined
-                                                    }
-                                                    className={`${defaultChildLinkClassName} ${childLinkClassName}`.trim()}
-                                                    onClick={(event) => {
-                                                        if (
-                                                            !isPlainClick(event)
-                                                        ) {
-                                                            return
-                                                        }
-                                                        event.preventDefault()
-                                                        closePanel()
-                                                        select(index)
-                                                        onNavigate?.(child.href)
-                                                    }}
+                                        {children.map((child, childIndex) => {
+                                            const showGroup =
+                                                Boolean(child.group) &&
+                                                child.group !==
+                                                    children[childIndex - 1]
+                                                        ?.group
+
+                                            return (
+                                                <li
+                                                    key={`${child.href}-${childIndex}`}
                                                 >
-                                                    {child.label}
-                                                </a>
-                                            </li>
-                                        ))}
+                                                    {showGroup && (
+                                                        <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+                                                            {child.group}
+                                                        </p>
+                                                    )}
+                                                    <a
+                                                        href={child.href}
+                                                        aria-current={
+                                                            child.href ===
+                                                            activeHref
+                                                                ? 'page'
+                                                                : undefined
+                                                        }
+                                                        className={`${defaultChildLinkClassName} ${childLinkClassName}`.trim()}
+                                                        onClick={(event) => {
+                                                            if (
+                                                                !isPlainClick(
+                                                                    event,
+                                                                )
+                                                            ) {
+                                                                return
+                                                            }
+                                                            event.preventDefault()
+                                                            closePanel()
+                                                            select(index)
+                                                            onNavigate?.(
+                                                                child.href,
+                                                            )
+                                                        }}
+                                                    >
+                                                        {child.icon && (
+                                                            <span
+                                                                aria-hidden="true"
+                                                                className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-[#006dfc]/8 text-[#006dfc]"
+                                                            >
+                                                                {child.icon}
+                                                            </span>
+                                                        )}
+                                                        <span className="flex min-w-0 flex-col">
+                                                            <span className="truncate">
+                                                                {child.label}
+                                                            </span>
+                                                            {child.description && (
+                                                                <span className="mt-0.5 text-[11.5px] font-normal normal-case leading-4 tracking-normal text-gray-500">
+                                                                    {
+                                                                        child.description
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    </a>
+                                                </li>
+                                            )
+                                        })}
                                     </ul>
                                 </div>
                             )}

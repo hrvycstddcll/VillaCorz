@@ -30,6 +30,10 @@ return [
         'recipient' => env('CONTACT_MAIL_TO'),
     ],
 
+    'cancel_request' => [
+        'recipient' => env('CANCEL_REQUEST_MAIL_TO', env('CONTACT_MAIL_TO')),
+    ],
+
     'verification' => [
         'expose_development_code' => env('OTP_EXPOSE_IN_RESPONSE', false),
     ],

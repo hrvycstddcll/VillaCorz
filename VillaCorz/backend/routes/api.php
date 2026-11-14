@@ -63,6 +63,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bookings', [BookingController::class, 'store'])
         ->middleware('throttle:10,1');
     Route::get('/bookings/{reference}', [BookingController::class, 'show']);
+    Route::post('/bookings/{reference}/cancel', [BookingController::class, 'cancel'])
+        ->middleware('throttle:10,1');
+    Route::post('/bookings/{reference}/cancel-request', [BookingController::class, 'requestCancellation'])
+        ->middleware('throttle:5,1');
 
     Route::get('/payments/{reference}/status', [PaymentController::class, 'status']);
 });

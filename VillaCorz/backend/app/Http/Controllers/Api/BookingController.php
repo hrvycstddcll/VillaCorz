@@ -11,6 +11,9 @@ use App\Rules\PhoneNumberRule;
 use App\Services\ActivityLogger;
 use App\Services\BookingAvailability;
 use App\Services\PricingService;
+use App\Mail\CancellationRequestMail;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use App\Support\PhoneNumber;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +28,8 @@ class BookingController extends Controller
     {
         $bookings = Booking::query()
             ->where('user_id', $request->user()->id)
-            ->with(['rooms', 'payment'])
+            ->where('status', 'confirmed')
+            ->with(['rooms.service.images', 'payment', 'latestCancellationRequest'])
             ->latest()
             ->get();
 
@@ -39,7 +43,7 @@ class BookingController extends Controller
     {
         $booking = Booking::query()
             ->where('reference', $reference)
-            ->with(['rooms', 'payment'])
+            ->with(['rooms.service.images', 'payment', 'latestCancellationRequest'])
             ->firstOrFail();
 
         $this->authorizeOwner($request, $booking);
@@ -333,9 +337,173 @@ class BookingController extends Controller
         ], 201);
     }
 
+public function cancel(Request $request, string $reference): JsonResponse
+    {
+        $booking = Booking::query()
+            ->where('reference', $reference)
+            ->with(['rooms.service.images', 'payment', 'latestCancellationRequest'])
+            ->firstOrFail();
+
+        $this->authorizeOwner($request, $booking);
+
+        if (! in_array($booking->status, ['pending_payment', 'confirmed'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This booking can no longer be cancelled.',
+            ], 422);
+        }
+
+        if ($booking->check_in !== null && $booking->check_in->lt(now()->startOfDay()->addDays(7))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cancellations are only accepted at least 7 days before check-in. For emergencies, please contact the admin to request a refund.',
+            ], 422);
+        }
+
+        $booking->forceFill([
+            'status' => 'cancelled',
+        ])->save();
+
+        if ($booking->payment && $booking->payment->status !== 'cancelled') {
+            $booking->payment->forceFill(['status' => 'cancelled'])->save();
+        }
+
+        PaymentEvent::record(
+            'booking_cancelled',
+            $booking->payment,
+            $booking,
+            'user',
+            [
+                'reference' => $booking->reference,
+                'previous_status' => $booking->getOriginal('status'),
+            ],
+            null,
+            $request,
+        );
+
+        ActivityLogger::record(
+            'booking_cancelled',
+            $request->user(),
+            "Cancelled booking {$booking->reference}.",
+            Booking::class,
+            $booking->id,
+            ['reference' => $booking->reference],
+            $request,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Booking cancelled.',
+            'data' => $this->bookingPayload($booking->fresh(['rooms', 'payment'])),
+        ]);
+    }
+    public function requestCancellation(Request $request, string $reference): JsonResponse
+    {
+        $booking = Booking::query()
+            ->where('reference', $reference)
+            ->with(['rooms.service.images', 'payment', 'latestCancellationRequest'])
+            ->firstOrFail();
+
+        $this->authorizeOwner($request, $booking);
+
+        if ($booking->status !== 'confirmed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only confirmed bookings can request an emergency cancellation.',
+            ], 422);
+        }
+
+        if ($booking->check_in === null || $booking->check_in->gte(now()->startOfDay()->addDays(7))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can still cancel this booking directly. Use the cancel button instead.',
+            ], 422);
+        }
+
+        if ($booking->latestCancellationRequest
+            && $booking->latestCancellationRequest->status === 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'A cancellation request for this booking is already pending review.',
+            ], 409);
+        }
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+            'proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+        ]);
+
+        $proofPath = null;
+        $proofOriginalName = null;
+
+        if ($request->hasFile('proof')) {
+            $file = $request->file('proof');
+            $proofOriginalName = $file->getClientOriginalName();
+            $proofPath = $file->store("cancel-requests/{$booking->reference}", 'local');
+        }
+
+        $cancelRequest = $booking->cancellationRequests()->create([
+            'user_id' => $request->user()?->id,
+            'reason' => $validated['reason'],
+            'proof_path' => $proofPath,
+            'proof_original_name' => $proofOriginalName,
+            'status' => 'pending',
+        ]);
+
+        $recipient = config('services.cancel_request.recipient');
+
+        if (! is_string($recipient) || trim($recipient) === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'The cancellation request service is temporarily unavailable. Please try again later.',
+            ], 503);
+        }
+
+        Mail::to($recipient)->send(new CancellationRequestMail(
+            booking: $booking,
+            reason: $validated['reason'],
+            proofPath: $proofPath,
+            proofOriginalName: $proofOriginalName,
+        ));
+
+        PaymentEvent::record(
+            'cancel_requested',
+            $booking->payment,
+            $booking,
+            'user',
+            [
+                'request_id' => $cancelRequest->id,
+                'reason' => $validated['reason'],
+                'has_proof' => $proofPath !== null,
+            ],
+            null,
+            $request,
+        );
+
+        ActivityLogger::record(
+            'booking_cancel_requested',
+            $request->user(),
+            "Requested emergency cancellation for booking {$booking->reference}.",
+            Booking::class,
+            $booking->id,
+            ['reference' => $booking->reference, 'request_id' => $cancelRequest->id],
+            $request,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Your cancellation request has been sent to customer service. We will review it and contact you by email.',
+            'data' => [
+                'id' => $cancelRequest->id,
+                'status' => $cancelRequest->status,
+                'requested_at' => $cancelRequest->created_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
     private function replayBooking(Booking $booking, string $requestHash): JsonResponse
     {
-        if ($booking->request_hash !== null && ! hash_equals($booking->request_hash, $requestHash)) {
+            if ($booking->request_hash !== null && ! hash_equals($booking->request_hash, $requestHash)) {
             return response()->json([
                 'success' => false,
                 'message' => 'This idempotency key was already used with different booking details.',
@@ -397,6 +565,12 @@ class BookingController extends Controller
             'total' => (string) $booking->total,
             'currency' => $booking->currency,
             'payment_method' => $booking->payment_method,
+            'cancellation_request' => $booking->latestCancellationRequest ? [
+                'id' => $booking->latestCancellationRequest->id,
+                'status' => $booking->latestCancellationRequest->status,
+                'reason' => $booking->latestCancellationRequest->reason,
+                'requested_at' => $booking->latestCancellationRequest->created_at?->toIso8601String(),
+            ] : null,
             'confirmed_at' => $booking->confirmed_at?->toIso8601String(),
             'confirmation_email_sent_at' => $booking->confirmation_email_sent_at?->toIso8601String(),
             'contact' => [
@@ -413,6 +587,8 @@ class BookingController extends Controller
                 'weekday_price' => (string) $room->weekday_price,
                 'weekend_price' => (string) $room->weekend_price,
                 'line_total' => (string) $room->line_total,
+                'description' => $room->service?->description,
+                'image_url' => $room->service?->images?->first()?->image_url,
             ])->values(),
             'payment' => $payment ? [
                 'reference' => $payment->reference,

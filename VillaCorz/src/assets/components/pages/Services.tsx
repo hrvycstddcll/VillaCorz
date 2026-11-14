@@ -9,6 +9,7 @@ import BookingCalendarPanel from '../ui/BookingCalendarPanel'
 import PhoneNumberInput from '../ui/PhoneNumberInput'
 import ServiceTile from '../ui/ServiceTile'
 import SavePhoneModal from '../ui/SavePhoneModal'
+import CancellationPolicyModal from '../ui/CancellationPolicyModal'
 import { money } from '../../../lib/format'
 import { getApiErrorMessage } from '../../../lib/apiError'
 import { getReservationPrice } from '../../../lib/reservation'
@@ -510,6 +511,8 @@ function ReservationView({
     )
     const [customPhoneNumber, setCustomPhoneNumber] = useState('')
     const [savePromptNumber, setSavePromptNumber] = useState('')
+    const [showCancellationPolicy, setShowCancellationPolicy] = useState(false)
+    const [pendingBookingNumber, setPendingBookingNumber] = useState('')
     const [isSavingPhone, setIsSavingPhone] = useState(false)
     const [savePhoneError, setSavePhoneError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -690,6 +693,17 @@ function ReservationView({
             )
             return
         }
+
+        setSubmitError('')
+        setPendingBookingNumber(normalized)
+        setShowCancellationPolicy(true)
+    }
+
+    const handlePolicyContinue = async () => {
+        const normalized = pendingBookingNumber
+        setShowCancellationPolicy(false)
+        setPendingBookingNumber('')
+        if (!normalized) return
 
         // The first number an account uses is offered as a saved personal
         // number. Close keeps the booking as a guest number only; Continue
@@ -1192,6 +1206,17 @@ function ReservationView({
                     </form>
                 </section>
             </div>
+
+            <CancellationPolicyModal
+                open={showCancellationPolicy}
+                onContinue={() => {
+                    void handlePolicyContinue()
+                }}
+                onClose={() => {
+                    setShowCancellationPolicy(false)
+                    setPendingBookingNumber('')
+                }}
+            />
 
             {savePromptNumber && (
                 <SavePhoneModal

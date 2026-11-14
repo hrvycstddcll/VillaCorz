@@ -70,6 +70,16 @@ class Booking extends Model
         return $this->hasMany(PaymentEvent::class);
     }
 
+    public function cancellationRequests(): HasMany
+    {
+        return $this->hasMany(CancellationRequest::class);
+    }
+
+    public function latestCancellationRequest(): HasOne
+    {
+        return $this->hasOne(CancellationRequest::class)->latestOfMany();
+    }
+
     public function isPendingPayment(): bool
     {
         return $this->status === 'pending_payment';

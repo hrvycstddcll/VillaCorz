@@ -70,6 +70,8 @@ export type BookingRoom = {
     weekday_price: string
     weekend_price: string
     line_total: string
+    description: string | null
+    image_url: string | null
 }
 
 export type BookingPayment = {
@@ -83,6 +85,13 @@ export type BookingPayment = {
     qr_expires_at: string | null
     paid_at: string | null
     is_expired: boolean
+}
+
+export type CancellationRequest = {
+    id: number
+    status: 'pending' | 'approved' | 'rejected'
+    reason: string
+    requested_at: string | null
 }
 
 export type Booking = {
@@ -106,6 +115,7 @@ export type Booking = {
     }
     rooms: BookingRoom[]
     payment: BookingPayment | null
+    cancellation_request: CancellationRequest | null
     created_at: string
 }
 

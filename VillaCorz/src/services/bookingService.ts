@@ -11,3 +11,13 @@ export const getBooking = (reference: string) =>
 
 export const getBookings = () =>
     api.get<ApiEnvelope<Booking[]>>('/bookings')
+
+export const cancelBooking = (reference: string) =>
+    api.post<ApiEnvelope<Booking>>(`/bookings/${encodeURIComponent(reference)}/cancel`)
+
+export const requestCancellation = (reference: string, formData: FormData) =>
+    api.post<ApiEnvelope<{ id: number; status: string; requested_at: string | null }>>(
+        `/bookings/${encodeURIComponent(reference)}/cancel-request`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+    )

@@ -55,24 +55,74 @@ class DemoServe extends Command
     private function detectLanIp(): ?string
     {
         if (PHP_OS_FAMILY === 'Windows') {
-            $output = $this->runProcess(['ipconfig'], multiline: true);
+            $output = $this->runProcess(['ipconfig'], true);
 
             if ($output !== null) {
-                // Prefer the adapter that owns the default gateway: that is the
-                // Wi-Fi/Ethernet link the phone is actually on, not a virtual
-                // adapter such as VirtualBox's host-only network.
-                foreach (preg_split('/\r?\n\r?\n/', $output) ?: [] as $adapter) {
-                    if (! preg_match('/Default Gateway[^:]*:\s*(\d+\.\d+\.\d+\.\d+)/i', $adapter)) {
+                // ipconfig prints each adapter as a "name adapter X:" header
+                // followed by its detail lines. Parse line-by-line so the
+                // details stay associated with their adapter.
+                $adapters = [];
+                $current = null;
+
+                foreach (preg_split('/\r?\n/', $output) ?: [] as $line) {
+                    if (preg_match('/^(.+?)\s+adapter\s+(.+?):\s*$/i', $line, $m)) {
+                        $current = $m[2];
+                        $adapters[$current] = '';
+
                         continue;
                     }
 
-                    if (preg_match('/IPv4 Address[^:]*:\s*(\d+\.\d+\.\d+\.\d+)/i', $adapter, $matches)) {
-                        return $matches[1];
+                    if ($current !== null) {
+                        $adapters[$current] .= $line."\n";
                     }
                 }
 
-                if (preg_match('/IPv4 Address[^:]*:\s*(\d+\.\d+\.\d+\.\d+)/i', $output, $matches)) {
-                    return $matches[1];
+                $virtual = ['virtualbox', 'vmware', 'hyper-v', 'docker', 'vethernet', 'loopback'];
+                $scored = [];
+
+                foreach ($adapters as $name => $details) {
+                    $lowerName = strtolower($name);
+
+                    foreach ($virtual as $v) {
+                        if (str_contains($lowerName, $v)) {
+                            continue 2;
+                        }
+                    }
+
+                    if (! preg_match('/IPv4 Address[^:]*:\s*(\d+\.\d+\.\d+\.\d+)/i', $details, $ipMatch)) {
+                        continue;
+                    }
+
+                    $ip = $ipMatch[1];
+
+                    if (str_starts_with($ip, '127.') || str_starts_with($ip, '169.254.')) {
+                        continue;
+                    }
+
+                    $hasGateway = (bool) preg_match('/Default Gateway[^:]*:\s*\S+/i', $details);
+                    $isWireless = str_contains($lowerName, 'wi-fi')
+                        || str_contains($lowerName, 'wireless')
+                        || str_contains($lowerName, 'wlan');
+
+                    $scored[] = [
+                        'ip' => $ip,
+                        'wireless' => $isWireless,
+                        'gateway' => $hasGateway,
+                    ];
+                }
+
+                usort($scored, function (array $a, array $b): int {
+                    foreach (['wireless', 'gateway'] as $key) {
+                        if ($a[$key] !== $b[$key]) {
+                            return $b[$key] <=> $a[$key];
+                        }
+                    }
+
+                    return 0;
+                });
+
+                if ($scored !== []) {
+                    return $scored[0]['ip'];
                 }
             }
         } else {
@@ -87,7 +137,6 @@ class DemoServe extends Command
             }
         }
 
-        // Last resort: resolve the machine name and keep a non-loopback IPv4 address.
         $resolved = gethostbynamel(gethostname()) ?: [];
 
         foreach ($resolved as $candidate) {

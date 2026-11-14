@@ -12,13 +12,14 @@ import Reports from './assets/components/pages/Reports'
 import HomePage from './assets/components/pages/HomePage'
 import AboutUs from './assets/components/pages/AboutUs'
 import Services from './assets/components/pages/Services'
+import MyBookings from './assets/components/pages/MyBookings'
 import Payment from './assets/components/pages/Payment'
 import AccountSettings from './assets/components/pages/AccountSettings'
+import SettingsHub from './assets/components/pages/SettingsHub'
 import PasswordRecovery from './assets/components/pages/PasswordRecovery'
 import ManageOffers from './assets/components/pages/Offers'
 import Contact from './assets/components/pages/Contact'
 import Navbar from './assets/components/ui/Navbar'
-import SettingsNotch from './assets/components/ui/SettingsNotch'
 import Auth from './assets/components/auth/Auth'
 import { AuthProvider } from './services/AuthContext'
 import { useAuth } from './services/useAuth'
@@ -107,7 +108,6 @@ function AdminLayout() {
         <div className="min-h-screen bg-slate-50 text-slate-800">
             <NavbarSpacer />
             <Outlet />
-            <SettingsNotch />
         </div>
     )
 }
@@ -162,6 +162,8 @@ function SiteLayout() {
     const hideNavbar =
         pathname === '/auth' ||
         pathname === '/account/settings' ||
+        pathname === '/settings' ||
+        pathname === '/bookings' ||
         pathname === '/reservation' ||
         hidePaymentChrome
 
@@ -170,7 +172,6 @@ function SiteLayout() {
             {!hideNavbar && <Navbar />}
             <HashScroll />
             {loading ? <LoadingPanel /> : <Outlet />}
-            {!hidePaymentChrome && <SettingsNotch />}
         </>
     )
 }
@@ -242,6 +243,8 @@ function AppRoutes() {
                         path="/reservation"
                         element={<Services reservationOnly />}
                     />
+                    <Route path="/bookings" element={<MyBookings />} />
+                    <Route path="/settings" element={<SettingsHub />} />
                     <Route path="/payment" element={<Navigate to="/services" replace />} />
                     <Route path="/payment/:reference" element={<Payment />} />
                     <Route path="/account/settings" element={<AccountSettings />} />

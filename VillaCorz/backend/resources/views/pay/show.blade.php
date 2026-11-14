@@ -285,7 +285,7 @@
                     </p>
                 @endif
 
-                <a class="back" href="/">Return to VillaCorz</a>
+                <a class="back" href="{{ config('app.frontend_url') }}">Return to VillaCorz</a>
             </div>
         </div>
     </div>

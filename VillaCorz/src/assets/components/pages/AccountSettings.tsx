@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import axios from 'axios'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
     BadgeCheck,
     KeyRound,
@@ -12,6 +12,7 @@ import {
     UserRound,
 } from 'lucide-react'
 import AccountPasswordInput from '../ui/AccountPasswordInput'
+import BackButton from '../ui/BackButton'
 import PhoneNumberInput from '../ui/PhoneNumberInput'
 import PhoneVerifyModal from '../ui/PhoneVerifyModal'
 import { useAuth } from '../../../services/useAuth'
@@ -49,7 +50,6 @@ const smallButton =
 
 const AccountSettings = () => {
     const { user, setUser } = useAuth()
-    const navigate = useNavigate()
     const [firstname, setFirstname] = useState(user?.firstname ?? '')
     const [lastname, setLastname] = useState(user?.lastname ?? '')
     const [profilePassword, setProfilePassword] = useState('')
@@ -280,13 +280,7 @@ const AccountSettings = () => {
     return (
         <main className="min-h-svh bg-slate-50 px-4 pb-12 pt-8 font-poppins sm:px-7 sm:pt-10">
             <div className="mx-auto w-full max-w-3xl">
-                <button
-                    type="button"
-                    onClick={() => navigate(-1)}
-                    className="mb-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[#006dfc] px-4 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
-                >
-                    Back
-                </button>
+                <BackButton className="mb-4" />
                 <header className="mb-8">
                     <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[#006dfc]">
                         Your account

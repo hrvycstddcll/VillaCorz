@@ -419,9 +419,89 @@ class BookingPaymentTest extends TestCase
             ->assertForbidden();
     }
 
-    /**
-     * Create a booking through the API and return its payment.
-     */
+    public function test_a_customer_can_cancel_their_confirmed_booking(): void
+    {
+        Mail::fake();
+
+        $owner = User::factory()->create();
+        $stranger = User::factory()->create();
+        $service = $this->makeRoomService();
+        $checkIn = now()->addDays(20)->startOfDay();
+
+        $payload = $this->bookingPayload($service, [
+            'check_in' => $checkIn->toDateString(),
+            'check_out' => $checkIn->copy()->addDays(2)->toDateString(),
+        ]);
+
+        $this->actingAs($owner)
+            ->postJson('/api/bookings', $payload, ['Idempotency-Key' => 'cancel-a'])
+            ->assertCreated();
+
+        $booking = Booking::query()->where('idempotency_key', 'cancel-a')->firstOrFail();
+        $this->confirmOnPhone($booking->payment);
+
+        $this->assertSame('confirmed', $booking->fresh()->status);
+
+        $this->actingAs($stranger)
+            ->postJson("/api/bookings/{$booking->reference}/cancel")
+            ->assertForbidden();
+
+        $this->actingAs($owner)
+            ->postJson("/api/bookings/{$booking->reference}/cancel")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'cancelled');
+
+        $booking->refresh();
+        $this->assertSame('cancelled', $booking->status);
+        $this->assertSame('cancelled', $booking->payment->fresh()->status);
+
+        // Cancelling again is rejected.
+        $this->actingAs($owner)
+            ->postJson("/api/bookings/{$booking->reference}/cancel")
+            ->assertStatus(422);
+
+        // The slot is released, so another guest can book the same dates.
+        $this->actingAs($stranger)
+            ->postJson('/api/bookings', $payload, ['Idempotency-Key' => 'cancel-b'])
+            ->assertCreated();
+
+        // Cancel window: 6 days before check-in is rejected, exactly 7 is allowed.
+        $lateCheckIn = now()->addDays(6)->startOfDay();
+        $latePayload = $this->bookingPayload($service, [
+            'check_in' => $lateCheckIn->toDateString(),
+            'check_out' => $lateCheckIn->copy()->addDays(2)->toDateString(),
+        ]);
+        $this->actingAs($owner)
+            ->postJson('/api/bookings', $latePayload, ['Idempotency-Key' => 'late-a'])
+            ->assertCreated();
+        $lateBooking = Booking::query()->where('idempotency_key', 'late-a')->firstOrFail();
+        $this->confirmOnPhone($lateBooking->payment);
+        $this->actingAs($owner)
+            ->postJson("/api/bookings/{$lateBooking->reference}/cancel")
+            ->assertStatus(422);
+
+        $edgeCheckIn = now()->addDays(14)->startOfDay();
+        $edgePayload = $this->bookingPayload($service, [
+            'check_in' => $edgeCheckIn->toDateString(),
+            'check_out' => $edgeCheckIn->copy()->addDays(2)->toDateString(),
+        ]);
+        $this->actingAs($owner)
+            ->postJson('/api/bookings', $edgePayload, ['Idempotency-Key' => 'edge-a'])
+            ->assertCreated();
+        $edgeBooking = Booking::query()->where('idempotency_key', 'edge-a')->firstOrFail();
+        $this->confirmOnPhone($edgeBooking->payment);
+        $this->actingAs($owner)
+            ->postJson("/api/bookings/{$edgeBooking->reference}/cancel")
+            ->assertOk();
+
+        // My Bookings (index) only returns confirmed bookings, and excludes
+        // cancelled ones.
+        $this->actingAs($owner)
+            ->getJson('/api/bookings')
+            ->assertOk()
+            ->assertJsonFragment(['reference' => $lateBooking->reference])
+            ->assertJsonMissing(['reference' => $edgeBooking->reference]);
+    }
     private function createBooking(User $user, ?Service $service = null): Payment
     {
         $service ??= $this->makeRoomService();
