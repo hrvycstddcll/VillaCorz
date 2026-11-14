@@ -453,12 +453,6 @@ function RoomDetailView({
                         {stay.description}
                     </p>
 
-                    <ServiceReviews
-                        serviceId={Number(stay.id)}
-                        averageRating={stay.ratingAverage ?? null}
-                        reviewsCount={stay.reviewsCount ?? 0}
-                    />
-
                     <button
                         type="button"
                         onClick={onReserve}
@@ -1501,17 +1495,26 @@ function Services({
                 />
                 <div className="min-w-0">
                 {isRoomDetailOpen && selectedStay ? (
-                    <RoomDetailView
-                        stay={selectedStay}
-                        selectedPhoto={selectedRoomPhoto}
-                        isReservationSelected={selectedRoomIds.includes(selectedStay.id)}
-                        onReserve={() => {
-                            reserveStay(selectedStay)
-                            setIsRoomDetailOpen(false)
-                        }}
-                        onSelectPhoto={setSelectedRoomPhoto}
-                        onBack={() => setIsRoomDetailOpen(false)}
-                    />
+                    <>
+                        <RoomDetailView
+                            stay={selectedStay}
+                            selectedPhoto={selectedRoomPhoto}
+                            isReservationSelected={selectedRoomIds.includes(selectedStay.id)}
+                            onReserve={() => {
+                                reserveStay(selectedStay)
+                                setIsRoomDetailOpen(false)
+                            }}
+                            onSelectPhoto={setSelectedRoomPhoto}
+                            onBack={() => setIsRoomDetailOpen(false)}
+                        />
+                        <div className="mt-4">
+                            <ServiceReviews
+                                serviceId={Number(selectedStay.id)}
+                                averageRating={selectedStay.ratingAverage ?? null}
+                                reviewsCount={selectedStay.reviewsCount ?? 0}
+                            />
+                        </div>
+                    </>
                 ) : (
                     <>
                 <header className="mb-7 sm:mb-9">
