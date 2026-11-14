@@ -26,12 +26,28 @@ class BookingController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $bookings = Booking::query()
+        $status = $request->query('status', 'all');
+
+        $query = Booking::query()
             ->where('user_id', $request->user()->id)
-            ->where('status', 'confirmed')
             ->with(['rooms.service.images', 'payment', 'latestCancellationRequest'])
-            ->latest()
-            ->get();
+            ->latest();
+
+        if ($status !== 'all' && $status !== null && $status !== '') {
+            if ($status === 'booked') {
+                $query->where('status', 'confirmed')
+                    ->whereDate('check_out', '>=', now()->toDateString());
+            } elseif ($status === 'completed') {
+                $query->where('status', 'confirmed')
+                    ->whereDate('check_out', '<', now()->toDateString());
+            } elseif ($status === 'cancelled') {
+                $query->where('status', 'cancelled');
+            } elseif (in_array($status, ['pending_payment', 'expired', 'confirmed'], true)) {
+                $query->where('status', $status);
+            }
+        }
+
+        $bookings = $query->get();
 
         return response()->json([
             'success' => true,
@@ -551,11 +567,26 @@ public function cancel(Request $request, string $reference): JsonResponse
      */
     private function bookingPayload(Booking $booking): array
     {
+        if ($booking->isCompleted() && $booking->completed_at === null) {
+            $booking->forceFill(['completed_at' => now()])->save();
+            $booking->completed_at = $booking->completed_at ?? now();
+        }
+
         $payment = $booking->payment;
+
+        $lifecycle = match (true) {
+            $booking->status === 'pending_payment' => 'pending',
+            $booking->status === 'expired' => 'expired',
+            $booking->status === 'cancelled' => 'cancelled',
+            $booking->status === 'confirmed' && $booking->check_out->isPast() => 'completed',
+            default => 'booked',
+        };
 
         return [
             'reference' => $booking->reference,
             'status' => $booking->status,
+            'lifecycle' => $lifecycle,
+            'completed_at' => $booking->completed_at?->toIso8601String(),
             'check_in' => $booking->check_in->format('Y-m-d'),
             'check_out' => $booking->check_out->format('Y-m-d'),
             'nights' => $booking->nights,

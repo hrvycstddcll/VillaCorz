@@ -32,6 +32,25 @@ export type ServiceImage = {
     updated_at: string
 }
 
+export type ServiceReviewImage = {
+    id: number
+    url: string
+    sort_order: number
+}
+
+export type ServiceReview = {
+    id: number
+    service_id: number
+    rating: number
+    title: string | null
+    comment: string | null
+    status: string
+    verified: boolean
+    author: string
+    created_at: string | null
+    images: ServiceReviewImage[]
+}
+
 export type Service = {
     id: number
     created_by: number | null
@@ -49,6 +68,8 @@ export type Service = {
     amenities: string[] | null
     status: ServiceStatus
     images: ServiceImage[]
+    rating_average: number | null
+    reviews_count: number
     created_at: string
     updated_at: string
 }
@@ -97,6 +118,8 @@ export type CancellationRequest = {
 export type Booking = {
     reference: string
     status: BookingStatus
+    lifecycle: 'pending' | 'expired' | 'cancelled' | 'booked' | 'completed'
+    completed_at: string | null
     check_in: string
     check_out: string
     nights: number

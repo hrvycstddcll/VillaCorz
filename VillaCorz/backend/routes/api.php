@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PhoneNumberController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\ServiceReviewController;
 
 // Authenticated user
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
@@ -74,6 +75,18 @@ Route::middleware('auth:sanctum')->group(function () {
 // Public service routes
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/services/{id}', [ServiceController::class, 'show']);
+Route::get('/services/{id}/reviews', [ServiceReviewController::class, 'index']);
+Route::get('/services/{id}/can-review', [ServiceReviewController::class, 'canReview'])
+    ->middleware('auth:sanctum');
+
+// Authenticated review management
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/services/{id}/reviews', [ServiceReviewController::class, 'store'])
+        ->middleware('throttle:5,1');
+    Route::put('/reviews/{id}', [ServiceReviewController::class, 'update'])
+        ->middleware('throttle:5,1');
+    Route::delete('/reviews/{id}', [ServiceReviewController::class, 'destroy']);
+});
 
 // Admin-only service management
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
@@ -84,6 +97,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/services', [ServiceController::class, 'store']);
     Route::put('/services/{id}', [ServiceController::class, 'update']);
     Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
+
+    Route::patch('/reviews/{id}/status', [ServiceReviewController::class, 'setStatus']);
 });
 
 // Contact form

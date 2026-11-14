@@ -13,6 +13,8 @@ export type ServiceTileStay = {
     discountLabel?: string
     capacity: string
     rating?: string
+    ratingAverage?: number | null
+    reviewsCount?: number
     badge?: string
 }
 

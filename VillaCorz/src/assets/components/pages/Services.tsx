@@ -8,6 +8,7 @@ import ServicesFooter, {
 import BookingCalendarPanel from '../ui/BookingCalendarPanel'
 import PhoneNumberInput from '../ui/PhoneNumberInput'
 import ServiceTile from '../ui/ServiceTile'
+import ServiceReviews from '../ui/ServiceReviews'
 import SavePhoneModal from '../ui/SavePhoneModal'
 import CancellationPolicyModal from '../ui/CancellationPolicyModal'
 import { money } from '../../../lib/format'
@@ -54,6 +55,8 @@ type Stay = {
     amenities: string[]
     capacity: string
     rating?: string
+    ratingAverage?: number | null
+    reviewsCount?: number
     badge?: string
 }
 
@@ -114,6 +117,12 @@ const toStay = (service: Service): Stay => {
             service.pax != null
                 ? `Good for ${service.pax} pax`
                 : 'Good for 2-4 pax',
+        rating:
+            service.rating_average != null
+                ? service.rating_average.toFixed(1)
+                : undefined,
+        ratingAverage: service.rating_average,
+        reviewsCount: service.reviews_count,
     }
 }
 
@@ -272,17 +281,23 @@ function PublicAccommodationSection({
             ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                     {visibleRooms.map((stay) => (
-                        <ServiceTile
-                            key={stay.id}
-                            variant="room"
-                            stay={stay}
-                            isSelected={selectedStay?.id === stay.id}
-                            isReservationSelected={selectedRoomIds.includes(
-                                stay.id,
-                            )}
-                            onSelect={() => onSelectStay(stay)}
-                            onToggleReservation={() => onReserve(stay)}
-                        />
+                        <div key={stay.id} className="flex flex-col gap-2">
+                            <ServiceTile
+                                variant="room"
+                                stay={stay}
+                                isSelected={selectedStay?.id === stay.id}
+                                isReservationSelected={selectedRoomIds.includes(
+                                    stay.id,
+                                )}
+                                onSelect={() => onSelectStay(stay)}
+                                onToggleReservation={() => onReserve(stay)}
+                            />
+                            <ServiceReviews
+                                serviceId={Number(stay.id)}
+                                averageRating={stay.ratingAverage ?? null}
+                                reviewsCount={stay.reviewsCount ?? 0}
+                            />
+                        </div>
                     ))}
                 </div>
             )}

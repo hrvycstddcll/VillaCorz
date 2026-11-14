@@ -494,10 +494,10 @@ class BookingPaymentTest extends TestCase
             ->postJson("/api/bookings/{$edgeBooking->reference}/cancel")
             ->assertOk();
 
-        // My Bookings (index) only returns confirmed bookings, and excludes
-        // cancelled ones.
+        // The "Booked" view only returns confirmed, upcoming bookings, and
+        // excludes cancelled ones.
         $this->actingAs($owner)
-            ->getJson('/api/bookings')
+            ->getJson('/api/bookings?status=booked')
             ->assertOk()
             ->assertJsonFragment(['reference' => $lateBooking->reference])
             ->assertJsonMissing(['reference' => $edgeBooking->reference]);

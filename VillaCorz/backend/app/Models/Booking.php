@@ -42,6 +42,7 @@ class Booking extends Model
         'total' => 'decimal:2',
         'expires_at' => 'datetime',
         'confirmed_at' => 'datetime',
+        'completed_at' => 'datetime',
         'confirmation_email_sent_at' => 'datetime',
     ];
 
@@ -88,5 +89,12 @@ class Booking extends Model
     public function isConfirmed(): bool
     {
         return $this->status === 'confirmed';
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === 'confirmed'
+            && $this->check_out !== null
+            && $this->check_out->isPast();
     }
 }

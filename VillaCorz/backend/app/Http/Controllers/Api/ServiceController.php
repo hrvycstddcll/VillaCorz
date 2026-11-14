@@ -21,6 +21,8 @@ class ServiceController extends Controller
     public function index(): JsonResponse
     {
         $services = Service::with('images')
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
             ->latest()
             ->get();
 
@@ -148,7 +150,10 @@ class ServiceController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $service = Service::with('images')->findOrFail($id);
+        $service = Service::with('images')
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
+            ->findOrFail($id);
 
         return response()->json([
             'success' => true,
@@ -158,7 +163,10 @@ class ServiceController extends Controller
 
     public function update(Request $request, int $id, CloudinaryService $cloudinary): JsonResponse
     {
-        $service = Service::with('images')->findOrFail($id);
+        $service = Service::with('images')
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
+            ->findOrFail($id);
         $validated = $this->validateService($request);
         $this->ensureSingleExclusive(
             $validated['kind'] ?? $service->kind,
@@ -365,7 +373,10 @@ class ServiceController extends Controller
 
     public function destroy(Request $request, int $id, CloudinaryService $cloudinary): JsonResponse
     {
-        $service = Service::with('images')->findOrFail($id);
+        $service = Service::with('images')
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
+            ->findOrFail($id);
 
         $publicIds = $service->images
             ->pluck('public_id')

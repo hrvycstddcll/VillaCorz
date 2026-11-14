@@ -1,5 +1,5 @@
 import api from './api'
-import type { ApiEnvelope, Service } from './types'
+import type { ApiEnvelope, Service, ServiceReview } from './types'
 
 const multipartConfig = {
     headers: {
@@ -27,3 +27,34 @@ export const updateService = (id: number, payload: FormData) => {
 
 export const deleteService = (id: number) =>
     api.delete<ApiEnvelope<null>>(`/services/${id}`)
+
+export const getServiceReviews = (id: number, page = 1) =>
+    api.get<{
+        success: boolean
+        data: ServiceReview[]
+        meta: {
+            current_page: number
+            last_page: number
+            total: number
+            average_rating: number
+            reviews_count: number
+        }
+    }>(`/services/${id}/reviews`, { params: { page } })
+
+export const canReviewService = (id: number) =>
+    api.get<ApiEnvelope<{ eligible: boolean; reason: string | null }>>(
+        `/services/${id}/can-review`,
+    )
+
+export const createServiceReview = (id: number, payload: FormData) =>
+    api.post<ApiEnvelope<ServiceReview>>(`/services/${id}/reviews`, payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+export const updateServiceReview = (id: number, payload: FormData) =>
+    api.post<ApiEnvelope<ServiceReview>>(`/reviews/${id}`, payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+export const deleteServiceReview = (id: number) =>
+    api.delete<ApiEnvelope<null>>(`/reviews/${id}`)
