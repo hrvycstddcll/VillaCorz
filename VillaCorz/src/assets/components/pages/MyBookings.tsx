@@ -93,6 +93,7 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
     }
 
     const canCancel = (booking: Booking) => {
+        if (booking.lifecycle === 'completed') return false
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         const checkIn = new Date(`${booking.check_in}T00:00:00`)
@@ -355,6 +356,7 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                                         </button>
                                     )}
                                     {cancellationClosed(booking) &&
+                                        booking.lifecycle !== 'completed' &&
                                         !booking.cancellation_request && (
                                             <button
                                                 type="button"

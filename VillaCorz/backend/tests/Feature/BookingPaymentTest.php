@@ -502,6 +502,51 @@ class BookingPaymentTest extends TestCase
             ->assertJsonFragment(['reference' => $lateBooking->reference])
             ->assertJsonMissing(['reference' => $edgeBooking->reference]);
     }
+
+    public function test_a_completed_booking_cannot_request_a_refund(): void
+    {
+        Mail::fake();
+
+        $owner = User::factory()->create();
+        $checkOut = now()->subDays(3)->startOfDay();
+
+        $booking = Booking::create([
+            'user_id' => $owner->id,
+            'reference' => 'VC-COMPLETED-1',
+            'contact_name' => 'Completed Guest',
+            'contact_email' => 'completed@example.com',
+            'check_in' => $checkOut->copy()->subDays(2),
+            'check_out' => $checkOut,
+            'nights' => 2,
+            'adults' => 2,
+            'kids' => 0,
+            'subtotal' => 3000,
+            'total' => 3000,
+            'currency' => 'PHP',
+            'status' => 'confirmed',
+            'payment_method' => 'GCash',
+            'confirmed_at' => $checkOut->copy()->subDays(10),
+            'completed_at' => $checkOut,
+        ]);
+
+        // No cancellation/refund request can be filed after the stay ends.
+        $this->actingAs($owner)
+            ->postJson("/api/bookings/{$booking->reference}/cancel-request", [
+                'reason' => 'I want a refund after my stay.',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+
+        $this->assertDatabaseCount('cancellation_requests', 0);
+
+        // Direct cancellation is blocked for completed stays as well.
+        $this->actingAs($owner)
+            ->postJson("/api/bookings/{$booking->reference}/cancel")
+            ->assertStatus(422);
+
+        $this->assertSame('confirmed', $booking->fresh()->status);
+    }
+
     private function createBooking(User $user, ?Service $service = null): Payment
     {
         $service ??= $this->makeRoomService();

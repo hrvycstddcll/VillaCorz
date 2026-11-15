@@ -362,6 +362,13 @@ public function cancel(Request $request, string $reference): JsonResponse
 
         $this->authorizeOwner($request, $booking);
 
+        if ($booking->isCompleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Completed stays cannot be cancelled or refunded.',
+            ], 422);
+        }
+
         if (! in_array($booking->status, ['pending_payment', 'confirmed'], true)) {
             return response()->json([
                 'success' => false,
@@ -421,6 +428,13 @@ public function cancel(Request $request, string $reference): JsonResponse
             ->firstOrFail();
 
         $this->authorizeOwner($request, $booking);
+
+        if ($booking->isCompleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Completed stays are no longer eligible for cancellation or refund requests.',
+            ], 422);
+        }
 
         if ($booking->status !== 'confirmed') {
             return response()->json([
