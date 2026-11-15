@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\BookingRoom;
 use App\Models\PageView;
 use App\Models\Payment;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -26,10 +26,13 @@ class DashboardController extends Controller
         $start = now()->startOfDay()->subDays($range - 1);
         $end = now()->endOfDay();
 
+        $prevEnd = $start->copy()->subDay()->endOfDay();
+        $prevStart = $prevEnd->copy()->startOfDay()->subDays($range - 1);
+
         $startDate = $start->toDateString();
         $endDate = $end->toDateString();
 
-        // Revenue: paid payments inside the range.
+        // --- Current window metrics ---
         $revenue = (float) Payment::query()
             ->where('status', 'paid')
             ->whereBetween('paid_at', [$start, $end])
@@ -40,29 +43,57 @@ class DashboardController extends Controller
             ->whereBetween('paid_at', [$start, $end])
             ->count();
 
-        // Check-ins: bookings whose check-in falls inside the range.
         $checkIns = Booking::query()
             ->whereIn('status', ['confirmed', 'completed'])
             ->whereBetween('check_in', [$startDate, $endDate])
             ->count();
 
-        // New bookings created inside the range.
         $newBookings = Booking::query()
             ->whereBetween('created_at', [$start, $end])
             ->count();
 
-        // New customers registered inside the range.
         $newUsers = User::query()
             ->where('role', 'customer')
             ->whereBetween('created_at', [$start, $end])
             ->count();
 
-        // Website visits inside the range.
         $websiteVisits = PageView::query()
             ->whereBetween('created_at', [$start, $end])
             ->count();
 
-        // Per-day series for the chart.
+        // --- Previous window metrics (for deltas) ---
+        $prevRevenue = (float) Payment::query()
+            ->where('status', 'paid')
+            ->whereBetween('paid_at', [$prevStart, $prevEnd])
+            ->sum('amount');
+
+        $prevCheckIns = Booking::query()
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->whereBetween('check_in', [$prevStart->toDateString(), $prevEnd->toDateString()])
+            ->count();
+
+        $prevNewBookings = Booking::query()
+            ->whereBetween('created_at', [$prevStart, $prevEnd])
+            ->count();
+
+        $prevNewUsers = User::query()
+            ->where('role', 'customer')
+            ->whereBetween('created_at', [$prevStart, $prevEnd])
+            ->count();
+
+        $prevWebsiteVisits = PageView::query()
+            ->whereBetween('created_at', [$prevStart, $prevEnd])
+            ->count();
+
+        $comparison = [
+            'revenue' => $this->delta($revenue, $prevRevenue),
+            'check_ins' => $this->delta($checkIns, $prevCheckIns),
+            'new_bookings' => $this->delta($newBookings, $prevNewBookings),
+            'new_users' => $this->delta($newUsers, $prevNewUsers),
+            'website_visits' => $this->delta($websiteVisits, $prevWebsiteVisits),
+        ];
+
+        // --- Per-day series for the chart ---
         $bookingsByDay = Booking::query()
             ->selectRaw('DATE(created_at) as day, COUNT(*) as total')
             ->whereBetween('created_at', [$start, $end])
@@ -95,7 +126,23 @@ class DashboardController extends Controller
             $cursor->addDay();
         }
 
-        // Recent bookings table.
+        // --- Top services by bookings (all time, top 5) ---
+        $topServices = BookingRoom::query()
+            ->selectRaw('service_id, service_name, COUNT(*) as bookings, COALESCE(SUM(line_total), 0) as revenue')
+            ->whereNotNull('service_id')
+            ->groupBy('service_id', 'service_name')
+            ->orderByDesc('bookings')
+            ->limit(5)
+            ->get()
+            ->map(fn ($row) => [
+                'service_id' => (int) $row->service_id,
+                'name' => $row->service_name,
+                'bookings' => (int) $row->bookings,
+                'revenue' => (float) $row->revenue,
+            ])
+            ->values();
+
+        // --- Recent bookings table ---
         $recentBookings = Booking::query()
             ->with(['user:id,firstname,lastname,email', 'rooms', 'payment'])
             ->latest('created_at')
@@ -136,7 +183,9 @@ class DashboardController extends Controller
                     'new_users' => $newUsers,
                     'website_visits' => $websiteVisits,
                 ],
+                'comparison' => $comparison,
                 'series' => $series,
+                'top_services' => $topServices,
                 'recent_bookings' => $recentBookings,
             ],
         ]);
@@ -158,5 +207,21 @@ class DashboardController extends Controller
         ]);
 
         return response()->json(['success' => true], 201);
+    }
+
+    /**
+     * @return array{current: float|int, previous: float|int, delta: float|int, percent: float|null}
+     */
+    private function delta($current, $previous): array
+    {
+        $delta = $current - $previous;
+        $percent = $previous != 0 ? round(($delta / $previous) * 100, 1) : null;
+
+        return [
+            'current' => $current,
+            'previous' => $previous,
+            'delta' => $delta,
+            'percent' => $percent,
+        ];
     }
 }

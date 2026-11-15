@@ -174,12 +174,29 @@ export type DashboardRecentBooking = {
     check_out: string | null
 }
 
+export type DashboardComparison = {
+    revenue: { current: number; previous: number; delta: number; percent: number | null }
+    check_ins: { current: number; previous: number; delta: number; percent: number | null }
+    new_bookings: { current: number; previous: number; delta: number; percent: number | null }
+    new_users: { current: number; previous: number; delta: number; percent: number | null }
+    website_visits: { current: number; previous: number; delta: number; percent: number | null }
+}
+
+export type DashboardTopService = {
+    service_id: number
+    name: string
+    bookings: number
+    revenue: number
+}
+
 export type DashboardSummary = {
     range: number
     start: string
     end: string
     metrics: DashboardMetrics
+    comparison: DashboardComparison
     series: DashboardSeriesPoint[]
+    top_services: DashboardTopService[]
     recent_bookings: DashboardRecentBooking[]
 }
 export type CreateBookingInput = {
