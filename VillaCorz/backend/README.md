@@ -34,6 +34,18 @@ use the `log` mailer can opt in by setting `OTP_EXPOSE_IN_RESPONSE=true` in thei
 environment. The code is exposed only when the application environment is `local` and
 the mailer is `log`; leave this setting unset or false outside local development.
 
+## Admin reporting
+
+The admin reports API provides filtered revenue, booking, cancellation, review,
+payment, contact-submission, guest, and traffic ledgers. Contact submissions
+are retained for the admin inbox and can be marked read. Apply the new database
+tables with `php artisan migrate`.
+
+Scheduled CSV exports are sent weekly or monthly by the `reports:send-scheduled`
+command. Laravel's scheduler must be running for these emails to be delivered:
+use `php artisan schedule:work` locally, or configure the server to run
+`php artisan schedule:run` every minute.
+
 ## Laravel Sponsors
 
 We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).

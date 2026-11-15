@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ContactMessage;
+use App\Models\ContactSubmission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
@@ -25,11 +26,18 @@ class ContactController extends Controller
             ], 503);
         }
 
+        $submission = ContactSubmission::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'message' => $validated['message'],
+        ]);
+
         Mail::to($recipient)->send(new ContactMessage(
             name: $validated['name'],
             senderEmail: $validated['email'],
             messageText: $validated['message'],
         ));
+        $submission->forceFill(['mailed_at' => now()])->save();
 
         return response()->json([
             'message' => 'Your message has been sent. We will get back to you soon.',

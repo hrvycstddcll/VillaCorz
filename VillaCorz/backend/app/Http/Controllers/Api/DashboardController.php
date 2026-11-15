@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingRoom;
+use App\Models\CancellationRequest;
+use App\Models\ContactSubmission;
 use App\Models\PageView;
 use App\Models\Payment;
+use App\Models\Service;
+use App\Models\ServiceReview;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -60,6 +64,153 @@ class DashboardController extends Controller
         $websiteVisits = PageView::query()
             ->whereBetween('created_at', [$start, $end])
             ->count();
+
+        $revenueByWeekday = array_fill(0, 7, 0.0);
+        Payment::query()
+            ->where('status', 'paid')
+            ->whereBetween('paid_at', [$start, $end])
+            ->get(['amount', 'paid_at'])
+            ->each(function (Payment $payment) use (&$revenueByWeekday) {
+                if ($payment->paid_at !== null) {
+                    $weekday = Carbon::parse($payment->paid_at)->dayOfWeek;
+                    $revenueByWeekday[$weekday] += (float) $payment->amount;
+                }
+            });
+
+        $services = Service::query()
+            ->withAvg('reviews as rating_average', 'rating')
+            ->withCount(['reviews as reviews_count'])
+            ->get(['id', 'name', 'kind', 'status']);
+        $offerMetrics = $services->map(function (Service $service) use ($range, $start, $end) {
+            $roomBookings = BookingRoom::query()
+                ->where('service_id', $service->id)
+                ->whereHas('booking', function ($query) use ($start, $end) {
+                    $query->whereBetween('created_at', [$start, $end])
+                        ->where('status', 'confirmed');
+                })
+                ->with('booking:id,status,check_in,check_out')
+                ->get();
+
+            $paidRooms = BookingRoom::query()
+                ->where('service_id', $service->id)
+                ->whereHas('booking.payments', function ($query) use ($start, $end) {
+                    $query->where('status', 'paid')
+                        ->whereBetween('paid_at', [$start, $end]);
+                })
+                ->get(['booking_id', 'line_total']);
+
+            $occupiedNights = BookingRoom::query()
+                ->where('service_id', $service->id)
+                ->whereHas('booking', function ($query) use ($start, $end) {
+                    $query->where('status', 'confirmed')
+                        ->whereDate('check_in', '<', $end->toDateString())
+                        ->whereDate('check_out', '>', $start->toDateString())
+                        ->whereHas('payments', fn ($paymentQuery) => $paymentQuery->where('status', 'paid'));
+                })
+                ->with('booking:id,nights,check_in,check_out')
+                ->get()
+                ->sum(function (BookingRoom $room) use ($start, $end) {
+                    $booking = $room->booking;
+                    if ($booking === null) {
+                        return 0;
+                    }
+
+                    $occupiedFrom = max($start->toDateString(), $booking->check_in->toDateString());
+                    $occupiedUntil = min($end->toDateString(), $booking->check_out->toDateString());
+
+                    return max(0, Carbon::parse($occupiedFrom)->diffInDays(Carbon::parse($occupiedUntil)));
+                });
+
+            $availabilityDays = $service->status === 'active' ? $range : 0;
+
+            return [
+                'service_id' => $service->id,
+                'name' => $service->name,
+                'bookings' => $roomBookings->pluck('booking_id')->unique()->count(),
+                'revenue' => (float) $paidRooms->sum('line_total'),
+                'occupancy' => $availabilityDays > 0
+                    ? round(($occupiedNights / $availabilityDays) * 100, 1)
+                    : 0,
+                'rating' => $service->rating_average !== null
+                    ? (float) $service->rating_average
+                    : 0,
+            ];
+        })->values();
+
+        $paidStayRooms = BookingRoom::query()
+            ->whereHas('booking', function ($query) use ($start, $end) {
+                $query->where('status', 'confirmed')
+                    ->whereDate('check_in', '<', $end->toDateString())
+                    ->whereDate('check_out', '>', $start->toDateString())
+                    ->whereHas('payments', fn ($paymentQuery) => $paymentQuery->where('status', 'paid'));
+            })
+            ->with('booking:id,nights,check_in,check_out')
+            ->get();
+        $occupiedRoomNights = $paidStayRooms->sum(function (BookingRoom $room) use ($start, $end) {
+            $booking = $room->booking;
+            if ($booking === null) {
+                return 0;
+            }
+
+            $occupiedFrom = max($start->toDateString(), $booking->check_in->toDateString());
+            $occupiedUntil = min($end->toDateString(), $booking->check_out->toDateString());
+
+            return max(0, Carbon::parse($occupiedFrom)->diffInDays(Carbon::parse($occupiedUntil)));
+        });
+        $stayRevenue = $paidStayRooms->sum(function (BookingRoom $room) use ($start, $end) {
+            $booking = $room->booking;
+            if ($booking === null || (int) $booking->nights < 1) {
+                return 0;
+            }
+
+            $occupiedFrom = max($start->toDateString(), $booking->check_in->toDateString());
+            $occupiedUntil = min($end->toDateString(), $booking->check_out->toDateString());
+            $nightsInRange = max(0, Carbon::parse($occupiedFrom)->diffInDays(Carbon::parse($occupiedUntil)));
+
+            return (float) $room->line_total * ($nightsInRange / $booking->nights);
+        });
+        $activeServiceCount = $services->where('status', 'active')->count();
+        $availableRoomNights = $activeServiceCount * $range;
+        $bookedForwardRevenue = (float) Payment::query()
+            ->where('status', 'paid')
+            ->whereHas('booking', function ($query) {
+                $query->where('status', 'confirmed')
+                    ->whereBetween('check_in', [now()->toDateString(), now()->addDays(30)->toDateString()]);
+            })
+            ->sum('amount');
+
+        $availabilityBookings = BookingRoom::query()
+            ->whereHas('booking', function ($query) {
+                $query->where('status', 'confirmed')
+                    ->whereDate('check_in', '<', now()->addDays(30)->toDateString())
+                    ->whereDate('check_out', '>', now()->toDateString());
+            })
+            ->with('booking:id,check_in,check_out')
+            ->get(['service_id', 'booking_id']);
+        $availability = $availabilityBookings
+            ->filter(fn (BookingRoom $room) => $room->service_id !== null && $room->booking !== null)
+            ->groupBy('service_id')
+            ->map(fn ($rooms) => $rooms->map(fn (BookingRoom $room) => [
+                'check_in' => $room->booking->check_in->toDateString(),
+                'check_out' => $room->booking->check_out->toDateString(),
+            ])->values())
+            ->all();
+
+        $actionCenter = [
+            'pending_cancellations' => CancellationRequest::query()->where('status', 'pending')->count(),
+            'unpublished_reviews' => ServiceReview::query()->where('status', 'pending')->count(),
+            'contact_messages' => ContactSubmission::query()->whereNull('read_at')->count(),
+            'expired_payments' => Payment::query()
+                ->where(function ($query) {
+                    $query->where('status', 'expired')
+                        ->orWhere(function ($pendingQuery) {
+                            $pendingQuery->where('status', 'pending')
+                                ->whereNotNull('qr_expires_at')
+                                ->where('qr_expires_at', '<', now());
+                        });
+                })
+                ->count(),
+        ];
 
         // --- Previous window metrics (for deltas) ---
         $prevRevenue = (float) Payment::query()
@@ -126,20 +277,10 @@ class DashboardController extends Controller
             $cursor->addDay();
         }
 
-        // --- Top services by bookings (all time, top 5) ---
-        $topServices = BookingRoom::query()
-            ->selectRaw('service_id, service_name, COUNT(*) as bookings, COALESCE(SUM(line_total), 0) as revenue')
-            ->whereNotNull('service_id')
-            ->groupBy('service_id', 'service_name')
-            ->orderByDesc('bookings')
-            ->limit(5)
-            ->get()
-            ->map(fn ($row) => [
-                'service_id' => (int) $row->service_id,
-                'name' => $row->service_name,
-                'bookings' => (int) $row->bookings,
-                'revenue' => (float) $row->revenue,
-            ])
+        // --- Top services by bookings in the selected window ---
+        $topServices = $offerMetrics
+            ->sortByDesc('bookings')
+            ->take(5)
             ->values();
 
         // --- Recent bookings table ---
@@ -187,6 +328,22 @@ class DashboardController extends Controller
                 'series' => $series,
                 'top_services' => $topServices,
                 'recent_bookings' => $recentBookings,
+                'action_center' => $actionCenter,
+                'revenue_by_weekday' => $revenueByWeekday,
+                'offer_metrics' => $offerMetrics,
+                'availability' => $availability,
+                'operational' => [
+                    'occupancy' => $availableRoomNights > 0
+                        ? round(($occupiedRoomNights / $availableRoomNights) * 100, 1)
+                        : 0,
+                    'adr' => $occupiedRoomNights > 0
+                        ? round($stayRevenue / $occupiedRoomNights, 2)
+                        : 0,
+                    'revpar' => $availableRoomNights > 0
+                        ? round($stayRevenue / $availableRoomNights, 2)
+                        : 0,
+                    'booked_forward_revenue' => $bookedForwardRevenue,
+                ],
             ],
         ]);
     }

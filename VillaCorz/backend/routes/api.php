@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PhoneNumberController;
 use App\Http\Controllers\Api\ServiceController;
@@ -99,6 +100,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
 
     Route::get('/dashboard', [DashboardController::class, 'summary']);
+    Route::get('/reports/export', [AdminReportController::class, 'export']);
+    Route::get('/reports', [AdminReportController::class, 'index']);
+    Route::get('/reports/schedules', [AdminReportController::class, 'schedules']);
+    Route::post('/reports/schedules', [AdminReportController::class, 'schedule']);
+    Route::delete('/reports/schedules/{id}', [AdminReportController::class, 'deleteSchedule']);
+    Route::patch('/reports/contacts/{id}/read', [AdminReportController::class, 'markContactRead']);
 
     Route::post('/services', [ServiceController::class, 'store']);
     Route::put('/services/{id}', [ServiceController::class, 'update']);

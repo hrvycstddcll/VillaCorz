@@ -1,305 +1,183 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
-import axios from 'axios'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Download, Mail, RefreshCw, Save, Search, X } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import {
-    AlertCircle,
-    ChevronDown,
-    Download,
-    RefreshCw,
-} from 'lucide-react'
+    exportActivityLogs,
+    getActivityLogSummary,
+    getActivityLogs,
+} from '../../../services/activityLogService'
+import {
+    exportAdminReport,
+    createReportSchedule,
+    deleteReportSchedule,
+    getAdminReport,
+    getReportSchedules,
+    markContactMessageRead,
+} from '../../../services/dashboardService'
 import type {
     ActivityLog,
     ActivityLogCategory,
     ActivityLogQuery,
     ActivityLogSummary,
+    AdminReportKind,
+    AdminReportRow,
+    AdminReportSchedule,
 } from '../../../services/types'
-import {
-    exportActivityLogs,
-    getActivityLogs,
-    getActivityLogSummary,
-} from '../../../services/activityLogService'
+import { money } from '../../../lib/format'
+import AdminCard from '../admin/AdminCard'
+import AdminEmptyState from '../admin/AdminEmptyState'
+import AdminFilterPills from '../admin/AdminFilterPills'
+import AdminStatStrip from '../admin/AdminStatStrip'
+import AdminTable, { type AdminTableColumn } from '../admin/AdminTable'
 import AdminPageHeader from '../ui/AdminPageHeader'
 
-const PAGE_SIZE = 20
+const pageSize = 20
+const reportOptions: Array<{ value: AdminReportKind | 'activity'; label: string }> = [
+    { value: 'revenue', label: 'Revenue' },
+    { value: 'bookings', label: 'Bookings' },
+    { value: 'cancellations', label: 'Cancellations' },
+    { value: 'reviews', label: 'Reviews' },
+    { value: 'payments', label: 'Payments' },
+    { value: 'contacts', label: 'Contact' },
+    { value: 'guests', label: 'Guests' },
+    { value: 'traffic', label: 'Traffic' },
+    { value: 'activity', label: 'Activity' },
+]
+
+type ReportTab = (typeof reportOptions)[number]['value']
+type SavedView = { name: string; query: string }
+type ReportResult = {
+    key: string
+    rows: AdminReportRow[]
+    total: number
+    amount: number
+    page: number
+    lastPage: number
+}
 
 const focusRing =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
-
-const fieldRing =
-    'focus:border-[#006dfc] focus:ring-2 focus:ring-[#006dfc]/25'
-
-const dateFormatter = new Intl.DateTimeFormat('en-PH', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-})
-
-const timeFormatter = new Intl.DateTimeFormat('en-PH', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-})
-
 const numberFormatter = new Intl.NumberFormat('en-PH')
+const dateFormatter = new Intl.DateTimeFormat('en-PH', {
+    dateStyle: 'medium',
+    timeZone: 'Asia/Manila',
+})
 
-const categories: { value: ActivityLogCategory; label: string }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'changes', label: 'Changes' },
-    { value: 'access', label: 'Access' },
-]
+const parseTab = (value: string | null): ReportTab =>
+    reportOptions.some((option) => option.value === value)
+        ? (value as ReportTab)
+        : 'revenue'
 
-const actionMeta: Record<
-    string,
-    { label: string; tone: string; dot: string }
-> = {
-    created: {
-        label: 'Created',
-        tone: 'text-emerald-700',
-        dot: 'bg-emerald-500',
-    },
-    updated: {
-        label: 'Updated',
-        tone: 'text-amber-700',
-        dot: 'bg-amber-500',
-    },
-    deleted: {
-        label: 'Deleted',
-        tone: 'text-rose-700',
-        dot: 'bg-rose-500',
-    },
-    login: {
-        label: 'Sign-in',
-        tone: 'text-[#0057c9]',
-        dot: 'bg-[#006dfc]',
-    },
-    logout: {
-        label: 'Sign-out',
-        tone: 'text-slate-600',
-        dot: 'bg-slate-400',
-    },
-    login_failed: {
-        label: 'Failed sign-in',
-        tone: 'text-rose-700',
-        dot: 'bg-rose-500',
-    },
-    registered: {
-        label: 'Registered',
-        tone: 'text-teal-700',
-        dot: 'bg-teal-500',
-    },
+const dateValue = (date: Date) => {
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    return localDate.toISOString().slice(0, 10)
 }
 
-const getErrorMessage = (error: unknown) => {
-    if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-            return 'Your session has expired. Please sign in again.'
-        }
-
-        if (error.response?.status === 403) {
-            return 'You do not have permission to view activity logs.'
-        }
-
-        const data = error.response?.data as { message?: string } | undefined
-
-        if (data?.message) {
-            return data.message
-        }
+const statusColor = (status: string) => {
+    if (['confirmed', 'completed', 'paid', 'published', 'read'].includes(status)) {
+        return 'bg-emerald-500'
     }
-
-    return 'Unable to load activity logs. Please try again.'
+    if (['expired', 'cancelled', 'hidden', 'rejected'].includes(status)) {
+        return 'bg-rose-500'
+    }
+    if (['pending', 'unread', 'pending_payment'].includes(status)) {
+        return 'bg-amber-500'
+    }
+    return 'bg-slate-400'
 }
+
+const actorName = (log: ActivityLog) =>
+    log.user
+        ? `${log.user.firstname} ${log.user.lastname}`.trim()
+        : log.action === 'login_failed'
+          ? 'Unauthenticated'
+          : 'System'
 
 const humanize = (value: string) =>
-    value
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (character) => character.toUpperCase())
-
-const actorName = (log: ActivityLog) => {
-    if (!log.user) {
-        return log.action === 'login_failed' ? 'Unauthenticated' : 'System'
-    }
-
-    return `${log.user.firstname} ${log.user.lastname}`.trim() || 'Unnamed user'
-}
-
-const actorEmail = (log: ActivityLog) => {
-    if (log.user) return log.user.email
-
-    const attempted = log.properties?.email
-
-    return typeof attempted === 'string' && attempted !== ''
-        ? attempted
-        : 'Automated system process'
-}
-
-const actorInitials = (log: ActivityLog) => {
-    if (!log.user) {
-        return log.action === 'login_failed' ? '—' : 'SYS'
-    }
-
-    const initials = `${log.user.firstname.charAt(0)}${log.user.lastname.charAt(0)}`
-        .trim()
-        .toUpperCase()
-
-    return initials || 'USR'
-}
-
-const formatStamp = (value: string) => {
-    const date = new Date(value)
-
-    if (Number.isNaN(date.getTime())) {
-        return { date: '—', time: '—' }
-    }
-
-    return {
-        date: dateFormatter.format(date),
-        time: timeFormatter.format(date),
-    }
-}
-
-const formatPropertyValue = (value: unknown): string => {
-    if (value === null || value === undefined || value === '') {
-        return '—'
-    }
-
-    if (Array.isArray(value)) {
-        return value.length > 0 ? value.map(String).join(', ') : '—'
-    }
-
-    if (typeof value === 'object') {
-        return JSON.stringify(value)
-    }
-
-    return String(value)
-}
-
-const DetailItem = ({
-    label,
-    value,
-    mono = false,
-    className = '',
-}: {
-    label: string
-    value: string
-    mono?: boolean
-    className?: string
-}) => (
-    <div className={`min-w-0 ${className}`}>
-        <dt className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
-            {label}
-        </dt>
-        <dd
-            className={`mt-1 break-words text-[13px] leading-5 text-slate-700 ${
-                mono ? 'font-mono tabular-nums' : ''
-            }`}
-        >
-            {value}
-        </dd>
-    </div>
-)
-
-type LogMeta = {
-    total: number
-    currentPage: number
-    lastPage: number
-    from: number | null
-    to: number | null
-}
-
-type LogResult = {
-    key: string
-    logs: ActivityLog[]
-    meta: LogMeta
-}
-
-const emptyMeta: LogMeta = {
-    total: 0,
-    currentPage: 1,
-    lastPage: 1,
-    from: null,
-    to: null,
-}
+    value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
 
 const Reports = () => {
-    const [summary, setSummary] = useState<ActivityLogSummary | null>(null)
-    const [exporting, setExporting] = useState(false)
+    const [searchParams, setSearchParams] = useSearchParams()
+    const report = parseTab(searchParams.get('report'))
+    const page = Math.max(1, Number(searchParams.get('page') ?? 1))
+    const from = searchParams.get('from') ?? ''
+    const to = searchParams.get('to') ?? ''
+    const dateField =
+        searchParams.get('date_field') === 'check_in' ? 'check_in' : undefined
+    const search = searchParams.get('search') ?? ''
+    const status = searchParams.get('status') ?? ''
+    const category = (searchParams.get('category') ?? 'all') as ActivityLogCategory
+    const [result, setResult] = useState<ReportResult | null>(null)
+    const [activitySummary, setActivitySummary] =
+        useState<ActivityLogSummary | null>(null)
+    const [activityError, setActivityError] = useState('')
+    const [failure, setFailure] = useState<{ key: string; message: string } | null>(null)
     const [exportError, setExportError] = useState('')
-    const [page, setPage] = useState(1)
     const [refreshKey, setRefreshKey] = useState(0)
-    const [expandedId, setExpandedId] = useState<number | null>(null)
-    const [searchInput, setSearchInput] = useState('')
-    const [filters, setFilters] = useState<{
-        category: ActivityLogCategory
-        search: string
-        from: string
-        to: string
-    }>({
-        category: 'all',
-        search: '',
-        from: '',
-        to: '',
+    const [exporting, setExporting] = useState(false)
+    const [expandedRow, setExpandedRow] = useState<number | null>(null)
+    const [savedViews, setSavedViews] = useState<SavedView[]>(() => {
+        try {
+            const value = window.localStorage.getItem('admin-report-views')
+            const parsed: unknown = value ? JSON.parse(value) : []
+            return Array.isArray(parsed)
+                ? parsed.filter(
+                      (item): item is SavedView =>
+                          typeof item?.name === 'string' &&
+                          typeof item?.query === 'string',
+                  )
+                : []
+        } catch {
+            return []
+        }
     })
-    const [result, setResult] = useState<LogResult | null>(null)
-    const [failure, setFailure] = useState<{
-        key: string
-        message: string
-    } | null>(null)
-
-    const hasFilters =
-        filters.category !== 'all' ||
-        Boolean(filters.search) ||
-        Boolean(filters.from) ||
-        Boolean(filters.to)
-
-    const queryParams = useMemo<ActivityLogQuery>(
-        () => ({
-            category:
-                filters.category === 'all' ? undefined : filters.category,
-            search: filters.search || undefined,
-            from: filters.from || undefined,
-            to: filters.to || undefined,
-        }),
-        [filters],
-    )
+    const [viewName, setViewName] = useState('')
+    const [showSavedViews, setShowSavedViews] = useState(false)
+    const [scheduleOpen, setScheduleOpen] = useState(false)
+    const [scheduleEmail, setScheduleEmail] = useState('')
+    const [scheduleFrequency, setScheduleFrequency] =
+        useState<'weekly' | 'monthly'>('weekly')
+    const [scheduleSaving, setScheduleSaving] = useState(false)
+    const [scheduleError, setScheduleError] = useState('')
+    const [schedules, setSchedules] = useState<AdminReportSchedule[]>([])
 
     const requestKey = [
-        filters.category,
-        filters.search,
-        filters.from,
-        filters.to,
-        page,
+        report,
         refreshKey,
+        from,
+        to,
+        search,
+        status,
+        dateField,
+        category,
+        page,
     ].join('|')
-
+    const activityQuery = useMemo<ActivityLogQuery>(
+        () => ({
+            category,
+            from: from || undefined,
+            to: to || undefined,
+            search: search || undefined,
+            page,
+            per_page: pageSize,
+        }),
+        [category, from, to, search, page],
+    )
     const loading = result?.key !== requestKey && failure?.key !== requestKey
-    const loadError = failure?.key === requestKey ? failure.message : ''
-    const logs = result?.key === requestKey ? result.logs : []
-    const meta = result?.meta ?? emptyMeta
-
-    useEffect(() => {
-        const nextSearch = searchInput.trim()
-
-        if (nextSearch === filters.search) return
-
-        const timeout = window.setTimeout(() => {
-            setFilters((current) => ({ ...current, search: nextSearch }))
-            setPage(1)
-        }, 350)
-
-        return () => window.clearTimeout(timeout)
-    }, [searchInput, filters.search])
+    const error = failure?.key === requestKey ? failure.message : ''
+    const rows = result?.key === requestKey ? result.rows : []
+    const total = result?.key === requestKey ? result.total : 0
+    const totalAmount = result?.key === requestKey ? result.amount : 0
+    const lastPage = result?.key === requestKey ? result.lastPage : 1
 
     useEffect(() => {
         let active = true
-
         getActivityLogSummary()
             .then((response) => {
-                if (active) {
-                    setSummary(response.data.data)
-                }
+                if (active) setActivitySummary(response.data.data)
             })
             .catch(() => {
-                // The ledger remains usable even if the summary cannot load.
+                if (active) setActivityError('Unable to load activity totals.')
             })
 
         return () => {
@@ -310,693 +188,816 @@ const Reports = () => {
     useEffect(() => {
         let active = true
 
-        getActivityLogs({ ...queryParams, page, per_page: PAGE_SIZE })
-            .then((response) => {
-                if (!active) return
-
-                const payload = response.data
-
-                setResult({
-                    key: requestKey,
-                    logs: Array.isArray(payload.data) ? payload.data : [],
-                    meta: {
-                        total: payload.total ?? 0,
-                        currentPage: payload.current_page ?? 1,
-                        lastPage: payload.last_page ?? 1,
-                        from: payload.from ?? null,
-                        to: payload.to ?? null,
-                    },
-                })
-                setExpandedId(null)
-            })
-            .catch((requestError) => {
-                if (active) {
-                    setFailure({
+        if (report === 'activity') {
+            getActivityLogs(activityQuery)
+                .then((response) => {
+                    if (!active) return
+                    setFailure(null)
+                    const payload = response.data
+                    const normalizedRows: AdminReportRow[] = payload.data.map(
+                        (log) => ({
+                            id: log.id,
+                            reference: `LOG-${log.id}`,
+                            date: log.created_at,
+                            label: actorName(log),
+                            detail: log.description ?? humanize(log.action),
+                            status: log.action,
+                            amount: null,
+                        }),
+                    )
+                    setResult({
                         key: requestKey,
-                        message: getErrorMessage(requestError),
+                        rows: normalizedRows,
+                        total: payload.total,
+                        amount: 0,
+                        page: payload.current_page,
+                        lastPage: payload.last_page,
                     })
-                }
+                })
+                .catch(() => {
+                    if (active) {
+                        setFailure({
+                            key: requestKey,
+                            message: 'Unable to load the activity ledger.',
+                        })
+                    }
+                })
+        } else {
+            getAdminReport({
+                report,
+                from: from || undefined,
+                to: to || undefined,
+                date_field: dateField,
+                search: search || undefined,
+                status: status || undefined,
+                page,
+                per_page: pageSize,
             })
+                .then((response) => {
+                    if (!active) return
+                    setFailure(null)
+                    setResult({
+                        key: requestKey,
+                        rows: response.data.data,
+                        total: response.data.meta.total,
+                        amount: response.data.summary.amount,
+                        page: response.data.meta.current_page,
+                        lastPage: response.data.meta.last_page,
+                    })
+                })
+                .catch(() => {
+                    if (active) {
+                        setFailure({
+                            key: requestKey,
+                            message: 'Unable to load this report.',
+                        })
+                    }
+                })
+        }
 
         return () => {
             active = false
         }
-    }, [queryParams, page, refreshKey, requestKey])
+    }, [activityQuery, dateField, from, page, report, refreshKey, requestKey, search, status, to])
 
-    const clearFilters = () => {
-        setSearchInput('')
-        setFilters({ category: 'all', search: '', from: '', to: '' })
-        setPage(1)
+    const updateParams = (updates: Record<string, string | null>) => {
+        setExpandedRow(null)
+        setExportError('')
+        const next = new URLSearchParams(searchParams)
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value) next.set(key, value)
+            else next.delete(key)
+        })
+        if (!('page' in updates)) next.delete('page')
+        setSearchParams(next, { replace: true })
+    }
+
+    const handleDatePreset = (days: number) => {
+        const today = new Date()
+        const first = new Date(today)
+        first.setDate(today.getDate() - days + 1)
+        updateParams({ from: dateValue(first), to: dateValue(today) })
     }
 
     const handleExport = async () => {
         if (exporting) return
-
         setExporting(true)
         setExportError('')
-
         try {
-            const response = await exportActivityLogs(queryParams)
-            const blob = new Blob([response.data], {
-                type: 'text/csv;charset=utf-8;',
-            })
-            const url = URL.createObjectURL(blob)
-            const link = document.createElement('a')
-
-            link.href = url
-            link.download = `villacorz-activity-log-${new Date()
-                .toISOString()
-                .slice(0, 10)}.csv`
-            document.body.appendChild(link)
-            link.click()
-            link.remove()
+            const response =
+                report === 'activity'
+                    ? await exportActivityLogs(activityQuery)
+                    : await exportAdminReport({
+                          report,
+                          from: from || undefined,
+                          to: to || undefined,
+                          date_field: dateField,
+                          search: search || undefined,
+                          status: status || undefined,
+                      })
+            const url = URL.createObjectURL(response.data)
+            const anchor = document.createElement('a')
+            anchor.href = url
+            anchor.download = `villacorz-${report}-${dateValue(new Date())}.csv`
+            document.body.appendChild(anchor)
+            anchor.click()
+            anchor.remove()
             URL.revokeObjectURL(url)
-        } catch (exportFailure) {
-            setExportError(getErrorMessage(exportFailure))
+        } catch {
+            setExportError('Unable to export this report. Please try again.')
         } finally {
             setExporting(false)
         }
     }
 
-    const stats = [
+    const handleSaveView = () => {
+        const name = viewName.trim()
+        if (!name) return
+        const next = [
+            ...savedViews.filter((view) => view.name !== name),
+            { name, query: searchParams.toString() },
+        ]
+        setSavedViews(next)
+        window.localStorage.setItem('admin-report-views', JSON.stringify(next))
+        setViewName('')
+    }
+
+    const handleMarkRead = async (id: number) => {
+        try {
+            await markContactMessageRead(id)
+            setRefreshKey((current) => current + 1)
+        } catch {
+            setExportError('Unable to mark the contact message as read.')
+        }
+    }
+
+    const openSchedules = async () => {
+        setScheduleOpen(true)
+        setScheduleError('')
+        try {
+            const response = await getReportSchedules()
+            setSchedules(response.data.data)
+        } catch {
+            setScheduleError('Unable to load scheduled exports.')
+        }
+    }
+
+    const handleSchedule = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+        if (report === 'activity' || scheduleSaving) return
+        setScheduleSaving(true)
+        setScheduleError('')
+        try {
+            const response = await createReportSchedule({
+                report,
+                email: scheduleEmail,
+                frequency: scheduleFrequency,
+            })
+            setSchedules((current) => [response.data.data, ...current])
+            setScheduleEmail('')
+        } catch {
+            setScheduleError('Unable to schedule this export. Check the email and try again.')
+        } finally {
+            setScheduleSaving(false)
+        }
+    }
+
+    const removeSchedule = async (id: number) => {
+        try {
+            await deleteReportSchedule(id)
+            setSchedules((current) => current.filter((schedule) => schedule.id !== id))
+        } catch {
+            setScheduleError('Unable to cancel this scheduled export.')
+        }
+    }
+
+    const reportColumns: AdminTableColumn<AdminReportRow>[] = [
         {
-            label: 'Total events',
-            value: summary ? numberFormatter.format(summary.total) : '—',
+            key: 'reference',
+            label:
+                report === 'guests'
+                    ? 'Guest ID'
+                    : report === 'traffic'
+                      ? 'View ID'
+                      : 'Reference',
+            render: (row) => (
+                <button
+                    type="button"
+                    onClick={() =>
+                        setExpandedRow(expandedRow === row.id ? null : row.id)
+                    }
+                    aria-expanded={expandedRow === row.id}
+                    className={`inline-flex min-h-11 items-center rounded-sm font-mono text-[11px] font-semibold tabular-nums text-[#006dfc] ${focusRing}`}
+                >
+                    {row.reference}
+                </button>
+            ),
         },
         {
-            label: 'System changes',
-            value: summary ? numberFormatter.format(summary.changes) : '—',
+            key: 'date',
+            label: dateField === 'check_in' ? 'Check-in' : 'Date',
+            className: 'hidden sm:table-cell',
+            render: (row) => (
+                <span className="font-mono text-[11px] tabular-nums text-slate-600">
+                    {row.date && !Number.isNaN(new Date(row.date).getTime())
+                        ? dateFormatter.format(new Date(row.date))
+                        : '—'}
+                </span>
+            ),
         },
         {
-            label: 'Access events',
-            value: summary ? numberFormatter.format(summary.access) : '—',
+            key: 'label',
+            label:
+                report === 'guests'
+                    ? 'Guest'
+                    : report === 'traffic'
+                      ? 'Page'
+                      : 'Name',
+            render: (row) => (
+                <span className="block max-w-48 truncate text-xs font-medium text-slate-900">
+                    {row.label}
+                </span>
+            ),
         },
         {
-            label: 'Recorded today',
-            value: summary ? numberFormatter.format(summary.today) : '—',
+            key: 'detail',
+            label: report === 'traffic' ? 'Referrer' : 'Details',
+            className: 'hidden md:table-cell',
+            render: (row) => (
+                <span className="block max-w-sm truncate text-xs text-slate-600">
+                    {row.detail}
+                </span>
+            ),
         },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (row) => (
+                <span className="inline-flex min-h-11 items-center gap-2 text-[11px] text-slate-700">
+                    <span
+                        aria-hidden="true"
+                        className={`size-1.5 rounded-full ${statusColor(row.status)}`}
+                    />
+                    {humanize(row.status)}
+                </span>
+            ),
+        },
+        {
+            key: 'amount',
+            label:
+                report === 'reviews'
+                    ? 'Rating'
+                    : report === 'traffic'
+                      ? 'Views'
+                      : 'Amount',
+            align: 'right',
+            render: (row) => (
+                <span className="font-mono text-xs tabular-nums text-slate-800">
+                    {report === 'traffic'
+                        ? '1'
+                        : row.amount === null
+                          ? '—'
+                        : report === 'reviews'
+                          ? `${row.amount}/5`
+                          : money(row.amount)}
+                </span>
+            ),
+        },
+        ...(report === 'contacts'
+            ? [
+                  {
+                      key: 'action',
+                      label: 'Action',
+                      align: 'right' as const,
+                      render: (row: AdminReportRow) =>
+                          row.status === 'unread' ? (
+                              <button
+                                  type="button"
+                                  onClick={() => void handleMarkRead(row.id)}
+                                  className={`min-h-11 rounded-sm px-2 text-[10px] font-semibold text-[#006dfc] ${focusRing}`}
+                              >
+                                  Mark read
+                              </button>
+                          ) : null,
+                  },
+              ]
+            : []),
+    ]
+
+    const statusOptions = [
+        ...(report === 'bookings'
+            ? ['check_ins', 'pending_payment', 'confirmed', 'expired', 'cancelled']
+            : report === 'cancellations'
+              ? ['pending', 'approved', 'rejected']
+              : report === 'reviews'
+                ? ['pending', 'published', 'hidden']
+                : report === 'payments'
+                  ? ['pending', 'paid', 'expired', 'cancelled']
+                  : report === 'contacts'
+                    ? ['unread', 'read']
+                    : []),
+    ].map((value) => ({
+        value,
+        label: value === 'check_ins' ? 'Check-ins' : humanize(value),
+    }))
+    const filterStatusOptions = [
+        { value: '', label: 'All' },
+        ...statusOptions,
     ]
 
     return (
-        <main className="min-h-[calc(100dvh-var(--navbar-height,3.5rem))] bg-slate-50 pb-16">
-            <AdminPageHeader
-                eyebrow="Administration / Reports"
-                title="Activity log"
-                subtitle="A chronological record of catalogue changes and console access. Entries are written automatically and cannot be edited."
-                rightSlot={
-                    <button
-                        type="button"
-                        onClick={() => void handleExport()}
-                        disabled={exporting}
-                        className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-white/30 bg-white/5 px-4 text-xs font-semibold uppercase tracking-[0.12em] text-white transition-[background-color,border-color,opacity] duration-150 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60 sm:self-auto motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                    >
-                        <Download
-                            className="size-4"
-                            aria-hidden="true"
-                        />
-                        {exporting ? 'Preparing…' : 'Export CSV'}
-                    </button>
-                }
-                stats={stats.map((s) => ({ label: s.label, value: s.value }))}
-            />
-
-            <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
-                {exportError && (
-                    <div
-                        role="alert"
-                        className="mb-4 flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm text-rose-900 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                        <div className="flex items-start gap-3">
-                            <AlertCircle
-                                className="mt-0.5 size-4 shrink-0"
-                                aria-hidden="true"
-                            />
-                            <p className="leading-5">{exportError}</p>
-                        </div>
+        <main className="min-h-screen bg-white pb-12 text-slate-900">
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+                <AdminPageHeader
+                    eyebrow="Administration / Reports"
+                    title="Reports"
+                    subtitle="Explore financial activity, stays, requests, guest feedback, and system events."
+                    hero={{
+                        label: 'Total events',
+                        value: activitySummary
+                            ? numberFormatter.format(activitySummary.total)
+                            : '—',
+                        href: '/reports?report=activity',
+                    }}
+                    action={
                         <button
                             type="button"
-                            onClick={() => {
-                                setExportError('')
-                                void handleExport()
-                            }}
-                            className={`inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition-[background-color,border-color] duration-150 hover:bg-rose-100 motion-reduce:transition-none ${focusRing}`}
+                            onClick={() => void handleExport()}
+                            disabled={exporting}
+                            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#006dfc] px-4 text-xs font-semibold text-white hover:bg-[#0057c9] disabled:opacity-60 ${focusRing}`}
                         >
-                            <RefreshCw
-                                className="size-3.5"
-                                aria-hidden="true"
-                            />
-                            Try again
+                            <Download className="size-4" aria-hidden="true" />
+                            {exporting ? 'Exporting…' : 'Export CSV'}
                         </button>
-                    </div>
-                )}
+                    }
+                />
 
-                <section
-                    aria-labelledby="ledger-heading"
-                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
-                >
-                    <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                            <div
-                                role="group"
-                                aria-label="Filter by event category"
-                                className="inline-flex w-fit max-w-full flex-wrap rounded-lg border border-slate-200 bg-slate-50 p-1"
-                            >
-                                {categories.map((category) => {
-                                    const isCurrent =
-                                        filters.category === category.value
-
-                                    return (
-                                        <button
-                                            key={category.value}
-                                            type="button"
-                                            aria-pressed={isCurrent}
-                                            onClick={() => {
-                                                setFilters((current) => ({
-                                                    ...current,
-                                                    category: category.value,
-                                                }))
-                                                setPage(1)
-                                            }}
-                                            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-2 text-xs font-semibold transition-[background-color,color,box-shadow] duration-150 motion-reduce:transition-none ${focusRing} ${
-                                                isCurrent
-                                                    ? 'bg-[#003079] text-white shadow-sm'
-                                                    : 'text-slate-600 hover:text-[#003079]'
-                                            }`}
-                                        >
-                                            {category.label}
-                                        </button>
-                                    )
-                                })}
-                            </div>
-
-                            <div className="grid w-full gap-3 sm:grid-cols-2 md:grid-cols-[minmax(10rem,1fr)_8.5rem_8.5rem_auto] md:items-end lg:w-auto">
-                                <label className="min-w-0 sm:col-span-2 md:col-span-1">
-                                    <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
-                                        Search
-                                    </span>
+                <div className="flex flex-col gap-4 border-b border-[rgba(0,0,0,0.06)] pb-4">
+                    <AdminFilterPills
+                        label="Report type"
+                        value={report}
+                        onChange={(value) =>
+                            updateParams({
+                                report: value,
+                                status: null,
+                                category: null,
+                                date_field: null,
+                            })
+                        }
+                        options={reportOptions}
+                    />
+                    <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+                        <div className="flex flex-wrap items-end gap-2">
+                            <label className="min-w-52">
+                                <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                    Search
+                                </span>
+                                <span className="relative block">
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                                     <input
                                         type="search"
-                                        value={searchInput}
+                                        value={search}
                                         onChange={(event) =>
-                                            setSearchInput(event.target.value)
+                                            updateParams({
+                                                search: event.target.value || null,
+                                            })
                                         }
-                                        placeholder="Actor, description, IP…"
-                                        className={`h-10 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-800 outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-slate-400 sm:text-sm motion-reduce:transition-none ${fieldRing}`}
+                                        placeholder={
+                                            report === 'guests'
+                                                ? 'Name or email'
+                                                : report === 'traffic'
+                                                  ? 'Page or referrer'
+                                                  : 'Reference or name'
+                                        }
+                                        className={`h-11 w-full rounded-lg border border-[rgba(0,0,0,0.1)] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#006dfc] focus:ring-2 focus:ring-[#006dfc]/20 ${focusRing}`}
                                     />
-                                </label>
-
-                                <label>
-                                    <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
-                                        From
-                                    </span>
-                                    <input
-                                        type="date"
-                                        value={filters.from}
-                                        max={filters.to || undefined}
-                                        onChange={(event) => {
-                                            setFilters((current) => ({
-                                                ...current,
-                                                from: event.target.value,
-                                            }))
-                                            setPage(1)
-                                        }}
-                                        className={`h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-800 outline-none transition-[border-color,box-shadow] duration-150 sm:text-sm motion-reduce:transition-none ${fieldRing}`}
-                                    />
-                                </label>
-
-                                <label>
-                                    <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
-                                        To
-                                    </span>
-                                    <input
-                                        type="date"
-                                        value={filters.to}
-                                        min={filters.from || undefined}
-                                        onChange={(event) => {
-                                            setFilters((current) => ({
-                                                ...current,
-                                                to: event.target.value,
-                                            }))
-                                            setPage(1)
-                                        }}
-                                        className={`h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-800 outline-none transition-[border-color,box-shadow] duration-150 sm:text-sm motion-reduce:transition-none ${fieldRing}`}
-                                    />
-                                </label>
-
+                                </span>
+                            </label>
+                            <label>
+                                <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                    {dateField === 'check_in' ? 'Check-in from' : 'From'}
+                                </span>
+                                <input
+                                    type="date"
+                                    value={from}
+                                    max={to || undefined}
+                                    onChange={(event) =>
+                                        updateParams({ from: event.target.value || null })
+                                    }
+                                    className={`h-11 rounded-lg border border-[rgba(0,0,0,0.1)] bg-white px-3 text-sm tabular-nums outline-none focus:border-[#006dfc] focus:ring-2 focus:ring-[#006dfc]/20 ${focusRing}`}
+                                />
+                            </label>
+                            <label>
+                                <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                    {dateField === 'check_in' ? 'Check-in to' : 'To'}
+                                </span>
+                                <input
+                                    type="date"
+                                    value={to}
+                                    min={from || undefined}
+                                    onChange={(event) =>
+                                        updateParams({ to: event.target.value || null })
+                                    }
+                                    className={`h-11 rounded-lg border border-[rgba(0,0,0,0.1)] bg-white px-3 text-sm tabular-nums outline-none focus:border-[#006dfc] focus:ring-2 focus:ring-[#006dfc]/20 ${focusRing}`}
+                                />
+                            </label>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {[7, 30, 90].map((days) => (
                                 <button
+                                    key={days}
                                     type="button"
-                                    onClick={clearFilters}
-                                    disabled={!hasFilters}
-                                    className={`inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-600 transition-[background-color,border-color,color] duration-150 hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 sm:col-span-2 md:col-span-1 motion-reduce:transition-none ${focusRing}`}
+                                    onClick={() => handleDatePreset(days)}
+                                    className={`min-h-11 rounded-lg px-3 text-[10px] font-semibold text-slate-600 hover:bg-slate-100 ${focusRing}`}
                                 >
-                                    Clear
+                                    {days} days
                                 </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 sm:px-6">
-                        <div>
-                            <h2
-                                id="ledger-heading"
-                                className="font-serif text-lg font-semibold text-[#003079]"
-                            >
-                                Event ledger
-                            </h2>
-                            <p className="mt-0.5 text-xs text-slate-500">
-                                Newest entry first.
-                            </p>
-                        </div>
-                        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">
-                            {loading
-                                ? 'Loading'
-                                : `${numberFormatter.format(meta.total)} ${
-                                      meta.total === 1 ? 'entry' : 'entries'
-                                  }`}
-                        </p>
-                    </div>
-
-                    <p role="status" className="sr-only">
-                        {loading
-                            ? 'Loading activity log entries…'
-                            : `${meta.total} activity log entries loaded.`}
-                    </p>
-
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-left text-sm">
-                            <caption className="sr-only">
-                                Activity log entries, newest first.
-                            </caption>
-                            <thead className="bg-slate-50">
-                                <tr className="border-b border-slate-200 text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                                    <th
-                                        scope="col"
-                                        className="w-32 px-4 py-3 font-medium sm:px-6"
-                                    >
-                                        Time
-                                    </th>
-                                    <th
-                                        scope="col"
-                                        className="hidden w-44 px-4 py-3 font-medium md:table-cell"
-                                    >
-                                        Actor
-                                    </th>
-                                    <th
-                                        scope="col"
-                                        className="px-4 py-3 font-medium"
-                                    >
-                                        Event
-                                    </th>
-                                    <th
-                                        scope="col"
-                                        className="hidden w-32 px-4 py-3 font-medium lg:table-cell"
-                                    >
-                                        Record
-                                    </th>
-                                    <th
-                                        scope="col"
-                                        className="hidden w-32 px-4 py-3 font-medium xl:table-cell"
-                                    >
-                                        IP address
-                                    </th>
-                                    <th
-                                        scope="col"
-                                        className="w-14 px-4 py-3 text-right font-medium sm:px-6"
-                                    >
-                                        <span className="sr-only">Details</span>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    [0, 1, 2, 3, 4].map((row) => (
-                                        <tr
-                                            key={row}
-                                            className="border-b border-slate-100 last:border-0"
-                                        >
-                                            <td className="px-4 py-4 sm:px-6">
-                                                <span className="block h-2.5 w-16 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-                                                <span className="mt-2 block h-2.5 w-12 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-                                            </td>
-                                            <td className="hidden px-4 py-4 md:table-cell">
-                                                <span className="block h-2.5 w-28 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-                                                <span className="mt-2 block h-2.5 w-36 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <span className="block h-2.5 w-20 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-                                                <span className="mt-2 block h-2.5 w-40 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none sm:w-48" />
-                                            </td>
-                                            <td className="hidden px-4 py-4 lg:table-cell">
-                                                <span className="block h-2.5 w-24 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-                                            </td>
-                                            <td className="hidden px-4 py-4 xl:table-cell">
-                                                <span className="block h-2.5 w-20 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-                                            </td>
-                                            <td className="px-4 py-4 sm:px-6">
-                                                <span className="ml-auto block size-8 animate-pulse rounded-lg bg-slate-200 motion-reduce:animate-none" />
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : loadError ? (
-                                    <tr>
-                                        <td
-                                            colSpan={6}
-                                            className="px-6 py-16 text-center"
-                                        >
-                                            <p
-                                                role="alert"
-                                                className="font-serif text-xl font-semibold text-[#003079]"
-                                            >
-                                                Ledger unavailable
-                                            </p>
-                                            <p className="mx-auto mt-1 max-w-sm text-pretty text-sm leading-6 text-slate-500">
-                                                {loadError}
-                                            </p>
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    setRefreshKey(
-                                                        (current) =>
-                                                            current + 1,
-                                                    )
-                                                }
-                                                className={`mt-4 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 transition-[background-color,border-color,color] duration-150 hover:border-slate-300 hover:text-[#003079] motion-reduce:transition-none ${focusRing}`}
-                                            >
-                                                <RefreshCw
-                                                    className="size-3.5"
-                                                    aria-hidden="true"
-                                                />
-                                                Try again
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ) : logs.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={6}
-                                            className="px-6 py-16 text-center"
-                                        >
-                                            <p className="font-serif text-xl font-semibold text-[#003079]">
-                                                No matching entries
-                                            </p>
-                                            <p className="mx-auto mt-1 max-w-sm text-pretty text-sm leading-6 text-slate-500">
-                                                {hasFilters
-                                                    ? 'Adjust the category, search, or date range to widen the record.'
-                                                    : 'New catalogue changes and sign-in events will appear here as they are recorded.'}
-                                            </p>
-                                            {hasFilters && (
-                                                <button
-                                                    type="button"
-                                                    onClick={clearFilters}
-                                                    className={`mt-4 inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 transition-[background-color,border-color,color] duration-150 hover:border-slate-300 hover:text-[#003079] motion-reduce:transition-none ${focusRing}`}
-                                                >
-                                                    Clear filters
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    logs.map((log) => {
-                                        const action =
-                                            actionMeta[log.action] ?? {
-                                                label: humanize(log.action),
-                                                tone: 'text-slate-600',
-                                                dot: 'bg-slate-400',
-                                            }
-                                        const stamp = formatStamp(log.created_at)
-                                        const isExpanded =
-                                            expandedId === log.id
-                                        const properties = Object.entries(
-                                            log.properties ?? {},
-                                        )
-                                        const record = log.subject_label
-                                            ? `${log.subject_label}${
-                                                  log.subject_id !== null
-                                                      ? ` #${log.subject_id}`
-                                                      : ''
-                                              }`
-                                            : '—'
-
-                                        return (
-                                            <Fragment key={log.id}>
-                                                <tr className="border-b border-slate-100 align-top last:border-0 hover:bg-slate-50/70">
-                                                    <td className="whitespace-nowrap px-4 py-4 sm:px-6">
-                                                        <span className="block font-mono text-[12px] tabular-nums text-slate-500">
-                                                            {stamp.date}
-                                                        </span>
-                                                        <span className="mt-0.5 block font-mono text-[13px] font-medium tabular-nums text-slate-700">
-                                                            {stamp.time}
-                                                        </span>
-                                                    </td>
-
-                                                    <td className="hidden px-4 py-4 md:table-cell">
-                                                        <div className="flex items-start gap-2.5">
-                                                            <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-slate-100 font-mono text-[10px] font-semibold text-slate-600">
-                                                                {actorInitials(
-                                                                    log,
-                                                                )}
-                                                            </span>
-                                                            <div className="min-w-0">
-                                                                <p className="truncate text-[13px] font-medium text-slate-900">
-                                                                    {actorName(
-                                                                        log,
-                                                                    )}
-                                                                </p>
-                                                                <p className="truncate text-[12px] text-slate-500">
-                                                                    {actorEmail(
-                                                                        log,
-                                                                    )}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-
-                                                    <td className="px-4 py-4">
-                                                        <div className="flex items-start gap-2.5">
-                                                            <span
-                                                                className={`mt-1.5 size-1.5 shrink-0 rounded-full ${action.dot}`}
-                                                                aria-hidden="true"
-                                                            />
-                                                            <div className="min-w-0">
-                                                                <span
-                                                                    className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${action.tone}`}
-                                                                >
-                                                                    {
-                                                                        action.label
-                                                                    }
-                                                                </span>
-                                                                <p className="mt-1 max-w-md text-pretty text-[13px] leading-5 text-slate-600">
-                                                                    {log.description ??
-                                                                        '—'}
-                                                                </p>
-                                                                <p className="mt-1 text-[12px] text-slate-500 md:hidden">
-                                                                    {actorName(
-                                                                        log,
-                                                                    )}
-                                                                    {log.subject_label
-                                                                        ? ` · ${record}`
-                                                                        : ''}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-
-                                                    <td className="hidden px-4 py-4 lg:table-cell">
-                                                        <p className="text-[13px] text-slate-700">
-                                                            {log.subject_label ??
-                                                                '—'}
-                                                        </p>
-                                                        <p className="mt-0.5 font-mono text-[12px] tabular-nums text-slate-500">
-                                                            {log.subject_id !==
-                                                            null
-                                                                ? `#${log.subject_id}`
-                                                                : '—'}
-                                                        </p>
-                                                    </td>
-
-                                                    <td className="hidden px-4 py-4 xl:table-cell">
-                                                        <p className="font-mono text-[12px] tabular-nums text-slate-600">
-                                                            {log.ip_address ??
-                                                                '—'}
-                                                        </p>
-                                                    </td>
-
-                                                    <td className="px-4 py-4 text-right sm:px-6">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                setExpandedId(
-                                                                    isExpanded
-                                                                        ? null
-                                                                        : log.id,
-                                                                )
-                                                            }
-                                                            aria-expanded={
-                                                                isExpanded
-                                                            }
-                                                            aria-controls={`log-details-${log.id}`}
-                                                            aria-label={
-                                                                isExpanded
-                                                                    ? `Hide details for event ${log.id}`
-                                                                    : `Show details for event ${log.id}`
-                                                            }
-                                                            className={`inline-grid size-9 place-items-center rounded-lg border border-slate-200 text-slate-500 transition-[background-color,border-color,color] duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-[#003079] motion-reduce:transition-none ${focusRing}`}
-                                                        >
-                                                            <ChevronDown
-                                                                className={`size-4 transition-transform duration-150 motion-reduce:transition-none ${
-                                                                    isExpanded
-                                                                        ? 'rotate-180'
-                                                                        : ''
-                                                                }`}
-                                                                aria-hidden="true"
-                                                            />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-
-                                                {isExpanded && (
-                                                    <tr
-                                                        id={`log-details-${log.id}`}
-                                                        className="border-b border-slate-100 bg-slate-50/70 last:border-0"
-                                                    >
-                                                        <td
-                                                            colSpan={6}
-                                                            className="px-4 py-4 sm:px-6"
-                                                        >
-                                                            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-                                                                <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-                                                                    <DetailItem
-                                                                        label="Event ID"
-                                                                        value={`#${log.id}`}
-                                                                        mono
-                                                                    />
-                                                                    <DetailItem
-                                                                        label="Record"
-                                                                        value={
-                                                                            record
-                                                                        }
-                                                                    />
-                                                                    <DetailItem
-                                                                        label="Recorded by"
-                                                                        value={`${actorName(
-                                                                            log,
-                                                                        )} · ${actorEmail(
-                                                                            log,
-                                                                        )}`}
-                                                                        className="sm:col-span-2"
-                                                                    />
-                                                                    <DetailItem
-                                                                        label="IP address"
-                                                                        value={
-                                                                            log.ip_address ??
-                                                                            '—'
-                                                                        }
-                                                                        mono
-                                                                    />
-                                                                    <DetailItem
-                                                                        label="User agent"
-                                                                        value={
-                                                                            log.user_agent ??
-                                                                            'Not recorded'
-                                                                        }
-                                                                    />
-                                                                </dl>
-
-                                                                <div className="min-w-0">
-                                                                    <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
-                                                                        Recorded
-                                                                        fields
-                                                                    </p>
-                                                                    {properties.length >
-                                                                    0 ? (
-                                                                        <dl className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">
-                                                                            {properties.map(
-                                                                                ([
-                                                                                    key,
-                                                                                    value,
-                                                                                ]) => (
-                                                                                    <DetailItem
-                                                                                        key={
-                                                                                            key
-                                                                                        }
-                                                                                        label={humanize(
-                                                                                            key,
-                                                                                        )}
-                                                                                        value={formatPropertyValue(
-                                                                                            value,
-                                                                                        )}
-                                                                                    />
-                                                                                ),
-                                                                            )}
-                                                                        </dl>
-                                                                    ) : (
-                                                                        <p className="mt-1 text-[13px] leading-5 text-slate-500">
-                                                                            No
-                                                                            additional
-                                                                            fields
-                                                                            recorded.
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </Fragment>
-                                        )
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                        <p className="text-xs text-slate-500">
-                            {loading
-                                ? 'Loading entries…'
-                                : meta.total === 0
-                                  ? 'No entries to display'
-                                  : `Showing ${numberFormatter.format(
-                                        meta.from ?? 0,
-                                    )}–${numberFormatter.format(
-                                        meta.to ?? 0,
-                                    )} of ${numberFormatter.format(meta.total)}`}
-                        </p>
-
-                        <div className="flex items-center gap-2">
-                            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                                Page {meta.currentPage} / {meta.lastPage}
-                            </span>
+                            ))}
                             <button
                                 type="button"
                                 onClick={() =>
-                                    setPage((current) =>
-                                        Math.max(1, current - 1),
-                                    )
+                                    updateParams({
+                                        from: null,
+                                        to: null,
+                                        search: null,
+                                        status: null,
+                                        date_field: null,
+                                    })
                                 }
-                                disabled={meta.currentPage <= 1 || loading}
-                                className={`inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition-[background-color,border-color,color] duration-150 hover:border-slate-300 hover:text-[#003079] disabled:cursor-not-allowed disabled:text-slate-400 motion-reduce:transition-none ${focusRing}`}
+                                className={`min-h-11 rounded-lg px-3 text-[10px] font-semibold text-slate-600 hover:bg-slate-100 ${focusRing}`}
+                            >
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                    {statusOptions.length > 1 && (
+                        <AdminFilterPills
+                            label="Filter by status"
+                            value={status}
+                            onChange={(value) =>
+                                updateParams({ status: value || null })
+                            }
+                            options={filterStatusOptions}
+                        />
+                    )}
+                    {report === 'activity' && (
+                        <AdminFilterPills
+                            label="Filter activity category"
+                            value={category}
+                            onChange={(value) =>
+                                updateParams({
+                                    category: value === 'all' ? null : value,
+                                })
+                            }
+                            options={[
+                                { value: 'all', label: 'All events' },
+                                { value: 'changes', label: 'Changes' },
+                                { value: 'access', label: 'Access' },
+                            ]}
+                        />
+                    )}
+                </div>
+
+                <AdminStatStrip
+                    stats={[
+                        {
+                            label: 'Matching rows',
+                            value: loading ? '—' : numberFormatter.format(total),
+                            href: `/reports?${searchParams.toString()}`,
+                        },
+                        ...(report === 'revenue' || report === 'payments' || report === 'bookings'
+                            ? [
+                                  {
+                                      label: report === 'bookings' ? 'Booking value' : 'Amount',
+                                      value: loading ? '—' : money(totalAmount),
+                                      href: `/reports?${searchParams.toString()}`,
+                                  },
+                              ]
+                            : []),
+                        ...(report === 'activity' && activitySummary
+                            ? [
+                                  {
+                                      label: 'Recorded today',
+                                      value: numberFormatter.format(activitySummary.today),
+                                  },
+                              ]
+                            : []),
+                    ]}
+                />
+
+                {(error || activityError) && (
+                    <p role="alert" className="text-sm text-rose-700">
+                        {error || exportError || activityError}
+                    </p>
+                )}
+
+                <AdminCard padding={false}>
+                    <div className="flex flex-wrap items-end justify-between gap-3 px-5 pb-3 pt-5">
+                        <div>
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                {report === 'activity' ? 'Audit trail' : 'Filtered ledger'}
+                            </p>
+                            <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                                {reportOptions.find((option) => option.value === report)?.label} ledger
+                            </h2>
+                        </div>
+                        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                            {loading ? 'Loading' : `${numberFormatter.format(total)} rows`}
+                        </p>
+                    </div>
+                    <div className="px-5 pb-2">
+                        {loading ? (
+                            <p role="status" className="py-10 text-center text-sm text-slate-500">
+                                Loading report rows…
+                            </p>
+                        ) : error ? (
+                            <div className="flex flex-col items-center gap-3 py-10 text-center">
+                                <p className="text-sm text-slate-600">
+                                    Report rows could not be loaded.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setRefreshKey((current) => current + 1)}
+                                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-xs font-semibold hover:bg-slate-100 ${focusRing}`}
+                                >
+                                    <RefreshCw className="size-4" aria-hidden="true" />
+                                    Retry
+                                </button>
+                            </div>
+                        ) : rows.length === 0 ? (
+                            <AdminEmptyState
+                                icon={RefreshCw}
+                                heading="No matching records"
+                                subtitle="Change the date range or filters to see more entries."
+                                ctaLabel="Clear filters"
+                                onAction={() =>
+                                    updateParams({
+                                        from: null,
+                                        to: null,
+                                        search: null,
+                                        status: null,
+                                    })
+                                }
+                            />
+                        ) : (
+                            <>
+                                <AdminTable
+                                    label={`${report} report ledger`}
+                                    columns={reportColumns}
+                                    rows={rows}
+                                    rowKey={(row) => row.id}
+                                    empty={null}
+                                />
+                                {expandedRow !== null && (
+                                    <div className="my-4 rounded-xl border border-[rgba(0,0,0,0.06)] p-4">
+                                        {rows
+                                            .filter((row) => row.id === expandedRow)
+                                            .map((row) => (
+                                                <dl
+                                                    key={row.id}
+                                                    className="grid gap-3 sm:grid-cols-2"
+                                                >
+                                                    <div>
+                                                        <dt className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                                            Reference
+                                                        </dt>
+                                                        <dd className="mt-1 font-mono text-xs tabular-nums">
+                                                            {row.reference}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                                            Date
+                                                        </dt>
+                                                        <dd className="mt-1 font-mono text-xs tabular-nums">
+                                                            {row.date
+                                                                ? dateFormatter.format(new Date(row.date))
+                                                                : '—'}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                                            {report === 'contacts' ? 'Message' : 'Details'}
+                                                        </dt>
+                                                        <dd className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                                                            {row.detail || '—'}
+                                                        </dd>
+                                                    </div>
+                                                </dl>
+                                            ))}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[rgba(0,0,0,0.06)] px-5 py-3">
+                        <span className="text-[11px] text-slate-500">
+                            Page <span className="font-mono tabular-nums">{result?.page ?? page}</span> of{' '}
+                            <span className="font-mono tabular-nums">{lastPage}</span>
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                disabled={page <= 1 || loading}
+                                onClick={() => updateParams({ page: String(page - 1) })}
+                                className={`min-h-11 rounded-lg border border-[rgba(0,0,0,0.08)] px-3 text-xs font-semibold disabled:opacity-40 ${focusRing}`}
                             >
                                 Previous
                             </button>
                             <button
                                 type="button"
-                                onClick={() =>
-                                    setPage((current) =>
-                                        Math.min(meta.lastPage, current + 1),
-                                    )
-                                }
-                                disabled={
-                                    meta.currentPage >= meta.lastPage || loading
-                                }
-                                className={`inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition-[background-color,border-color,color] duration-150 hover:border-slate-300 hover:text-[#003079] disabled:cursor-not-allowed disabled:text-slate-400 motion-reduce:transition-none ${focusRing}`}
+                                disabled={page >= lastPage || loading}
+                                onClick={() => updateParams({ page: String(page + 1) })}
+                                className={`min-h-11 rounded-lg border border-[rgba(0,0,0,0.08)] px-3 text-xs font-semibold disabled:opacity-40 ${focusRing}`}
                             >
                                 Next
                             </button>
                         </div>
                     </div>
-                </section>
+                </AdminCard>
+
+                <AdminCard>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                Saved views
+                            </p>
+                            <h2 className="mt-1 font-serif text-lg font-bold">
+                                Reuse a filter set
+                            </h2>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <label>
+                                <span className="sr-only">Saved view name</span>
+                                <input
+                                    value={viewName}
+                                    onChange={(event) => setViewName(event.target.value)}
+                                    placeholder="Name this view"
+                                    className={`h-11 rounded-lg border border-[rgba(0,0,0,0.1)] px-3 text-sm ${focusRing}`}
+                                />
+                            </label>
+                            <button
+                                type="button"
+                                onClick={handleSaveView}
+                                disabled={!viewName.trim()}
+                                className={`inline-flex min-h-11 items-center gap-2 rounded-lg border border-[rgba(0,0,0,0.08)] px-3 text-xs font-semibold disabled:opacity-40 ${focusRing}`}
+                            >
+                                <Save className="size-4" aria-hidden="true" />
+                                Save view
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowSavedViews((current) => !current)}
+                                className={`inline-flex min-h-11 items-center gap-2 rounded-lg border border-[rgba(0,0,0,0.08)] px-3 text-xs font-semibold ${focusRing}`}
+                            >
+                                {showSavedViews ? 'Hide views' : 'Saved views'}
+                            </button>
+                            {report !== 'activity' && (
+                                <button
+                                    type="button"
+                                    onClick={() => void openSchedules()}
+                                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border border-[rgba(0,0,0,0.08)] px-3 text-xs font-semibold ${focusRing}`}
+                                >
+                                    <Mail className="size-4" aria-hidden="true" />
+                                    Schedule email
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    {showSavedViews && (
+                        <ul className="mt-3 flex flex-wrap gap-2">
+                            {savedViews.length === 0 ? (
+                                <li className="text-xs text-slate-500">No saved views on this device.</li>
+                            ) : (
+                                savedViews.map((view) => (
+                                    <li key={view.name}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSearchParams(new URLSearchParams(view.query))}
+                                            className={`min-h-11 rounded-lg bg-slate-100 px-3 text-xs font-semibold hover:bg-slate-200 ${focusRing}`}
+                                        >
+                                            {view.name}
+                                        </button>
+                                    </li>
+                                ))
+                            )}
+                        </ul>
+                    )}
+                </AdminCard>
             </div>
+            {scheduleOpen && (
+                <div
+                    className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/40 p-4"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget) setScheduleOpen(false)
+                    }}
+                >
+                    <section
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="schedule-report-title"
+                        className="w-full max-w-lg rounded-2xl border border-[rgba(0,0,0,0.06)] bg-white p-5 shadow-[0_12px_36px_rgba(0,0,0,0.12)]"
+                    >
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                    Scheduled export
+                                </p>
+                                <h2 id="schedule-report-title" className="mt-1 font-serif text-xl font-bold">
+                                    Email {humanize(report)} report
+                                </h2>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setScheduleOpen(false)}
+                                aria-label="Close scheduled report dialog"
+                                className={`inline-grid size-11 place-items-center rounded-lg hover:bg-slate-100 ${focusRing}`}
+                            >
+                                <X className="size-4" aria-hidden="true" />
+                            </button>
+                        </div>
+                        <form onSubmit={(event) => void handleSchedule(event)} className="mt-4">
+                            <label className="block">
+                                <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                    Email address
+                                </span>
+                                <input
+                                    type="email"
+                                    required
+                                    maxLength={254}
+                                    value={scheduleEmail}
+                                    onChange={(event) => setScheduleEmail(event.target.value)}
+                                    className={`h-11 w-full rounded-lg border border-[rgba(0,0,0,0.1)] px-3 text-sm outline-none focus:border-[#006dfc] focus:ring-2 focus:ring-[#006dfc]/20 ${focusRing}`}
+                                />
+                            </label>
+                            <label className="mt-3 block">
+                                <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                    Frequency
+                                </span>
+                                <select
+                                    value={scheduleFrequency}
+                                    onChange={(event) =>
+                                        setScheduleFrequency(event.target.value as 'weekly' | 'monthly')
+                                    }
+                                    className={`h-11 w-full rounded-lg border border-[rgba(0,0,0,0.1)] bg-white px-3 text-sm ${focusRing}`}
+                                >
+                                    <option value="weekly">Weekly · last 7 days</option>
+                                    <option value="monthly">Monthly · last 30 days</option>
+                                </select>
+                            </label>
+                            <p className="mt-2 text-xs leading-5 text-slate-500">
+                                CSV exports are sent at 8:00 AM on the next scheduled run. The server scheduler must be active.
+                            </p>
+                            {scheduleError && (
+                                <p role="alert" className="mt-3 text-xs text-rose-700">
+                                    {scheduleError}
+                                </p>
+                            )}
+                            <div className="mt-4 flex justify-end">
+                                <button
+                                    type="submit"
+                                    disabled={scheduleSaving}
+                                    className={`min-h-11 rounded-xl bg-[#006dfc] px-4 text-xs font-semibold text-white hover:bg-[#0057c9] disabled:opacity-50 ${focusRing}`}
+                                >
+                                    {scheduleSaving ? 'Scheduling…' : 'Schedule export'}
+                                </button>
+                            </div>
+                        </form>
+                        <div className="mt-5 border-t border-[rgba(0,0,0,0.06)] pt-4">
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                Active schedules
+                            </p>
+                            {schedules.length === 0 ? (
+                                <p className="mt-2 text-xs text-slate-500">
+                                    No scheduled reports yet.
+                                </p>
+                            ) : (
+                                <ul className="mt-2 divide-y divide-[rgba(0,0,0,0.06)]">
+                                    {schedules.map((schedule) => (
+                                        <li key={schedule.id} className="flex min-h-12 items-center gap-3 py-2">
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-xs font-medium">
+                                                    {humanize(schedule.report)} · {schedule.frequency}
+                                                </span>
+                                                <span className="block truncate text-[10px] text-slate-500">
+                                                    {schedule.email}
+                                                </span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => void removeSchedule(schedule.id)}
+                                                className={`min-h-11 rounded-lg px-2 text-[10px] font-semibold text-rose-700 hover:bg-rose-50 ${focusRing}`}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </section>
+                </div>
+            )}
         </main>
     )
 }

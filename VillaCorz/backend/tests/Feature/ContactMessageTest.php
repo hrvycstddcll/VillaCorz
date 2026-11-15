@@ -3,11 +3,14 @@
 namespace Tests\Feature;
 
 use App\Mail\ContactMessage;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class ContactMessageTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_contact_message_is_sent_to_the_configured_recipient(): void
     {
         Mail::fake();
@@ -32,6 +35,11 @@ class ContactMessageTest extends TestCase
                 && $mail->senderEmail === 'taylor@example.com'
                 && $mail->messageText === 'I have a question about booking.';
         });
+        $this->assertDatabaseHas('contact_submissions', [
+            'name' => 'Taylor Guest',
+            'email' => 'taylor@example.com',
+            'message' => 'I have a question about booking.',
+        ]);
     }
 
     public function test_contact_message_requires_valid_fields(): void

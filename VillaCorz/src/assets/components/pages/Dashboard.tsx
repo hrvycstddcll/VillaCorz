@@ -1,498 +1,646 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import {
+    CalendarClock,
+    CircleAlert,
+    CreditCard,
+    MessageSquareText,
+    Star,
+} from 'lucide-react'
+import { money } from '../../../lib/format'
 import { getDashboard } from '../../../services/dashboardService'
 import type {
+    AdminReportKind,
+    DashboardRecentBooking,
     DashboardSummary,
-    DashboardTopService,
 } from '../../../services/types'
-import { money } from '../../../lib/format'
+import AdminCard from '../admin/AdminCard'
+import AdminEmptyState from '../admin/AdminEmptyState'
+import AdminStatStrip from '../admin/AdminStatStrip'
+import AdminTable, { type AdminTableColumn } from '../admin/AdminTable'
+import AdminFilterPills from '../admin/AdminFilterPills'
 import AdminPageHeader from '../ui/AdminPageHeader'
 
 const ranges = [7, 30, 90] as const
 type Range = (typeof ranges)[number]
 
+const numberFormatter = new Intl.NumberFormat('en-PH')
+const emptySeries: DashboardSummary['series'] = []
+const focusRing =
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
+
+const parseRange = (value: string | null): Range =>
+    ranges.includes(Number(value) as Range) ? (Number(value) as Range) : 30
+
+const statusTone = (status: string) => {
+    if (status === 'confirmed' || status === 'completed' || status === 'paid') {
+        return 'bg-emerald-500'
+    }
+    if (status === 'expired' || status === 'cancelled') return 'bg-rose-500'
+    return 'bg-amber-500'
+}
+
 const Dashboard = () => {
-    const [range, setRange] = useState<Range>(30)
-    const [data, setData] = useState<DashboardSummary | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState('')
-    const [hovered, setHovered] = useState<number | null>(null)
+    const [searchParams, setSearchParams] = useSearchParams()
+    const range = parseRange(searchParams.get('range'))
+    const [result, setResult] = useState<{
+        range: Range
+        data: DashboardSummary
+    } | null>(null)
+    const [failure, setFailure] = useState<{ range: Range; message: string } | null>(null)
 
     useEffect(() => {
         let active = true
         getDashboard(range)
             .then(({ data: envelope }) => {
-                if (active) setData(envelope.data)
+                if (active) {
+                    setResult({ range, data: envelope.data })
+                    setFailure(null)
+                }
             })
             .catch(() => {
-                if (active) setError('Unable to load dashboard data.')
+                if (active) {
+                    setFailure({
+                        range,
+                        message: 'Unable to load dashboard data.',
+                    })
+                }
             })
-            .finally(() => {
-                if (active) setLoading(false)
-            })
+
         return () => {
             active = false
         }
     }, [range])
 
-    const handleRangeChange = (next: Range) => {
-        setLoading(true)
-        setError('')
-        setHovered(null)
-        setRange(next)
+    const data = result?.range === range ? result.data : null
+    const loading = data === null && failure?.range !== range
+    const error = failure?.range === range ? failure.message : ''
+    const series = data?.series ?? emptySeries
+    const bookings = data?.recent_bookings ?? []
+    const reportHref = (
+        report: AdminReportKind,
+        filters: { status?: string; date_field?: string } = {},
+    ) => {
+        const params = new URLSearchParams({ report })
+        if (data?.start) params.set('from', data.start)
+        if (data?.end) params.set('to', data.end)
+        if (filters.status) params.set('status', filters.status)
+        if (filters.date_field) params.set('date_field', filters.date_field)
+        return `/reports?${params.toString()}`
+    }
+    const revenuePoints = useMemo(() => {
+        const chartWidth = 720
+        const chartHeight = 220
+        const pad = { top: 16, right: 12, bottom: 28, left: 48 }
+        const maxValue = Math.max(1, ...series.map((point) => point.revenue))
+        const plotWidth = chartWidth - pad.left - pad.right
+        const plotHeight = chartHeight - pad.top - pad.bottom
+        const step = series.length > 1 ? plotWidth / (series.length - 1) : 0
+        const points = series.map((point, index) => ({
+            ...point,
+            x: pad.left + index * step,
+            y: pad.top + plotHeight - (point.revenue / maxValue) * plotHeight,
+        }))
+
+        return {
+            points,
+            path: points
+                .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x},${point.y}`)
+                .join(' '),
+            width: chartWidth,
+            height: chartHeight,
+            padding: pad,
+            plotHeight,
+            maxValue,
+        }
+    }, [series])
+
+    const bookingColumns: AdminTableColumn<DashboardRecentBooking>[] = [
+        {
+            key: 'guest',
+            label: 'Guest',
+            render: (booking) => (
+                <Link
+                    to={`/reports?report=bookings&search=${encodeURIComponent(booking.reference)}`}
+                    className={`block min-h-11 rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]`}
+                >
+                    <span className="block font-medium text-slate-900">
+                        {booking.guest}
+                    </span>
+                    <span className="font-mono text-[11px] tabular-nums text-slate-500">
+                        {booking.reference}
+                    </span>
+                </Link>
+            ),
+        },
+        {
+            key: 'stay',
+            label: 'Stay',
+            className: 'hidden md:table-cell',
+            render: (booking) => (
+                <span className="text-xs text-slate-600">
+                    {booking.stay.length ? booking.stay.join(', ') : '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (booking) => (
+                <span className="inline-flex min-h-11 items-center gap-2 text-xs capitalize text-slate-700">
+                    <span
+                        aria-hidden="true"
+                        className={`size-1.5 rounded-full ${statusTone(booking.status)}`}
+                    />
+                    {booking.status.replaceAll('_', ' ')}
+                </span>
+            ),
+        },
+        {
+            key: 'total',
+            label: 'Total',
+            align: 'right',
+            render: (booking) => (
+                <span className="font-mono text-xs tabular-nums text-slate-800">
+                    {money(booking.total)}
+                </span>
+            ),
+        },
+    ]
+
+    const setRange = (next: Range) => {
+        const nextParams = new URLSearchParams(searchParams)
+        nextParams.set('range', String(next))
+        setSearchParams(nextParams, { replace: true })
     }
 
     const metrics = data?.metrics
     const comparison = data?.comparison
-    const series = data?.series ?? []
-    const recent = data?.recent_bookings ?? []
-    const topServices = data?.top_services ?? []
-
-    // Chart geometry
-    const chartWidth = 760
-    const chartHeight = 260
-    const padding = { top: 20, right: 44, bottom: 34, left: 40 }
-    const plotW = chartWidth - padding.left - padding.right
-    const plotH = chartHeight - padding.top - padding.bottom
-    const xStep = series.length > 1 ? plotW / (series.length - 1) : 0
-
-    const maxBookings = Math.max(1, ...series.map((p) => p.bookings))
-    const maxVisits = Math.max(1, ...series.map((p) => p.visits))
-
-    const bookingsPoints = series.map((p, i) => ({
-        x: padding.left + i * xStep,
-        y: padding.top + plotH - (p.bookings / maxBookings) * plotH,
-    }))
-    const visitsPoints = series.map((p, i) => ({
-        x: padding.left + i * xStep,
-        y: padding.top + plotH - (p.visits / maxVisits) * plotH,
-    }))
-
-    const toPath = (pts: { x: number; y: number }[]) =>
-        pts
-            .map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt.x.toFixed(1)},${pt.y.toFixed(1)}`)
-            .join(' ')
-
-    const hoveredPoint = hovered !== null ? series[hovered] : null
-    const hoveredX = hovered !== null ? padding.left + hovered * xStep : 0
-
-    const tickIndices = series
-        .map((_, i) => i)
-        .filter((i) => {
-            if (series.length <= 8) return true
-            return i === 0 || i === series.length - 1 || i % Math.ceil(series.length / 6) === 0
-        })
-
-    const stats: { label: string; value: string; delta?: { delta: number; percent: number | null } }[] = [
-        { label: 'Revenue', value: loading ? '—' : money(metrics?.revenue ?? 0), delta: comparison?.revenue },
-        { label: 'Check-ins', value: loading ? '—' : (metrics?.check_ins ?? 0).toLocaleString(), delta: comparison?.check_ins },
-        { label: 'New bookings', value: loading ? '—' : (metrics?.new_bookings ?? 0).toLocaleString(), delta: comparison?.new_bookings },
-        { label: 'New users', value: loading ? '—' : (metrics?.new_users ?? 0).toLocaleString(), delta: comparison?.new_users },
-        { label: 'Website visits', value: loading ? '—' : (metrics?.website_visits ?? 0).toLocaleString(), delta: comparison?.website_visits },
-        { label: 'Paid payments', value: loading ? '—' : (metrics?.paid_count ?? 0).toLocaleString() },
+    const actionCenter = data?.action_center
+    const kpis = [
+        {
+            label: 'Check-ins',
+            value: data ? numberFormatter.format(metrics?.check_ins ?? 0) : '—',
+            delta: data ? comparison?.check_ins : undefined,
+            href: data
+                ? reportHref('bookings', {
+                      status: 'check_ins',
+                      date_field: 'check_in',
+                  })
+                : undefined,
+        },
+        {
+            label: 'New bookings',
+            value: data ? numberFormatter.format(metrics?.new_bookings ?? 0) : '—',
+            delta: data ? comparison?.new_bookings : undefined,
+            href: data ? reportHref('bookings') : undefined,
+        },
+        {
+            label: 'New guests',
+            value: data ? numberFormatter.format(metrics?.new_users ?? 0) : '—',
+            delta: data ? comparison?.new_users : undefined,
+            href: data ? reportHref('guests') : undefined,
+        },
+        {
+            label: 'Site visits',
+            value: data ? numberFormatter.format(metrics?.website_visits ?? 0) : '—',
+            delta: data ? comparison?.website_visits : undefined,
+            href: data ? reportHref('traffic') : undefined,
+        },
+    ]
+    const actionItems = [
+        {
+            label: 'Pending cancellations',
+            count: actionCenter?.pending_cancellations ?? 0,
+            icon: CalendarClock,
+            href: '/reports?report=cancellations&status=pending',
+            tone: 'amber',
+        },
+        {
+            label: 'Unpublished reviews',
+            count: actionCenter?.unpublished_reviews ?? 0,
+            icon: Star,
+            href: '/reports?report=reviews&status=pending',
+            tone: 'amber',
+        },
+        {
+            label: 'Contact messages',
+            count: actionCenter?.contact_messages ?? 0,
+            icon: MessageSquareText,
+            href: '/reports?report=contacts&status=unread',
+            tone: 'blue',
+        },
+        {
+            label: 'Expired payments',
+            count: actionCenter?.expired_payments ?? 0,
+            icon: CreditCard,
+            href: '/reports?report=payments&status=expired',
+            tone: 'rose',
+        },
     ]
 
     return (
-        <div className="min-h-[calc(100dvh-var(--navbar-height,3.5rem))] bg-slate-50 pb-16">
-            <AdminPageHeader
-                eyebrow="Administration / Dashboard"
-                title="Dashboard"
-                subtitle="Bookings, guests and website traffic at a glance."
-                rangeLabel={`${range} days`}
-                rightSlot={
-                    <div
-                        role="group"
-                        aria-label="Date range"
-                        className="inline-flex self-start rounded-xl border border-white/20 bg-white/5 p-1"
-                    >
-                        {ranges.map((r) => (
-                            <button
-                                key={r}
-                                type="button"
-                                aria-pressed={range === r}
-                                onClick={() => handleRangeChange(r)}
-                                className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-[background-color,color] duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                                    range === r
-                                        ? 'bg-white text-[#003079]'
-                                        : 'text-blue-100 hover:bg-white/10'
-                                }`}
-                            >
-                                {r} days
-                            </button>
-                        ))}
-                    </div>
-                }
-                stats={stats.map((s) => ({
-                    label: s.label,
-                    value: s.value,
-                    delta: s.delta,
-                }))}
-            />
+        <main className="min-h-screen bg-white pb-12 text-slate-900">
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+                <AdminPageHeader
+                    eyebrow="Administration / Overview"
+                    title="Dashboard"
+                    subtitle="A working view of stays, guest activity, and cash flow."
+                    hero={{
+                        label: 'Revenue',
+                        value: data ? money(metrics?.revenue ?? 0) : '—',
+                        delta: data ? comparison?.revenue : undefined,
+                        href: data ? reportHref('revenue') : undefined,
+                    }}
+                    action={
+                        <AdminFilterPills
+                            label="Dashboard date range"
+                            value={range}
+                            onChange={setRange}
+                            options={ranges.map((value) => ({
+                                value,
+                                label: `${value} days`,
+                            }))}
+                        />
+                    }
+                />
 
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pt-8 sm:px-6 lg:px-8">
+                <AdminStatStrip
+                    stats={kpis.map((stat) => ({
+                        label: stat.label,
+                        value: stat.value,
+                        delta: stat.delta
+                            ? {
+                                  value: stat.delta.delta,
+                                  percent: stat.delta.percent,
+                              }
+                            : undefined,
+                        href: stat.href,
+                    }))}
+                    className="border-b border-[rgba(0,0,0,0.06)] pb-2"
+                />
+
                 {error && (
                     <div
                         role="alert"
-                        className="mb-4 flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm text-rose-900 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex items-center gap-2 text-sm text-rose-700"
                     >
-                        <p className="leading-5">{error}</p>
+                        <CircleAlert className="size-4" aria-hidden="true" />
+                        {error}
                     </div>
                 )}
 
-                {/* Chart + top services */}
-                <section className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                        <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#006dfc]">
-                                        Analytics
-                                    </p>
-                                    <h2 className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#003079]">
-                                        Booking & traffic trends
-                                    </h2>
-                                    <p className="mt-0.5 text-xs text-slate-500">
-                                        Over the last {range} days.
-                                    </p>
-                                </div>
-                                <ul className="flex items-center gap-4 text-xs text-slate-600">
-                                    <li className="flex items-center gap-1.5">
-                                        <span className="size-2 rounded-full bg-[#006dfc]" aria-hidden="true" />
-                                        Bookings
-                                    </li>
-                                    <li className="flex items-center gap-1.5">
-                                        <span className="size-2 rounded-full bg-[#2bb8a8]" aria-hidden="true" />
-                                        Website visits
-                                    </li>
-                                </ul>
+                <section className="grid gap-8 lg:grid-cols-[minmax(0,1.8fr)_minmax(16rem,1fr)]">
+                    <AdminCard className="min-w-0" padding={false}>
+                        <div className="flex items-start justify-between gap-4 px-5 pt-5">
+                            <div>
+                                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                    Cash flow
+                                </p>
+                                <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                                    Revenue by day
+                                </h2>
                             </div>
+                            <span className="inline-flex min-h-11 items-center gap-2 text-xs text-slate-600">
+                                <span
+                                    aria-hidden="true"
+                                    className="size-1.5 rounded-full bg-[#006dfc]"
+                                />
+                                Revenue
+                            </span>
                         </div>
-
-                        <div className="p-4 sm:p-6">
+                        <div className="px-3 pb-4 pt-3 sm:px-5">
                             {loading ? (
-                                <div className="flex min-h-60 items-center justify-center">
-                                    <p className="text-sm text-slate-500">Loading chart…</p>
-                                </div>
+                                <p role="status" className="py-16 text-center text-sm text-slate-500">
+                                    Loading revenue…
+                                </p>
+                            ) : error ? (
+                                <p className="py-16 text-center text-sm text-slate-500">
+                                    Revenue trend unavailable.
+                                </p>
                             ) : series.length === 0 ? (
-                                <div className="flex min-h-60 items-center justify-center">
-                                    <p className="text-sm text-slate-500">No data yet.</p>
-                                </div>
+                                <AdminEmptyState
+                                    icon={CreditCard}
+                                    heading="No revenue yet"
+                                    subtitle="Paid bookings will appear here as payments are recorded."
+                                    ctaLabel="Open revenue report"
+                                    href="/reports?report=revenue"
+                                />
                             ) : (
-                                <div className="relative">
+                                <div className="overflow-hidden">
                                     <svg
-                                        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-                                        className="h-auto w-full"
+                                        viewBox={`0 0 ${revenuePoints.width} ${revenuePoints.height}`}
                                         role="img"
-                                        aria-label="Bookings and website visits over time"
-                                        onMouseLeave={() => setHovered(null)}
+                                        aria-label={`Revenue over the last ${range} days`}
+                                        className="h-auto w-full"
                                     >
-                                        {/* y-axis grid + labels */}
-                                        {[0, 0.25, 0.5, 0.75, 1].map((t) => {
-                                            const y = padding.top + plotH * (1 - t)
+                                        {[0, 0.5, 1].map((tick) => {
+                                            const y =
+                                                revenuePoints.padding.top +
+                                                revenuePoints.plotHeight * (1 - tick)
                                             return (
-                                                <g key={t}>
+                                                <g key={tick}>
                                                     <line
-                                                        x1={padding.left}
-                                                        x2={chartWidth - padding.right}
+                                                        x1={revenuePoints.padding.left}
+                                                        x2={revenuePoints.width - 12}
                                                         y1={y}
                                                         y2={y}
-                                                        stroke="#e2e8f0"
-                                                        strokeWidth="1"
+                                                        stroke="rgba(0,0,0,0.06)"
                                                     />
                                                     <text
-                                                        x={padding.left - 6}
+                                                        x={revenuePoints.padding.left - 8}
                                                         y={y + 3}
                                                         textAnchor="end"
-                                                        className="fill-slate-400 text-[9px] tabular-nums"
+                                                        className="fill-slate-500 font-mono text-[9px] tabular-nums"
                                                     >
-                                                        {Math.round(maxBookings * t)}
+                                                        {money(revenuePoints.maxValue * tick)}
                                                     </text>
                                                 </g>
                                             )
                                         })}
-
-                                        {/* right axis (visits) labels */}
-                                        {[0, 0.5, 1].map((t) => {
-                                            const y = padding.top + plotH * (1 - t)
-                                            return (
-                                                <text
-                                                    key={`v-${t}`}
-                                                    x={chartWidth - padding.right + 6}
-                                                    y={y + 3}
-                                                    textAnchor="start"
-                                                    className="fill-slate-400 text-[9px] tabular-nums"
-                                                >
-                                                    {Math.round(maxVisits * t)}
-                                                </text>
-                                            )
-                                        })}
-
-                                        {/* series lines */}
                                         <path
-                                            d={toPath(visitsPoints)}
-                                            fill="none"
-                                            stroke="#2bb8a8"
-                                            strokeWidth="2"
-                                            strokeLinejoin="round"
-                                            strokeLinecap="round"
-                                        />
-                                        <path
-                                            d={toPath(bookingsPoints)}
+                                            d={revenuePoints.path}
                                             fill="none"
                                             stroke="#006dfc"
                                             strokeWidth="2"
-                                            strokeLinejoin="round"
                                             strokeLinecap="round"
+                                            strokeLinejoin="round"
                                         />
-
-                                        {/* hover guide + dots */}
-                                        {hovered !== null && (
-                                            <g>
-                                                <line
-                                                    x1={hoveredX}
-                                                    x2={hoveredX}
-                                                    y1={padding.top}
-                                                    y2={padding.top + plotH}
-                                                    stroke="#94a3b8"
-                                                    strokeWidth="1"
-                                                    strokeDasharray="3 3"
-                                                />
+                                        {revenuePoints.points.map((point, index) => (
+                                            <g key={point.date}>
+                                                {(index === 0 ||
+                                                    index ===
+                                                        revenuePoints.points.length - 1 ||
+                                                    index % Math.ceil(range / 6) === 0) && (
+                                                    <text
+                                                        x={point.x}
+                                                        y={revenuePoints.height - 6}
+                                                        textAnchor="middle"
+                                                        className="fill-slate-500 font-mono text-[9px] tabular-nums"
+                                                    >
+                                                        {point.date.slice(5)}
+                                                    </text>
+                                                )}
                                                 <circle
-                                                    cx={bookingsPoints[hovered].x}
-                                                    cy={bookingsPoints[hovered].y}
+                                                    cx={point.x}
+                                                    cy={point.y}
                                                     r="4"
                                                     fill="#006dfc"
-                                                    stroke="#fff"
-                                                    strokeWidth="2"
-                                                />
-                                                <circle
-                                                    cx={visitsPoints[hovered].x}
-                                                    cy={visitsPoints[hovered].y}
-                                                    r="4"
-                                                    fill="#2bb8a8"
-                                                    stroke="#fff"
-                                                    strokeWidth="2"
-                                                />
+                                                >
+                                                    <title>
+                                                        {point.date}: {money(point.revenue)}
+                                                    </title>
+                                                </circle>
                                             </g>
-                                        )}
-
-                                        {/* invisible hover targets */}
-                                        {series.map((_, i) => (
-                                            <rect
-                                                key={i}
-                                                x={padding.left + i * xStep - xStep / 2}
-                                                y={padding.top}
-                                                width={xStep || plotW}
-                                                height={plotH}
-                                                fill="transparent"
-                                                onMouseEnter={() => setHovered(i)}
-                                            />
-                                        ))}
-
-                                        {/* x ticks */}
-                                        {tickIndices.map((i) => (
-                                            <text
-                                                key={i}
-                                                x={padding.left + i * xStep}
-                                                y={chartHeight - 8}
-                                                textAnchor="middle"
-                                                className="fill-slate-400 text-[9px] tabular-nums"
-                                            >
-                                                {series[i].date.slice(5)}
-                                            </text>
                                         ))}
                                     </svg>
+                                </div>
+                            )}
+                        </div>
+                    </AdminCard>
 
-                                    {hoveredPoint && (
-                                        <div
-                                            className="pointer-events-none absolute top-2 right-2 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs shadow-sm backdrop-blur"
+                    <AdminCard>
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Needs attention
+                        </p>
+                        <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                            Action center
+                        </h2>
+                        <ul className="mt-3 divide-y divide-[rgba(0,0,0,0.06)]">
+                            {!data ? (
+                                <li className="py-4 text-sm text-slate-500" role={loading ? 'status' : undefined}>
+                                    {loading ? 'Loading action items…' : 'Action items unavailable.'}
+                                </li>
+                            ) : actionItems.map((item) => {
+                                const Icon = item.icon
+                                return (
+                                    <li key={item.label}>
+                                        <Link
+                                            to={item.href}
+                                            className={`flex min-h-12 items-center gap-3 rounded-sm py-2 ${focusRing}`}
                                         >
-                                            <p className="font-mono tabular-nums text-slate-500">
-                                                {hoveredPoint.date}
-                                            </p>
-                                            <p className="mt-1 flex items-center gap-1.5 text-slate-700">
-                                                <span className="size-2 rounded-full bg-[#006dfc]" />
-                                                Bookings: <span className="font-mono tabular-nums font-medium">{hoveredPoint.bookings}</span>
-                                            </p>
-                                            <p className="flex items-center gap-1.5 text-slate-700">
-                                                <span className="size-2 rounded-full bg-[#2bb8a8]" />
-                                                Visits: <span className="font-mono tabular-nums font-medium">{hoveredPoint.visits}</span>
-                                            </p>
-                                            <p className="mt-1 text-slate-500">
-                                                Revenue: <span className="font-mono tabular-nums">{money(hoveredPoint.revenue)}</span>
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Top services */}
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                        <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#006dfc]">
-                                Top services
-                            </p>
-                            <h2 className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#003079]">
-                                By bookings
-                            </h2>
-                            <p className="mt-0.5 text-xs text-slate-500">
-                                Ranked by number of bookings.
-                            </p>
-                        </div>
-                        <div className="px-4 py-4 sm:px-6">
-                            {loading ? (
-                                <div className="space-y-3">
-                                    {[0, 1, 2, 3].map((i) => (
-                                        <div key={i} className="h-8 animate-pulse rounded bg-slate-100" />
-                                    ))}
-                                </div>
-                            ) : topServices.length === 0 ? (
-                                <p className="text-sm text-slate-500">No bookings yet.</p>
-                            ) : (
-                                <ol className="space-y-3">
-                                    {topServices.map((s: DashboardTopService, i: number) => {
-                                        const max = topServices[0]?.bookings || 1
-                                        const pct = Math.round((s.bookings / max) * 100)
-                                        return (
-                                            <li key={s.service_id} className="flex flex-col gap-1.5">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className="truncate text-sm font-medium text-slate-800">
-                                                        {i + 1}. {s.name}
-                                                    </span>
-                                                    <span className="shrink-0 font-mono text-xs tabular-nums text-slate-500">
-                                                        {s.bookings} · {money(s.revenue)}
-                                                    </span>
-                                                </div>
-                                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                                                    <div
-                                                        className="h-full rounded-full bg-[#006dfc]"
-                                                        style={{ width: `${pct}%` }}
-                                                    />
-                                                </div>
-                                            </li>
-                                        )
-                                    })}
-                                </ol>
-                            )}
-                        </div>
-                    </div>
+                                            <Icon
+                                                className="size-4 shrink-0 text-slate-500"
+                                                aria-hidden="true"
+                                            />
+                                            <span className="flex-1 text-xs text-slate-700">
+                                                {item.label}
+                                            </span>
+                                            <span
+                                                className={`font-mono text-sm font-semibold tabular-nums ${
+                                                    item.count > 0
+                                                        ? item.tone === 'rose'
+                                                            ? 'text-rose-700'
+                                                            : item.tone === 'amber'
+                                                              ? 'text-amber-700'
+                                                              : 'text-[#006dfc]'
+                                                        : 'text-slate-500'
+                                                }`}
+                                            >
+                                                {numberFormatter.format(item.count)}
+                                            </span>
+                                        </Link>
+                                    </li>
+                                )
+                            })}
+                        </ul>
+                    </AdminCard>
                 </section>
 
-                {/* Recent bookings */}
-                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                    <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#006dfc]">
-                                    Recent bookings
+                <section className="grid gap-8 lg:grid-cols-2">
+                    <AdminCard>
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Revenue mix
+                        </p>
+                        <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                            By service
+                        </h2>
+                        {loading ? (
+                            <p role="status" className="mt-4 py-4 text-sm text-slate-500">
+                                Loading service revenue…
+                            </p>
+                        ) : error ? (
+                            <p className="mt-4 py-4 text-sm text-slate-500">
+                                Service revenue unavailable.
+                            </p>
+                        ) : data?.top_services.length ? (
+                            <ol className="mt-4 divide-y divide-[rgba(0,0,0,0.06)]">
+                                {data.top_services.map((service) => (
+                                <li key={service.service_id}>
+                                    <Link
+                                        to={`/manageOffers?search=${encodeURIComponent(service.name)}`}
+                                        className={`flex min-h-12 items-center gap-3 py-2 ${focusRing}`}
+                                    >
+                                        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                                            {service.name}
+                                        </span>
+                                        <span className="font-mono text-xs tabular-nums text-slate-500">
+                                            {service.bookings} bookings
+                                        </span>
+                                        <span className="font-mono text-xs tabular-nums">
+                                            {money(service.revenue)}
+                                        </span>
+                                    </Link>
+                                </li>
+                                ))}
+                            </ol>
+                        ) : (
+                            <p className="mt-4 py-4 text-sm text-slate-500">
+                                No service revenue in this period.
+                            </p>
+                        )}
+                    </AdminCard>
+
+                    <AdminCard>
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Stay performance
+                        </p>
+                        <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                            Occupancy and yield
+                        </h2>
+                        <AdminStatStrip
+                            className="mt-3 gap-x-5"
+                            stats={[
+                                {
+                                    label: 'Occupancy',
+                                    value: data ? `${data.operational.occupancy}%` : '—',
+                                },
+                                {
+                                    label: 'ADR',
+                                    value: data ? money(data.operational.adr) : '—',
+                                },
+                                {
+                                    label: 'RevPAR',
+                                    value: data ? money(data.operational.revpar) : '—',
+                                },
+                            ]}
+                        />
+                        <div className="mt-3 border-t border-[rgba(0,0,0,0.06)] pt-3">
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                Booked next 30 days
+                            </p>
+                            <p className="mt-1 font-mono text-lg font-semibold tabular-nums">
+                                {data ? money(data.operational.booked_forward_revenue) : '—'}
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                                Confirmed reservations already on the books; not a predictive estimate.
+                            </p>
+                        </div>
+                    </AdminCard>
+                </section>
+
+                <section className="grid gap-8 lg:grid-cols-2">
+                    <AdminCard>
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Weekly pattern
+                        </p>
+                        <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                            Revenue by day of week
+                        </h2>
+                        <div className="mt-4 space-y-3">
+                            {loading && (
+                                <p role="status" className="py-4 text-sm text-slate-500">
+                                    Loading weekday breakdown…
                                 </p>
-                                <h2 className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#003079]">
-                                    Latest reservations
-                                </h2>
-                                <p className="mt-0.5 text-xs text-slate-500">
-                                    {loading
-                                        ? 'Loading…'
-                                        : `${recent.length} most recent bookings.`}
+                            )}
+                            {!loading && error && (
+                                <p className="py-4 text-sm text-slate-500">
+                                    Weekday breakdown unavailable.
                                 </p>
-                            </div>
+                            )}
+                            {!loading && !error && (data?.revenue_by_weekday ?? []).map((amount, index) => {
+                                const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                                const max = Math.max(1, ...(data?.revenue_by_weekday ?? []))
+                                return (
+                                    <div key={labels[index]} className="grid grid-cols-[2rem_1fr_auto] items-center gap-3">
+                                        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                            {labels[index]}
+                                        </span>
+                                        <div
+                                            className="h-1 overflow-hidden rounded-full bg-slate-100"
+                                            role="img"
+                                            aria-label={`${labels[index]} revenue ${money(amount)}`}
+                                        >
+                                            <div
+                                                className="h-full rounded-full bg-[#006dfc]"
+                                                style={{ width: `${(amount / max) * 100}%` }}
+                                            />
+                                        </div>
+                                        <span className="font-mono text-xs tabular-nums">
+                                            {money(amount)}
+                                        </span>
+                                    </div>
+                                )
+                            })}
+                            {!loading && !error && data?.revenue_by_weekday.length === 0 && (
+                                <p className="py-4 text-sm text-slate-500">No weekday breakdown available.</p>
+                            )}
+                        </div>
+                    </AdminCard>
+
+                    <AdminCard padding={false}>
+                        <div className="px-5 pt-5">
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                Reservations
+                            </p>
+                            <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                                Recent bookings
+                            </h2>
                             <Link
-                                to="/bookings"
-                                className="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition-[background-color,border-color,color] duration-150 hover:border-slate-300 hover:text-[#003079] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                to="/reports?report=bookings"
+                                className={`mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-[#006dfc] ${focusRing}`}
                             >
-                                View all bookings
+                                View bookings report
                             </Link>
                         </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-left text-sm">
-                            <thead className="bg-slate-50">
-                                <tr className="border-b border-slate-200 text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                                    <th scope="col" className="px-4 py-3 font-medium sm:px-6">
-                                        Guest
-                                    </th>
-                                    <th scope="col" className="px-4 py-3 font-medium">
-                                        Stay
-                                    </th>
-                                    <th scope="col" className="px-4 py-3 font-medium">
-                                        Status
-                                    </th>
-                                    <th scope="col" className="px-4 py-3 text-right font-medium sm:px-6">
-                                        Amount
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    [0, 1, 2, 3].map((row) => (
-                                        <tr
-                                            key={row}
-                                            className="border-b border-slate-100 last:border-0"
-                                        >
-                                            <td className="px-4 py-4 sm:px-6">
-                                                <span className="block h-2.5 w-28 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <span className="block h-2.5 w-36 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <span className="block h-5 w-20 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-                                            </td>
-                                            <td className="px-4 py-4 sm:px-6">
-                                                <span className="ml-auto block h-2.5 w-16 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : recent.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={4}
-                                            className="px-6 py-16 text-center"
-                                        >
-                                            <p className="font-serif text-xl font-semibold text-[#003079]">
-                                                No bookings yet
-                                            </p>
-                                            <p className="mx-auto mt-1 max-w-sm text-pretty text-sm leading-6 text-slate-500">
-                                                New reservations will appear here as they are made.
-                                            </p>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    recent.map((b) => (
-                                        <tr
-                                            key={b.reference}
-                                            className="border-b border-slate-100 align-top last:border-0 hover:bg-slate-50/70"
-                                        >
-                                            <td className="px-4 py-4 sm:px-6">
-                                                <p className="text-[13px] font-medium text-slate-900">
-                                                    {b.guest}
-                                                </p>
-                                                <p className="mt-0.5 font-mono text-[12px] tabular-nums text-slate-500">
-                                                    {b.reference}
-                                                </p>
-                                            </td>
-                                            <td className="px-4 py-4 text-[13px] text-slate-700">
-                                                {b.stay.length ? b.stay.join(', ') : '—'}
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <span className="inline-flex rounded-full bg-[#006dfc]/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#0057c9]">
-                                                    {b.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-4 text-right font-mono text-[13px] tabular-nums text-slate-800 sm:px-6">
-                                                {money(b.total)}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                        <div className="px-5 pb-4 pt-2">
+                            {loading ? (
+                                <p role="status" className="py-6 text-sm text-slate-500">Loading bookings…</p>
+                            ) : error ? (
+                                <p className="py-6 text-sm text-slate-500">
+                                    Recent bookings unavailable.
+                                </p>
+                            ) : bookings.length === 0 ? (
+                                <AdminEmptyState
+                                    icon={CalendarClock}
+                                    heading="No bookings yet"
+                                    subtitle="New reservations will appear here as guests book."
+                                    ctaLabel="Open bookings report"
+                                    href="/reports?report=bookings"
+                                />
+                            ) : (
+                                <>
+                                    <div className="hidden sm:block">
+                                        <AdminTable
+                                            label="Recent bookings"
+                                            columns={bookingColumns}
+                                            rows={bookings}
+                                            rowKey={(booking) => booking.reference}
+                                        />
+                                    </div>
+                                    <ul className="divide-y divide-[rgba(0,0,0,0.06)] sm:hidden">
+                                        {bookings.map((booking) => (
+                                            <li key={booking.reference} className="py-2">
+                                                <Link
+                                                    to={`/reports?report=bookings&search=${encodeURIComponent(booking.reference)}`}
+                                                    className={`flex min-h-11 items-center gap-3 rounded-sm ${focusRing}`}
+                                                >
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="block truncate text-sm font-medium">{booking.guest}</span>
+                                                        <span className="font-mono text-[10px] tabular-nums text-slate-500">{booking.reference}</span>
+                                                    </span>
+                                                    <span className="font-mono text-xs tabular-nums">{money(booking.total)}</span>
+                                                </Link>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </>
+                            )}
+                        </div>
+                    </AdminCard>
                 </section>
             </div>
-        </div>
+        </main>
     )
 }
 

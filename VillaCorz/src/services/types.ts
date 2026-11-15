@@ -198,6 +198,28 @@ export type DashboardSummary = {
     series: DashboardSeriesPoint[]
     top_services: DashboardTopService[]
     recent_bookings: DashboardRecentBooking[]
+    action_center: {
+        pending_cancellations: number
+        unpublished_reviews: number
+        expired_payments: number
+        contact_messages: number
+    }
+    revenue_by_weekday: number[]
+    offer_metrics: Array<{
+        service_id: number
+        name: string
+        bookings: number
+        revenue: number
+        occupancy: number
+        rating: number
+    }>
+    availability: Record<string, Array<{ check_in: string; check_out: string }>>
+    operational: {
+        occupancy: number
+        adr: number
+        revpar: number
+        booked_forward_revenue: number
+    }
 }
 export type CreateBookingInput = {
     check_in: string
@@ -274,4 +296,48 @@ export type ActivityLogQuery = {
     to?: string
     page?: number
     per_page?: number
+}
+
+export type AdminReportKind =
+    | 'revenue'
+    | 'bookings'
+    | 'cancellations'
+    | 'reviews'
+    | 'contacts'
+    | 'payments'
+    | 'guests'
+    | 'traffic'
+
+export type AdminReportRow = {
+    id: number
+    reference: string
+    date: string | null
+    label: string
+    detail: string
+    status: string
+    amount: number | null
+}
+
+export type AdminReportResponse = {
+    success: boolean
+    data: AdminReportRow[]
+    meta: {
+        current_page: number
+        last_page: number
+        total: number
+        from: number | null
+        to: number | null
+    }
+    summary: {
+        total: number
+        amount: number
+    }
+}
+
+export type AdminReportSchedule = {
+    id: number
+    email: string
+    report: Exclude<AdminReportKind, 'activity'>
+    frequency: 'weekly' | 'monthly'
+    next_run_at: string
 }

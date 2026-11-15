@@ -120,6 +120,10 @@ class DashboardTest extends TestCase
         $this->assertArrayHasKey('website_visits', $data['metrics']);
         $this->assertCount(7, $data['series']);
         $this->assertIsArray($data['recent_bookings']);
+        $this->assertArrayHasKey('pending_cancellations', $data['action_center']);
+        $this->assertArrayHasKey('contact_messages', $data['action_center']);
+        $this->assertArrayHasKey('occupancy', $data['operational']);
+        $this->assertCount(7, $data['revenue_by_weekday']);
     }
 
     public function test_dashboard_reflects_a_paid_booking_in_the_range(): void
