@@ -39,6 +39,7 @@ type ReservationRequest = BookingRequest & { roomChoices: Stay[] }
 type ServicesRouteState = {
     booking?: BookingRequest
     reservation?: ReservationRequest
+    reviewServiceId?: number
 }
 type Stay = {
     id: string
@@ -1267,6 +1268,7 @@ function Services({
     const routeState = (location.state as ServicesRouteState | null) ?? null
     const incomingBooking = routeState?.booking
     const incomingReservation = routeState?.reservation
+    const reviewServiceId = routeState?.reviewServiceId ?? null
     const [activeFilter, setActiveFilter] = useState<'all' | StayCategory>('all')
     const [rooms, setRooms] = useState<{
         key: number
@@ -1387,6 +1389,59 @@ function Services({
             setSelectedRoomPhoto(match.image)
         }
     }
+
+    const [resolvedReviewId, setResolvedReviewId] = useState<number | null>(null)
+
+    if (
+        reviewServiceId != null &&
+        resolvedReviewId !== reviewServiceId &&
+        roomChoices.length > 0
+    ) {
+        const match = roomChoices.find(
+            (stay) => stay.id === String(reviewServiceId),
+        )
+
+        if (match) {
+            setResolvedReviewId(reviewServiceId)
+            setSelectedStay(match)
+            setActivePhoto(match.image)
+            setSelectedRoomPhoto(match.image)
+            setIsRoomDetailOpen(true)
+        }
+    }
+
+    const reviewsAnchorRef = useRef<HTMLDivElement | null>(null)
+
+    useEffect(() => {
+        if (resolvedReviewId == null || !isRoomDetailOpen) return
+
+        let settled = false
+        const align = () => {
+            if (settled) return
+            const node = reviewsAnchorRef.current
+            if (!node) return
+            node.scrollIntoView({ block: 'start' })
+            // scroll-mt-24 keeps the anchor ~96px from the top once aligned.
+            if (node.getBoundingClientRect().top <= 160) settled = true
+        }
+
+        const frame = window.requestAnimationFrame(align)
+        const observer = new ResizeObserver(align)
+        if (reviewsAnchorRef.current) observer.observe(reviewsAnchorRef.current)
+        // The reviews load asynchronously, so keep re-aligning while the
+        // section grows, then stop so later changes never move the page.
+        const timeout = window.setTimeout(() => {
+            align()
+            settled = true
+            observer.disconnect()
+        }, 1500)
+
+        return () => {
+            window.cancelAnimationFrame(frame)
+            window.clearTimeout(timeout)
+            observer.disconnect()
+        }
+    }, [isRoomDetailOpen, resolvedReviewId])
 
     const nights = useMemo(() => {
         if (!checkIn || !checkOut) return 0
@@ -1515,7 +1570,11 @@ function Services({
                             onSelectPhoto={setSelectedRoomPhoto}
                             onBack={() => setIsRoomDetailOpen(false)}
                         />
-                        <div className="mt-4">
+                        <div
+                            id="guest-reviews"
+                            ref={reviewsAnchorRef}
+                            className="mt-4 scroll-mt-24"
+                        >
                             <ServiceReviews
                                 serviceId={Number(selectedStay.id)}
                                 averageRating={selectedStay.ratingAverage ?? null}

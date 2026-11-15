@@ -107,6 +107,23 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
         return checkIn.getTime() - today.getTime() < SEVEN_DAYS_MS
     }
 
+    const reviewWindowOpen = (booking: Booking) => {
+        const checkOut = new Date(`${booking.check_out}T00:00:00`)
+        if (!Number.isFinite(checkOut.getTime())) return false
+        const cutoff = new Date()
+        cutoff.setHours(0, 0, 0, 0)
+        cutoff.setDate(cutoff.getDate() - 30)
+        return checkOut.getTime() >= cutoff.getTime()
+    }
+
+    const goToReview = (booking: Booking) => {
+        const serviceId = booking.rooms.find(
+            (room) => room.service_id != null,
+        )?.service_id
+        if (serviceId == null) return
+        navigate('/services', { state: { reviewServiceId: serviceId } })
+    }
+
     const handleRequestSubmitted = (reference: string) => {
         setBookings((current) =>
             current.map((booking) =>
@@ -341,6 +358,21 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                                 )}
 
                                 <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                                    {booking.lifecycle === 'completed' &&
+                                        reviewWindowOpen(booking) &&
+                                        booking.rooms.some(
+                                            (room) => room.service_id != null,
+                                        ) && (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    goToReview(booking)
+                                                }
+                                                className="inline-flex min-h-10 items-center rounded-lg bg-[#0875f9] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0875f9]"
+                                            >
+                                                Leave a review
+                                            </button>
+                                        )}
                                     {canCancel(booking) && (
                                         <button
                                             type="button"
