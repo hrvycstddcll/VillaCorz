@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PhoneNumberController;
 use App\Http\Controllers\Api\ServiceController;
@@ -88,11 +89,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/reviews/{id}', [ServiceReviewController::class, 'destroy']);
 });
 
+Route::post('/page-views', [DashboardController::class, 'trackPageView'])
+    ->middleware('throttle:60,1');
+
 // Admin-only service management
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/activity-logs/summary', [ActivityLogController::class, 'summary']);
     Route::get('/activity-logs/export', [ActivityLogController::class, 'export']);
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+
+    Route::get('/dashboard', [DashboardController::class, 'summary']);
 
     Route::post('/services', [ServiceController::class, 'store']);
     Route::put('/services/{id}', [ServiceController::class, 'update']);

@@ -9,6 +9,7 @@ import {
 } from 'react-router-dom'
 
 import Dashboard from './assets/components/pages/Dashboard'
+import { trackPageView } from './services/dashboardService'
 import Reports from './assets/components/pages/Reports'
 import HomePage from './assets/components/pages/HomePage'
 import AboutUs from './assets/components/pages/AboutUs'
@@ -159,6 +160,11 @@ function HashScroll() {
 function SiteLayout() {
     const { loading } = useAuth()
     const { pathname } = useLocation()
+
+    useEffect(() => {
+        void trackPageView(pathname).catch(() => {})
+    }, [pathname])
+
     const hidePaymentChrome = pathname.startsWith('/payment')
     const hideNavbar =
         pathname === '/auth' ||

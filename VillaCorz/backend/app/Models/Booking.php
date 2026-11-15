@@ -98,4 +98,17 @@ class Booking extends Model
             && $this->check_out !== null
             && $this->check_out->isPast();
     }
+
+    public function getLifecycleAttribute(): string
+    {
+        return match (true) {
+            $this->status === 'pending_payment' => 'pending',
+            $this->status === 'expired' => 'expired',
+            $this->status === 'cancelled' => 'cancelled',
+            $this->status === 'confirmed'
+                && $this->check_out !== null
+                && $this->check_out->isPast() => 'completed',
+            default => 'booked',
+        };
+    }
 }

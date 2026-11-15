@@ -143,6 +143,45 @@ export type Booking = {
     created_at: string
 }
 
+export type DashboardMetrics = {
+    revenue: number
+    paid_count: number
+    check_ins: number
+    new_bookings: number
+    new_users: number
+    website_visits: number
+}
+
+export type DashboardSeriesPoint = {
+    date: string
+    bookings: number
+    revenue: number
+    visits: number
+}
+
+export type DashboardRecentBooking = {
+    reference: string
+    guest: string
+    email: string
+    stay: string[]
+    status: string
+    lifecycle: string
+    total: number
+    currency: string
+    payment_status: string | null
+    created_at: string | null
+    check_in: string | null
+    check_out: string | null
+}
+
+export type DashboardSummary = {
+    range: number
+    start: string
+    end: string
+    metrics: DashboardMetrics
+    series: DashboardSeriesPoint[]
+    recent_bookings: DashboardRecentBooking[]
+}
 export type CreateBookingInput = {
     check_in: string
     check_out: string
