@@ -27,6 +27,7 @@ class Booking extends Model
         'payment_method',
         'expires_at',
         'confirmed_at',
+        'completed_at',
         'confirmation_email_sent_at',
         'idempotency_key',
         'request_hash',

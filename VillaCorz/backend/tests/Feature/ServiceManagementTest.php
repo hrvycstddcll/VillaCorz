@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Service;
 use App\Models\ServiceImage;
+use App\Models\ServiceReview;
 use App\Models\User;
 use App\Services\CloudinaryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -63,6 +64,34 @@ class ServiceManagementTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.0.name', 'Island Tour');
+    }
+
+    public function test_services_list_exposes_rating_average_and_reviews_count(): void
+    {
+        $admin = $this->makeUser('admin');
+        $customer = $this->makeUser('customer');
+
+        $service = Service::create([
+            'created_by' => $admin->id,
+            'name' => 'Seaview Room',
+            'description' => 'A room with a view.',
+            'price' => 2500,
+            'status' => 'active',
+        ]);
+
+        ServiceReview::create([
+            'service_id' => $service->id,
+            'user_id' => $customer->id,
+            'rating' => 4,
+            'comment' => 'Lovely stay.',
+            'status' => 'published',
+        ]);
+
+        $response = $this->getJson('/api/services')->assertOk();
+
+        // withAvg returns a numeric string from MySQL, so compare numerically.
+        $this->assertSame(4.0, (float) $response->json('data.0.rating_average'));
+        $response->assertJsonPath('data.0.reviews_count', 1);
     }
 
     public function test_admin_can_create_a_service_without_images(): void

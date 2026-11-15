@@ -15,6 +15,7 @@ type Props = {
     serviceId: number
     averageRating: number | null
     reviewsCount: number
+    onReviewChange?: () => void
 }
 
 const StarRow = ({
@@ -82,7 +83,7 @@ const ReviewCard = ({
     }, [menuOpen])
 
     const handleCopy = async () => {
-        const text = [review.title, review.comment].filter(Boolean).join('\\n\\n')
+        const text = [review.title, review.comment].filter(Boolean).join('\n\n')
         try {
             await navigator.clipboard.writeText(text)
             setCopied(true)
@@ -168,7 +169,7 @@ const ReviewCard = ({
     )
 }
 
-const ServiceReviews = ({ serviceId, averageRating, reviewsCount }: Props) => {
+const ServiceReviews = ({ serviceId, averageRating, reviewsCount, onReviewChange }: Props) => {
     const { user } = useAuth()
     const [reviews, setReviews] = useState<ServiceReview[]>([])
     const [page, setPage] = useState(1)
@@ -190,7 +191,7 @@ const ServiceReviews = ({ serviceId, averageRating, reviewsCount }: Props) => {
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const myReview = useMemo(
-        () => (user ? reviews.find((r) => r.author === `${user.firstname} ${user.lastname}`.trim()) : undefined),
+        () => (user ? reviews.find((r) => r.user_id === user.id) : undefined),
         [reviews, user],
     )
 
@@ -276,6 +277,7 @@ const ServiceReviews = ({ serviceId, averageRating, reviewsCount }: Props) => {
             }
             setShowForm(false)
             await loadReviews(1)
+            onReviewChange?.()
         } catch (err: unknown) {
             const msg =
                 (err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } })
@@ -295,6 +297,7 @@ const ServiceReviews = ({ serviceId, averageRating, reviewsCount }: Props) => {
         try {
             await deleteServiceReview(review.id)
             await loadReviews(page)
+            onReviewChange?.()
         } catch {
             setError('Unable to delete review.')
         }
@@ -422,7 +425,7 @@ const ServiceReviews = ({ serviceId, averageRating, reviewsCount }: Props) => {
                         <ReviewCard
                             key={review.id}
                             review={review}
-                            canManage={user?.role === 'admin' || review.author === `${user?.firstname} ${user?.lastname}`.trim()}
+                            canManage={user?.role === 'admin' || review.user_id === user?.id}
                             onDelete={() => void handleDelete(review)}
                         />
                     ))}

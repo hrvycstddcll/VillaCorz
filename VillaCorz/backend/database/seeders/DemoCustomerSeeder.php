@@ -132,5 +132,67 @@ class DemoCustomerSeeder extends Seeder
                 'status' => 'published',
             ]);
         }
+
+        // Give Haydee Dacillo a recent completed stay on the first room so she
+        // can try the review flow from her own customer account. No review is
+        // created, so the "Write a review" form stays available to her.
+        $haydee = User::where('email', 'dacillohaydee@gmail.com')->first();
+
+        if ($haydee) {
+            $reference = 'VC-DEMO-HAYDEE-R' . $service->id;
+
+            if (! Booking::where('reference', $reference)->exists()) {
+                $checkOut = now()->subDays(5)->startOfDay();
+                $checkIn = $checkOut->copy()->subDays(2);
+
+                $booking = Booking::create([
+                    'user_id' => $haydee->id,
+                    'reference' => $reference,
+                    'contact_name' => trim($haydee->firstname . ' ' . $haydee->lastname),
+                    'contact_email' => $haydee->email,
+                    'contact_phone' => null,
+                    'check_in' => $checkIn,
+                    'check_out' => $checkOut,
+                    'nights' => 2,
+                    'adults' => 2,
+                    'kids' => 0,
+                    'subtotal' => (float) $service->price * 2,
+                    'total' => (float) $service->price * 2,
+                    'currency' => 'PHP',
+                    'status' => 'confirmed',
+                    'payment_method' => 'GCash',
+                    'confirmed_at' => $checkIn->copy()->subDays(10),
+                    'completed_at' => $checkOut,
+                ]);
+
+                BookingRoom::create([
+                    'booking_id' => $booking->id,
+                    'service_id' => $service->id,
+                    'service_name' => $service->name,
+                    'kind' => $service->kind,
+                    'adults' => 2,
+                    'kids' => 0,
+                    'weekday_price' => $service->price,
+                    'weekend_price' => $service->weekend_price ?? $service->price,
+                    'line_total' => (float) $service->price * 2,
+                ]);
+
+                $token = Str::random(32);
+                Payment::create([
+                    'booking_id' => $booking->id,
+                    'reference' => 'PAY-DEMO-HAYDEE-R' . $service->id,
+                    'provider' => 'demo',
+                    'method' => 'GCash',
+                    'amount' => (float) $service->price * 2,
+                    'currency' => 'PHP',
+                    'status' => 'paid',
+                    'idempotency_key' => 'demo-haydee-r' . $service->id,
+                    'qr_token_hash' => hash('sha256', $token),
+                    'qr_url' => rtrim((string) config('payments.public_url'), '/') . '/pay/' . $token,
+                    'qr_expires_at' => now()->addHour(),
+                    'paid_at' => $checkIn->copy()->subDays(10),
+                ]);
+            }
+        }
     }
 }

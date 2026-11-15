@@ -41,6 +41,7 @@ export type ServiceReviewImage = {
 export type ServiceReview = {
     id: number
     service_id: number
+    user_id: number | null
     rating: number
     title: string | null
     comment: string | null
@@ -68,7 +69,7 @@ export type Service = {
     amenities: string[] | null
     status: ServiceStatus
     images: ServiceImage[]
-    rating_average: number | null
+    rating_average: number | string | null
     reviews_count: number
     created_at: string
     updated_at: string

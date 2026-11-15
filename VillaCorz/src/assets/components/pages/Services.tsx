@@ -98,6 +98,11 @@ const toStay = (service: Service): Stay => {
         hasDiscount: weekdayPricing.hasDiscount || weekendPricing.hasDiscount,
     }
 
+    const ratingAverage =
+        service.rating_average != null && !Number.isNaN(Number(service.rating_average))
+            ? Number(service.rating_average)
+            : null
+
     return {
         id: String(service.id),
         title: service.name,
@@ -117,12 +122,9 @@ const toStay = (service: Service): Stay => {
             service.pax != null
                 ? `Good for ${service.pax} pax`
                 : 'Good for 2-4 pax',
-        rating:
-            service.rating_average != null
-                ? service.rating_average.toFixed(1)
-                : undefined,
-        ratingAverage: service.rating_average,
-        reviewsCount: service.reviews_count,
+        rating: ratingAverage != null ? ratingAverage.toFixed(1) : undefined,
+        ratingAverage,
+        reviewsCount: Number(service.reviews_count ?? 0),
     }
 }
 
@@ -1512,6 +1514,9 @@ function Services({
                                 serviceId={Number(selectedStay.id)}
                                 averageRating={selectedStay.ratingAverage ?? null}
                                 reviewsCount={selectedStay.reviewsCount ?? 0}
+                                onReviewChange={() =>
+                                    setReloadKey((key) => key + 1)
+                                }
                             />
                         </div>
                     </>

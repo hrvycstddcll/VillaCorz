@@ -245,6 +245,7 @@ class ServiceReviewController extends Controller
         return [
             'id' => $review->id,
             'service_id' => $review->service_id,
+            'user_id' => $review->user_id,
             'rating' => $review->rating,
             'title' => $review->title,
             'comment' => $review->comment,
