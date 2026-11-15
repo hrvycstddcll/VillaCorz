@@ -68,6 +68,24 @@ const DiscountRibbon = ({ label }: { label: string }) => {
     )
 }
 
+const RatingBadge = ({ rating }: { rating: string }) => (
+    <span
+        role="img"
+        aria-label={`Rated ${rating} out of 5`}
+        className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-black/30 px-1.5 py-0.5 font-semibold leading-none text-white backdrop-blur-sm"
+    >
+        <img
+            src={star}
+            alt=""
+            aria-hidden="true"
+            className="size-3 shrink-0 object-contain"
+        />
+        <span aria-hidden="true" className="text-[9px] sm:text-[10px]">
+            {rating}
+        </span>
+    </span>
+)
+
 const ServiceTile = (props: ServiceTileProps) => {
     if (props.variant === 'exclusive') {
         const { stay, isSelected, activePhoto, gallery, onSelect, onSelectPhoto } = props
@@ -140,14 +158,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                                 <span className="flex items-center gap-1 truncate text-[8px] leading-tight text-white/95 sm:text-[9px]">
                                     <span>{stay.capacity}</span>
                                     {stay.rating && (
-                                        <>
-                                            <img
-                                                src={star}
-                                                alt=""
-                                                className="size-3 shrink-0 object-contain"
-                                            />
-                                            <span>{stay.rating}</span>
-                                        </>
+                                        <RatingBadge rating={stay.rating} />
                                     )}
                                 </span>
                             </span>
@@ -262,14 +273,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                     <span className="flex items-center gap-1 truncate text-[8px] leading-tight text-white/95 sm:text-[9px]">
                         <span>{stay.capacity}</span>
                         {stay.rating && (
-                            <>
-                                <img
-                                    src={star}
-                                    alt=""
-                                    className="size-3 shrink-0 object-contain"
-                                />
-                                <span>{stay.rating}</span>
-                            </>
+                            <RatingBadge rating={stay.rating} />
                         )}
                     </span>
                 </span>
