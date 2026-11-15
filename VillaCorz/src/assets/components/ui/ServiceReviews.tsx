@@ -160,7 +160,7 @@ const ReviewCard = ({
                             key={img.id}
                             src={img.url}
                             alt=""
-                            className="h-14 w-14 rounded-lg object-cover ring-1 ring-slate-200 sm:h-16 sm:w-16"
+                            className="h-20 w-20 rounded-lg object-cover ring-1 ring-slate-200 sm:h-24 sm:w-24"
                         />
                     ))}
                 </div>
@@ -316,14 +316,19 @@ const ServiceReviews = ({ serviceId, averageRating, reviewsCount, onReviewChange
     return (
         <section className="mt-4 border-t border-slate-200 pt-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                    <StarRow value={Math.round(avg ?? 0)} size="sm" />
-                    <span className="text-sm font-semibold text-slate-800">
-                        {avg ? avg.toFixed(1) : '—'}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                        ({total} review{total === 1 ? '' : 's'})
-                    </span>
+                <div>
+                    <h3 className="text-sm font-semibold text-slate-800">
+                        Guest reviews
+                    </h3>
+                    <div className="mt-1 flex items-center gap-2">
+                        <StarRow value={Math.round(avg ?? 0)} size="sm" />
+                        <span className="text-sm font-semibold text-slate-800">
+                            {avg ? avg.toFixed(1) : '—'}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                            ({total} review{total === 1 ? '' : 's'})
+                        </span>
+                    </div>
                 </div>
                 {user && eligible && (
                     <button
