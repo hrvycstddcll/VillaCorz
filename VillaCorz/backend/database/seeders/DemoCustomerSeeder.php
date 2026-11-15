@@ -58,6 +58,21 @@ class DemoCustomerSeeder extends Seeder
             'teresa.villanueva@demo.villacorz.test',
         ])->get();
 
+        $reviewTexts = [
+            'Loved the beach view and the cozy rooms. Staff were warm and helpful.',
+            'Great value for the price. The villa felt like home. Will come back!',
+            'Clean, comfortable, and peaceful. Perfect for a weekend getaway.',
+            'Beautiful property and friendly hosts. Highly recommended.',
+        ];
+
+        // Maps "service:user" to the seeded comment so reruns can restore text
+        // on reviews that already exist.
+        $commentMap = [];
+
+        foreach ($reviewers as $i => $user) {
+            $commentMap[$service->id . ':' . $user->id] = $reviewTexts[$i] ?? null;
+        }
+
         $ratings = [5, 4, 5, 4];
 
         foreach ($reviewers as $i => $user) {
@@ -123,7 +138,7 @@ class DemoCustomerSeeder extends Seeder
                 'booking_id' => $booking->id,
                 'rating' => $ratings[$i] ?? 5,
                 'title' => null,
-                'comment' => null,
+                'comment' => $reviewTexts[$i] ?? null,
                 'status' => 'published',
             ]);
 
@@ -148,6 +163,16 @@ class DemoCustomerSeeder extends Seeder
             'antonio.ramos@demo.villacorz.test',
         ])->get()->values();
 
+        $extraComments = [
+            'Spacious room and very clean. The air conditioning worked great.',
+            'Quiet at night and just a short walk to the beach. Would stay again.',
+            'Comfortable beds and helpful staff. Good value for the price.',
+            'The room was tidy and the view was lovely. Enjoyed our stay.',
+            'Easy check-in and a relaxing atmosphere. Recommended.',
+            'Plenty of space for the family and the kids loved it.',
+            'Bright, airy, and close to everything we needed.',
+            'Peaceful stay with friendly hosts. We will be back.',
+        ];
         $extraRatings = [4, 5, 5, 4, 5, 4, 5, 4];
 
         if ($otherRooms->isNotEmpty() && $otherReviewers->isNotEmpty()) {
@@ -162,12 +187,15 @@ class DemoCustomerSeeder extends Seeder
                         continue;
                     }
 
+                    $commentMap[$room->id . ':' . $reviewer->id] = $extraComments[$index - 1] ?? null;
+
                     $this->seedCompletedStay(
                         $reviewer,
                         $room,
                         'VC-DEMO-R' . $room->id . '-U' . $reviewer->id,
                         now()->subDays(10 + ($slot * 4))->startOfDay(),
                         $extraRatings[$index - 1] ?? 5,
+                        $extraComments[$index - 1] ?? null,
                     );
                 }
             }
@@ -191,14 +219,25 @@ class DemoCustomerSeeder extends Seeder
             ])->get()->values();
 
             $villaRatings = [5, 5, 4, 5, 4, 5];
+            $villaComments = [
+                'Rented the whole villa for a family reunion and it was perfect. Plenty of room for everyone.',
+                'The shared spaces were great for our group. Clean rooms and a very helpful caretaker.',
+                'Ideal for a big group. We loved the veranda and the short walk to the shore.',
+                'Everything we needed for a weekend with friends. Would book the whole villa again.',
+                'Spacious and comfortable. The kitchen and dining area made group meals easy.',
+                'Great value for a large group. The beach is just a few steps away.',
+            ];
 
             foreach ($villaReviewers as $i => $reviewer) {
+                $commentMap[$exclusiveService->id . ':' . $reviewer->id] = $villaComments[$i] ?? null;
+
                 $this->seedCompletedStay(
                     $reviewer,
                     $exclusiveService,
                     'VC-DEMO-VILLA-U' . $reviewer->id,
                     now()->subDays(9 + ($i * 3))->startOfDay(),
                     $villaRatings[$i] ?? 5,
+                    $villaComments[$i] ?? null,
                 );
             }
         }
@@ -217,8 +256,8 @@ class DemoCustomerSeeder extends Seeder
             );
         }
 
-        // Seeded ratings stay, but photos and comments are intentionally empty
-        // so real review content can be added later.
+        // Seeded ratings and text comments stay; photos are intentionally left
+        // empty so real review images can be added later.
         $demoUserIds = User::whereIn('email', array_column($customers, 2))->pluck('id');
 
         foreach (ServiceReview::whereIn('user_id', $demoUserIds)->get() as $review) {
@@ -229,17 +268,16 @@ class DemoCustomerSeeder extends Seeder
 
             $review->images()->delete();
 
-            if ($review->title !== null || $review->comment !== null) {
-                $review->forceFill([
-                    'title' => null,
-                    'comment' => null,
-                ])->save();
+            $comment = $commentMap[$review->service_id . ':' . $review->user_id] ?? null;
+
+            if ($comment !== null && $review->comment !== $comment) {
+                $review->forceFill(['comment' => $comment])->save();
             }
         }
     }
 
     /**
-     * Create one paid, completed stay (and optionally a rating-only review).
+     * Create one paid, completed stay (and optionally a review with a rating).
      * The booking reference makes the seeder safe to run more than once.
      */
     private function seedCompletedStay(
@@ -248,6 +286,7 @@ class DemoCustomerSeeder extends Seeder
         string $reference,
         Carbon $checkOut,
         ?int $rating = null,
+        ?string $comment = null,
     ): void {
         if (Booking::where('reference', $reference)->exists()) {
             return;
@@ -310,7 +349,7 @@ class DemoCustomerSeeder extends Seeder
                 'booking_id' => $booking->id,
                 'rating' => $rating,
                 'title' => null,
-                'comment' => null,
+                'comment' => $comment,
                 'status' => 'published',
             ]);
 
