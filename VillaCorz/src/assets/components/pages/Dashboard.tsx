@@ -129,7 +129,7 @@ const Dashboard = () => {
                 }))}
             />
 
-            <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pt-8 sm:px-6 lg:px-8">
                 {error && (
                     <div
                         role="alert"
