@@ -92,8 +92,12 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
         }
     }
 
+    const isCancellable = (booking: Booking) =>
+        booking.lifecycle === 'booked' || booking.lifecycle === 'pending'
+
     const canCancel = (booking: Booking) => {
-        if (booking.lifecycle === 'completed') return false
+        // Cancelled, expired and completed stays can never be cancelled again.
+        if (!isCancellable(booking)) return false
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         const checkIn = new Date(`${booking.check_in}T00:00:00`)
@@ -387,8 +391,8 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                                                 : 'Cancel booking'}
                                         </button>
                                     )}
-                                    {cancellationClosed(booking) &&
-                                        booking.lifecycle !== 'completed' &&
+                                    {booking.lifecycle === 'booked' &&
+                                        cancellationClosed(booking) &&
                                         !booking.cancellation_request && (
                                             <button
                                                 type="button"
