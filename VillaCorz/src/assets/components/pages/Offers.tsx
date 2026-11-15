@@ -517,7 +517,7 @@ const ManageOffers = () => {
                             />
                         </div>
                     ) : !loading && filteredServices.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/70 px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/70 px-6 py-12 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                             <span className="grid size-12 place-items-center rounded-full bg-[#006dfc]/10 text-[#006dfc]">
                                 <SearchX
                                     className="size-6"

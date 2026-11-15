@@ -6,6 +6,7 @@ import type {
     DashboardTopService,
 } from '../../../services/types'
 import { money } from '../../../lib/format'
+import AdminPageHeader from '../ui/AdminPageHeader'
 
 const ranges = [7, 30, 90] as const
 type Range = (typeof ranges)[number]
@@ -82,19 +83,6 @@ const Dashboard = () => {
             return i === 0 || i === series.length - 1 || i % Math.ceil(series.length / 6) === 0
         })
 
-    const deltaLabel = (d: { delta: number; percent: number | null } | undefined) => {
-        if (!d) return null
-        const pct = d.percent
-        if (pct === null) return `${d.delta >= 0 ? '+' : ''}${d.delta}`
-        const sign = pct > 0 ? '+' : ''
-        return `${sign}${pct}%`
-    }
-
-    const deltaTone = (d: { delta: number } | undefined) => {
-        if (!d || d.delta === 0) return 'text-blue-200'
-        return d.delta > 0 ? 'text-emerald-300' : 'text-rose-300'
-    }
-
     const stats: { label: string; value: string; delta?: { delta: number; percent: number | null } }[] = [
         { label: 'Revenue', value: loading ? '—' : money(metrics?.revenue ?? 0), delta: comparison?.revenue },
         { label: 'Check-ins', value: loading ? '—' : (metrics?.check_ins ?? 0).toLocaleString(), delta: comparison?.check_ins },
@@ -106,69 +94,42 @@ const Dashboard = () => {
 
     return (
         <div className="min-h-[calc(100dvh-var(--navbar-height,3.5rem))] bg-slate-50 pb-16">
-            {/* Header band — matches Reports */}
-            <header className="border-b border-[#00245c] bg-[#003079] text-white">
-                <div className="mx-auto w-full max-w-7xl px-4 pb-7 pt-8 sm:px-6 lg:px-8">
-                    <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
-                            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-blue-200">
-                                Administration / Dashboard
-                            </p>
-                            <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                                Dashboard
-                            </h1>
-                            <p className="mt-2 max-w-xl text-pretty text-sm leading-6 text-blue-100">
-                                Bookings, guests and website traffic at a glance.
-                            </p>
-                        </div>
-
-                        <div
-                            role="group"
-                            aria-label="Date range"
-                            className="inline-flex self-start rounded-lg border border-white/15 bg-white/5 p-1"
-                        >
-                            {ranges.map((r) => (
-                                <button
-                                    key={r}
-                                    type="button"
-                                    aria-pressed={range === r}
-                                    onClick={() => handleRangeChange(r)}
-                                    className={`inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold transition-[background-color,color] duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                                        range === r
-                                            ? 'bg-white text-[#003079]'
-                                            : 'text-blue-100 hover:bg-white/10'
-                                    }`}
-                                >
-                                    {r} days
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <dl className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-white/15 bg-white/15 sm:grid-cols-3 lg:grid-cols-6">
-                        {stats.map((stat) => (
-                            <div
-                                key={stat.label}
-                                className="flex h-full flex-col justify-between gap-1 bg-[#003079] px-4 py-3.5"
+            <AdminPageHeader
+                eyebrow="Administration / Dashboard"
+                title="Dashboard"
+                subtitle="Bookings, guests and website traffic at a glance."
+                rangeLabel={`${range} days`}
+                rightSlot={
+                    <div
+                        role="group"
+                        aria-label="Date range"
+                        className="inline-flex self-start rounded-xl border border-white/20 bg-white/5 p-1"
+                    >
+                        {ranges.map((r) => (
+                            <button
+                                key={r}
+                                type="button"
+                                aria-pressed={range === r}
+                                onClick={() => handleRangeChange(r)}
+                                className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-[background-color,color] duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                                    range === r
+                                        ? 'bg-white text-[#003079]'
+                                        : 'text-blue-100 hover:bg-white/10'
+                                }`}
                             >
-                                <dt className="text-[11px] font-medium uppercase tracking-[0.14em] text-blue-200">
-                                    {stat.label}
-                                </dt>
-                                <dd className="font-mono text-xl font-normal tabular-nums text-white sm:text-2xl">
-                                    {stat.value}
-                                </dd>
-                                {stat.delta && !loading && (
-                                    <dd className={`text-[11px] font-medium tabular-nums ${deltaTone(stat.delta)}`}>
-                                        {deltaLabel(stat.delta)} vs prior {range}d
-                                    </dd>
-                                )}
-                            </div>
+                                {r} days
+                            </button>
                         ))}
-                    </dl>
-                </div>
-            </header>
+                    </div>
+                }
+                stats={stats.map((s) => ({
+                    label: s.label,
+                    value: s.value,
+                    delta: s.delta,
+                }))}
+            />
 
-            <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
                 {error && (
                     <div
                         role="alert"
@@ -179,16 +140,19 @@ const Dashboard = () => {
                 )}
 
                 {/* Chart + top services */}
-                <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <section className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                         <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
-                                    <h2 className="font-serif text-lg font-semibold text-[#003079]">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#006dfc]">
                                         Analytics
+                                    </p>
+                                    <h2 className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#003079]">
+                                        Booking & traffic trends
                                     </h2>
                                     <p className="mt-0.5 text-xs text-slate-500">
-                                        Booking and traffic trends over the last {range} days.
+                                        Over the last {range} days.
                                     </p>
                                 </div>
                                 <ul className="flex items-center gap-4 text-xs text-slate-600">
@@ -365,13 +329,16 @@ const Dashboard = () => {
                     </div>
 
                     {/* Top services */}
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                         <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
-                            <h2 className="font-serif text-lg font-semibold text-[#003079]">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#006dfc]">
                                 Top services
+                            </p>
+                            <h2 className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#003079]">
+                                By bookings
                             </h2>
                             <p className="mt-0.5 text-xs text-slate-500">
-                                By number of bookings.
+                                Ranked by number of bookings.
                             </p>
                         </div>
                         <div className="px-4 py-4 sm:px-6">
@@ -414,12 +381,15 @@ const Dashboard = () => {
                 </section>
 
                 {/* Recent bookings */}
-                <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                     <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h2 className="font-serif text-lg font-semibold text-[#003079]">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#006dfc]">
                                     Recent bookings
+                                </p>
+                                <h2 className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#003079]">
+                                    Latest reservations
                                 </h2>
                                 <p className="mt-0.5 text-xs text-slate-500">
                                     {loading

@@ -17,6 +17,7 @@ import {
     getActivityLogs,
     getActivityLogSummary,
 } from '../../../services/activityLogService'
+import AdminPageHeader from '../ui/AdminPageHeader'
 
 const PAGE_SIZE = 20
 
@@ -171,17 +172,6 @@ const formatPropertyValue = (value: unknown): string => {
 
     return String(value)
 }
-
-const ReportStat = ({ label, value }: { label: string; value: string }) => (
-    <div className="flex h-full flex-col justify-between gap-1 bg-[#003079] px-4 py-3.5">
-        <dt className="text-[11px] font-medium uppercase tracking-[0.14em] text-blue-200">
-            {label}
-        </dt>
-        <dd className="font-mono text-xl font-normal tabular-nums text-white sm:text-2xl">
-            {value}
-        </dd>
-    </div>
-)
 
 const DetailItem = ({
     label,
@@ -409,50 +399,28 @@ const Reports = () => {
 
     return (
         <main className="min-h-[calc(100dvh-var(--navbar-height,3.5rem))] bg-slate-50 pb-16">
-            <header className="border-b border-[#00245c] bg-[#003079] text-white">
-                <div className="mx-auto w-full max-w-7xl px-4 pb-7 pt-8 sm:px-6 lg:px-8">
-                    <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
-                            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-blue-200">
-                                Administration / Reports
-                            </p>
-                            <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                                Activity log
-                            </h1>
-                            <p className="mt-2 max-w-xl text-pretty text-sm leading-6 text-blue-100">
-                                A chronological record of catalogue changes and
-                                console access. Entries are written
-                                automatically and cannot be edited.
-                            </p>
-                        </div>
+            <AdminPageHeader
+                eyebrow="Administration / Reports"
+                title="Activity log"
+                subtitle="A chronological record of catalogue changes and console access. Entries are written automatically and cannot be edited."
+                rightSlot={
+                    <button
+                        type="button"
+                        onClick={() => void handleExport()}
+                        disabled={exporting}
+                        className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-white/30 bg-white/5 px-4 text-xs font-semibold uppercase tracking-[0.12em] text-white transition-[background-color,border-color,opacity] duration-150 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60 sm:self-auto motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    >
+                        <Download
+                            className="size-4"
+                            aria-hidden="true"
+                        />
+                        {exporting ? 'Preparing…' : 'Export CSV'}
+                    </button>
+                }
+                stats={stats.map((s) => ({ label: s.label, value: s.value }))}
+            />
 
-                        <button
-                            type="button"
-                            onClick={() => void handleExport()}
-                            disabled={exporting}
-                            className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-2 self-start rounded-lg border border-white/30 bg-white/5 px-4 text-xs font-semibold uppercase tracking-[0.12em] text-white transition-[background-color,border-color,opacity] duration-150 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60 sm:self-auto motion-reduce:transition-none ${focusRing}`}
-                        >
-                            <Download
-                                className="size-4"
-                                aria-hidden="true"
-                            />
-                            {exporting ? 'Preparing…' : 'Export CSV'}
-                        </button>
-                    </div>
-
-                    <dl className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-white/15 bg-white/15 sm:grid-cols-4">
-                        {stats.map((stat) => (
-                            <ReportStat
-                                key={stat.label}
-                                label={stat.label}
-                                value={stat.value}
-                            />
-                        ))}
-                    </dl>
-                </div>
-            </header>
-
-            <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
                 {exportError && (
                     <div
                         role="alert"
@@ -484,7 +452,7 @@ const Reports = () => {
 
                 <section
                     aria-labelledby="ledger-heading"
-                    className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
                 >
                     <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
