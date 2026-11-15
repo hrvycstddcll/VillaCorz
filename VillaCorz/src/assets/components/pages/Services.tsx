@@ -62,7 +62,6 @@ type Stay = {
 
 const exclusiveDefaults = {
     badge: 'Best Value',
-    rating: '4.3',
     capacity: 'Good for 30-35 pax',
     description:
         'Make the whole beach house yours. Gather in the shared spaces, unwind in comfortable rooms, and enjoy an easygoing seaside stay with your group.',
@@ -160,6 +159,11 @@ const toExclusiveStay = (service: Service): Stay => {
         hasDiscount: weekdayPricing.hasDiscount || weekendPricing.hasDiscount,
     }
 
+    const ratingAverage =
+        service.rating_average != null && !Number.isNaN(Number(service.rating_average))
+            ? Number(service.rating_average)
+            : null
+
     return {
         id: String(service.id),
         title: service.name,
@@ -178,7 +182,9 @@ const toExclusiveStay = (service: Service): Stay => {
             service.pax != null
                 ? `Good for ${service.pax} pax`
                 : exclusiveDefaults.capacity,
-        rating: exclusiveDefaults.rating,
+        rating: ratingAverage != null ? ratingAverage.toFixed(1) : undefined,
+        ratingAverage,
+        reviewsCount: Number(service.reviews_count ?? 0),
         badge: exclusiveDefaults.badge,
     }
 }

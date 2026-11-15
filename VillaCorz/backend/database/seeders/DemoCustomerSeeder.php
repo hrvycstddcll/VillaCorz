@@ -6,12 +6,11 @@ use App\Models\Booking;
 use App\Models\BookingRoom;
 use App\Models\Payment;
 use App\Models\Service;
-use App\Models\ServiceImage;
 use App\Models\ServiceReview;
-use App\Models\ServiceReviewImage;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class DemoCustomerSeeder extends Seeder
@@ -46,7 +45,7 @@ class DemoCustomerSeeder extends Seeder
             );
         }
 
-        // Seed a couple of completed stays + reviews for demo visibility.
+        // Seed a couple of completed stays + ratings for the first room.
         $service = Service::where('kind', 'room')->orderBy('id')->first();
         if (! $service) {
             return;
@@ -58,20 +57,6 @@ class DemoCustomerSeeder extends Seeder
             'carmen.lopez@demo.villacorz.test',
             'teresa.villanueva@demo.villacorz.test',
         ])->get();
-
-        $reviewTexts = [
-            'Loved the beach view and the cozy rooms. Staff were warm and helpful.',
-            'Great value for the price. The villa felt like home. Will come back!',
-            'Clean, comfortable, and peaceful. Perfect for a weekend getaway.',
-            'Beautiful property and friendly hosts. Highly recommended.',
-        ];
-
-        $reviewTitles = [
-            'Perfect weekend escape',
-            'Feels like home',
-            'Spotless and peaceful',
-            'Warm hosts, lovely place',
-        ];
 
         $ratings = [5, 4, 5, 4];
 
@@ -137,18 +122,15 @@ class DemoCustomerSeeder extends Seeder
                 'user_id' => $user->id,
                 'booking_id' => $booking->id,
                 'rating' => $ratings[$i] ?? 5,
-                'title' => $reviewTitles[$i] ?? null,
-                'comment' => $reviewTexts[$i] ?? 'Great stay!',
+                'title' => null,
+                'comment' => null,
                 'status' => 'published',
             ]);
 
-            $review->forceFill([
-                'created_at' => $checkOut->copy()->addDay()->setTime(10, 0),
-                'updated_at' => $checkOut->copy()->addDay()->setTime(10, 0),
-            ])->save();
+            $this->backdate($review, $checkOut);
         }
 
-        // Give every room at least two published reviews so the rating star is
+        // Give every room at least two published ratings so the rating star is
         // visible on each tile on the /services page, not just the first room.
         $otherRooms = Service::where('kind', 'room')
             ->where('id', '!=', $service->id)
@@ -166,26 +148,6 @@ class DemoCustomerSeeder extends Seeder
             'antonio.ramos@demo.villacorz.test',
         ])->get()->values();
 
-        $extraComments = [
-            'Spacious room and very clean. The air conditioning worked great.',
-            'Quiet at night and just a short walk to the beach. Would stay again.',
-            'Comfortable beds and helpful staff. Good value for the price.',
-            'The room was tidy and the view was lovely. Enjoyed our stay.',
-            'Easy check-in and a relaxing atmosphere. Recommended.',
-            'Plenty of space for the family and the kids loved it.',
-            'Bright, airy, and close to everything we needed.',
-            'Peaceful stay with friendly hosts. We will be back.',
-        ];
-        $extraTitles = [
-            'Clean and spacious',
-            'Quiet and close to the beach',
-            'Comfortable beds',
-            'Lovely view',
-            'Easy check-in',
-            'Great for families',
-            'Bright and airy',
-            'Peaceful stay',
-        ];
         $extraRatings = [4, 5, 5, 4, 5, 4, 5, 4];
 
         if ($otherRooms->isNotEmpty() && $otherReviewers->isNotEmpty()) {
@@ -206,10 +168,38 @@ class DemoCustomerSeeder extends Seeder
                         'VC-DEMO-R' . $room->id . '-U' . $reviewer->id,
                         now()->subDays(10 + ($slot * 4))->startOfDay(),
                         $extraRatings[$index - 1] ?? 5,
-                        $extraComments[$index - 1] ?? 'A comfortable stay.',
-                        $extraTitles[$index - 1] ?? null,
                     );
                 }
+            }
+        }
+
+        // The whole villa tile shows the same rating as its overview, so seed
+        // completed stays and ratings for the exclusive service as well.
+        $exclusiveService = Service::where('kind', 'exclusive')
+            ->where('status', 'active')
+            ->orderBy('id')
+            ->first();
+
+        if ($exclusiveService) {
+            $villaReviewers = User::whereIn('email', [
+                'maria.santos@demo.villacorz.test',
+                'juan.delacruz@demo.villacorz.test',
+                'carmen.lopez@demo.villacorz.test',
+                'roberto.fernandez@demo.villacorz.test',
+                'isabel.torres@demo.villacorz.test',
+                'antonio.ramos@demo.villacorz.test',
+            ])->get()->values();
+
+            $villaRatings = [5, 5, 4, 5, 4, 5];
+
+            foreach ($villaReviewers as $i => $reviewer) {
+                $this->seedCompletedStay(
+                    $reviewer,
+                    $exclusiveService,
+                    'VC-DEMO-VILLA-U' . $reviewer->id,
+                    now()->subDays(9 + ($i * 3))->startOfDay(),
+                    $villaRatings[$i] ?? 5,
+                );
             }
         }
 
@@ -227,68 +217,29 @@ class DemoCustomerSeeder extends Seeder
             );
         }
 
-        // Backfill seeded reviews with a title and a demo photo so the review
-        // cards show real content (text + imagery) instead of text only. This
-        // also upgrades reviews created by earlier seeder runs.
+        // Seeded ratings stay, but photos and comments are intentionally empty
+        // so real review content can be added later.
         $demoUserIds = User::whereIn('email', array_column($customers, 2))->pluck('id');
-        $photoGroups = ServiceImage::query()
-            ->whereNotNull('image_url')
-            ->orderBy('id')
-            ->get()
-            ->groupBy('service_id');
-        $photos = $photoGroups->flatten()->pluck('image_url')->filter()->values();
 
-        if ($photos->isEmpty()) {
-            return;
-        }
-
-        $seededReviews = ServiceReview::query()
-            ->whereIn('user_id', $demoUserIds)
-            ->orderBy('id')
-            ->get();
-
-        $titleByComment = array_combine(
-            array_merge($reviewTexts, $extraComments),
-            array_merge($reviewTitles, $extraTitles),
-        );
-
-        foreach ($seededReviews as $index => $review) {
-            $title = $titleByComment[$review->comment ?? ''] ?? null;
-
-            if ($title !== null && $review->title !== $title) {
-                $review->update(['title' => $title]);
+        foreach (ServiceReview::whereIn('user_id', $demoUserIds)->get() as $review) {
+            foreach ($review->images as $image) {
+                $path = str_replace('/storage/', '', (string) parse_url($image->image_url, PHP_URL_PATH));
+                Storage::disk('public')->delete($path);
             }
 
-            // Keep review dates close to the stay instead of "today".
-            if ($review->booking?->check_out) {
-                $reviewedAt = $review->booking->check_out->copy()->addDay()->setTime(10, 0);
+            $review->images()->delete();
 
-                if (! $review->created_at?->equalTo($reviewedAt)) {
-                    $review->forceFill([
-                        'created_at' => $reviewedAt,
-                        'updated_at' => $reviewedAt,
-                    ])->save();
-                }
-            }
-
-            if ($review->images()->doesntExist()) {
-                $servicePhotos = $photoGroups->get($review->service_id);
-                $imageUrl = $servicePhotos
-                    ? $servicePhotos[$index % $servicePhotos->count()]->image_url
-                    : $photos[$index % $photos->count()];
-
-                ServiceReviewImage::create([
-                    'service_review_id' => $review->id,
-                    'image_url' => $imageUrl,
-                    'public_id' => null,
-                    'sort_order' => 0,
-                ]);
+            if ($review->title !== null || $review->comment !== null) {
+                $review->forceFill([
+                    'title' => null,
+                    'comment' => null,
+                ])->save();
             }
         }
     }
 
     /**
-     * Create one paid, completed stay (and optionally a published review).
+     * Create one paid, completed stay (and optionally a rating-only review).
      * The booking reference makes the seeder safe to run more than once.
      */
     private function seedCompletedStay(
@@ -297,8 +248,6 @@ class DemoCustomerSeeder extends Seeder
         string $reference,
         Carbon $checkOut,
         ?int $rating = null,
-        ?string $comment = null,
-        ?string $title = null,
     ): void {
         if (Booking::where('reference', $reference)->exists()) {
             return;
@@ -360,15 +309,25 @@ class DemoCustomerSeeder extends Seeder
                 'user_id' => $user->id,
                 'booking_id' => $booking->id,
                 'rating' => $rating,
-                'title' => $title,
-                'comment' => $comment,
+                'title' => null,
+                'comment' => null,
                 'status' => 'published',
             ]);
 
-            $review->forceFill([
-                'created_at' => $checkOut->copy()->addDay()->setTime(10, 0),
-                'updated_at' => $checkOut->copy()->addDay()->setTime(10, 0),
-            ])->save();
+            $this->backdate($review, $checkOut);
         }
+    }
+
+    /**
+     * Date the review just after check-out so the list does not show "today".
+     */
+    private function backdate(ServiceReview $review, Carbon $checkOut): void
+    {
+        $reviewedAt = $checkOut->copy()->addDay()->setTime(10, 0);
+
+        $review->forceFill([
+            'created_at' => $reviewedAt,
+            'updated_at' => $reviewedAt,
+        ])->save();
     }
 }
