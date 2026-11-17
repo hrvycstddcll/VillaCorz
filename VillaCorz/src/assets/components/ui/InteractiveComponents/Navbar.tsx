@@ -8,22 +8,9 @@ import {
 } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import logoSvg from '../../../VillaCorz-SVGLogo.svg?raw'
-import {
-    BarChart3,
-    BedDouble,
-    CalendarCheck,
-    ChevronDown,
-    Images,
-    Info,
-    LayoutDashboard,
-    Menu,
-    Quote,
-    Tags,
-    X,
-} from 'lucide-react'
+import { ArrowUpRight, ChevronDown, Menu, X } from 'lucide-react'
 import DirectionalButton from './DirectionalButton'
 import GooeyNav, { type GooeyNavChild, type GooeyNavItem } from '../CssComponents/GooeyNav'
-import SettingsNotch from './SettingsNotch'
 import { useAuth } from '../../../../services/useAuth'
 import { scrollToHash, scrollToTop } from '../../../../lib/smoothScroll'
 
@@ -31,40 +18,42 @@ const buttonColor = '#3d8bff'
 
 const logoMarkup = logoSvg
 
+const navArrowIcon = (
+    <ArrowUpRight
+        className="size-4 text-[#006dfc] transition-[color,transform] duration-300 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#003079] motion-reduce:transition-none"
+        aria-hidden="true"
+    />
+)
+
 const servicesLinks: GooeyNavChild[] = [
     {
         label: 'Browse services',
         href: '/services',
-        description: 'Rooms, exclusive stays, and rates',
-        icon: <BedDouble className="size-4" aria-hidden="true" />,
+        icon: navArrowIcon,
     },
 ]
 
 const myBookingsLink: GooeyNavChild = {
     label: 'My bookings',
     href: '/bookings',
-    description: 'Review or cancel a reservation',
-    icon: <CalendarCheck className="size-4" aria-hidden="true" />,
+    icon: navArrowIcon,
 }
 
 const exploreLinks: GooeyNavChild[] = [
     {
         label: 'About us',
         href: '/#about',
-        description: 'The story behind the beach house',
-        icon: <Info className="size-4" aria-hidden="true" />,
+        icon: navArrowIcon,
     },
     {
         label: 'Gallery',
         href: '/#gallery',
-        description: 'A look around the property',
-        icon: <Images className="size-4" aria-hidden="true" />,
+        icon: navArrowIcon,
     },
     {
         label: 'Testimonials',
         href: '/#testimonials',
-        description: 'What past guests remember',
-        icon: <Quote className="size-4" aria-hidden="true" />,
+        icon: navArrowIcon,
     },
 ]
 
@@ -72,20 +61,17 @@ const adminLinks: GooeyNavChild[] = [
     {
         label: 'Dashboard',
         href: '/dashboard',
-        description: 'Bookings and revenue at a glance',
-        icon: <LayoutDashboard className="size-4" aria-hidden="true" />,
+        icon: navArrowIcon,
     },
     {
         label: 'Manage offers',
         href: '/manageOffers',
-        description: 'Rooms, rates, and availability',
-        icon: <Tags className="size-4" aria-hidden="true" />,
+        icon: navArrowIcon,
     },
     {
         label: 'Reports',
         href: '/reports',
-        description: 'Payment and booking history',
-        icon: <BarChart3 className="size-4" aria-hidden="true" />,
+        icon: navArrowIcon,
     },
 ]
 
@@ -122,23 +108,12 @@ const mobileSubItemClassName =
 const mobileSubItemActiveClassName =
     'bg-[#006dfc]/10 font-semibold text-[#003079]'
 
-const dropdownCardBaseClassName =
-    'group flex h-full items-start gap-3 rounded-xl border p-3.5 transition-[border-color,background-color,box-shadow] duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
-
-const dropdownCardIdleClassName =
-    'border-black/[0.06] bg-slate-50/80 hover:border-[#006dfc]/25 hover:bg-[#006dfc]/[0.06]'
-
-const dropdownCardActiveClassName =
-    'border-[#006dfc]/30 bg-[#006dfc]/10'
-
 const notchBackground: CSSProperties = {
     backgroundImage:
         "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M 0 0 L 20 0 C 8.954 0 0 8.954 0 20 Z' fill='%23ffffff'/%3E%3C/svg%3E\")",
     backgroundRepeat: 'no-repeat',
     backgroundSize: '100% 100%',
 }
-
-const DROPDOWN_CLOSE_DELAY = 140
 
 type MobileGroup = 'services' | 'explore' | 'admin'
 
@@ -195,16 +170,11 @@ const Navbar = () => {
     const { user, loading } = useAuth()
     const [isOpen, setIsOpen] = useState(false)
     const [mobileGroup, setMobileGroup] = useState<MobileGroup | null>(null)
-    const [dropdownState, setDropdownState] = useState<{
-        index: number
-        locationKey: string
-    } | null>(null)
-    const [renderedDropdown, setRenderedDropdown] =
-        useState<GooeyNavItem | null>(null)
+    const [fullMenuOpen, setFullMenuOpen] = useState(false)
     const toggleRef = useRef<HTMLButtonElement>(null)
     const panelRef = useRef<HTMLDivElement>(null)
-    const notchRef = useRef<HTMLDivElement>(null)
-    const dropdownTimerRef = useRef<number | null>(null)
+    const desktopMenuRef = useRef<HTMLDivElement>(null)
+    const menuCloseTimerRef = useRef<number | null>(null)
 
     const isAdmin = user?.role === 'admin'
 
@@ -273,18 +243,25 @@ const Navbar = () => {
         [isAdmin, siteItems],
     )
 
+    const menuGroups = useMemo(
+        () =>
+            items
+                .filter(
+                    (item): item is GooeyNavItem & { children: NonNullable<GooeyNavItem['children']> } =>
+                        Boolean(item.children?.length),
+                )
+                .map((item) => ({ label: item.label, links: item.children })),
+        [items],
+    )
+
+    const menuGridClassName =
+        menuGroups.length > 2 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'
+
     const activeIndex = getActiveIndex(
         location.pathname,
         currentHash,
         Boolean(isAdmin),
     )
-
-    const locationKey = `${location.pathname}${location.search}${location.hash}`
-    // Route changes invalidate the stored dropdown without an extra effect.
-    const dropdownIndex =
-        dropdownState && dropdownState.locationKey === locationKey
-            ? dropdownState.index
-            : null
 
     const closeMobile = () => {
         setIsOpen(false)
@@ -295,54 +272,52 @@ const Navbar = () => {
         setMobileGroup((current) => (current === group ? null : group))
     }
 
-    const openDropdown = (index: number) => {
-        if (dropdownTimerRef.current !== null) {
-            window.clearTimeout(dropdownTimerRef.current)
-            dropdownTimerRef.current = null
+    const clearMenuClose = () => {
+        if (menuCloseTimerRef.current === null) return
+        window.clearTimeout(menuCloseTimerRef.current)
+        menuCloseTimerRef.current = null
+    }
+
+    const openMenu = () => {
+        clearMenuClose()
+        setFullMenuOpen(true)
+    }
+
+    const scheduleMenuClose = () => {
+        clearMenuClose()
+        menuCloseTimerRef.current = window.setTimeout(() => {
+            menuCloseTimerRef.current = null
+            setFullMenuOpen(false)
+        }, 160)
+    }
+
+    useEffect(() => {
+        return () => {
+            if (menuCloseTimerRef.current !== null) {
+                window.clearTimeout(menuCloseTimerRef.current)
+            }
         }
-        setRenderedDropdown(items[index] ?? null)
-        setDropdownState({ index, locationKey })
-    }
+    }, [])
 
-    const closeDropdown = () => {
-        if (dropdownTimerRef.current !== null) {
-            window.clearTimeout(dropdownTimerRef.current)
-            dropdownTimerRef.current = null
+    useEffect(() => {
+        if (!fullMenuOpen) return
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setFullMenuOpen(false)
         }
-        setDropdownState(null)
-    }
 
-    const scheduleDropdownClose = () => {
-        if (dropdownTimerRef.current !== null) return
-        dropdownTimerRef.current = window.setTimeout(() => {
-            dropdownTimerRef.current = null
-            setDropdownState(null)
-        }, DROPDOWN_CLOSE_DELAY)
-    }
+        const handlePointerDown = (event: PointerEvent) => {
+            if (desktopMenuRef.current?.contains(event.target as Node)) return
+            setFullMenuOpen(false)
+        }
 
-    const clearDropdownClose = () => {
-        if (dropdownTimerRef.current === null) return
-        window.clearTimeout(dropdownTimerRef.current)
-        dropdownTimerRef.current = null
-    }
-
-    const toggleDropdown = (index: number, nextOpen: boolean) => {
-        if (nextOpen) openDropdown(index)
-        else closeDropdown()
-    }
-
-    const panelDropdown =
-        dropdownIndex !== null
-            ? (items[dropdownIndex] ?? renderedDropdown)
-            : renderedDropdown
-    const panelChildren = panelDropdown?.children ?? []
-    const panelOpen = dropdownIndex !== null && panelChildren.length > 0
-    const panelGridClassName =
-        panelChildren.length > 2
-            ? 'sm:grid-cols-3'
-            : panelChildren.length === 2
-              ? 'sm:grid-cols-2'
-              : ''
+        document.addEventListener('keydown', handleKeyDown)
+        document.addEventListener('pointerdown', handlePointerDown)
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown)
+            document.removeEventListener('pointerdown', handlePointerDown)
+        }
+    }, [fullMenuOpen])
 
     useEffect(() => {
         const desktop = window.matchMedia('(min-width: 1024px)')
@@ -355,27 +330,6 @@ const Navbar = () => {
 
         desktop.addEventListener('change', handleChange)
         return () => desktop.removeEventListener('change', handleChange)
-    }, [])
-
-    useEffect(() => {
-        if (!panelOpen) return
-
-        const handlePointerDown = (event: PointerEvent) => {
-            if (notchRef.current?.contains(event.target as Node)) return
-            setDropdownState(null)
-        }
-
-        document.addEventListener('pointerdown', handlePointerDown)
-        return () =>
-            document.removeEventListener('pointerdown', handlePointerDown)
-    }, [panelOpen])
-
-    useEffect(() => {
-        return () => {
-            if (dropdownTimerRef.current !== null) {
-                window.clearTimeout(dropdownTimerRef.current)
-            }
-        }
     }, [])
 
     useEffect(() => {
@@ -415,7 +369,7 @@ const Navbar = () => {
      */
     const goTo = (href: string) => {
         closeMobile()
-        closeDropdown()
+        setFullMenuOpen(false)
 
         const hashIndex = href.indexOf('#')
         const path = hashIndex === -1 ? href : href.slice(0, hashIndex) || '/'
@@ -435,6 +389,24 @@ const Navbar = () => {
             href === activeHref ? mobileSubItemActiveClassName : ''
         }`
 
+    const desktopAction = loading
+        ? null
+        : user
+          ? {
+                label: 'SETTINGS',
+                onClick: () => {
+                    setFullMenuOpen(false)
+                    navigate('/settings')
+                },
+            }
+          : {
+                label: 'LOGIN',
+                onClick: () => {
+                    setFullMenuOpen(false)
+                    navigate('/auth?mode=login')
+                },
+            }
+
     return (
         <nav
             id="primary-nav"
@@ -451,7 +423,7 @@ const Navbar = () => {
                 }`}
             />
 
-            <div ref={notchRef} className="relative">
+            <div className="relative">
                 <div
                     className={`transition-[filter] duration-200 motion-reduce:transition-none ${
                         isOpen
@@ -460,36 +432,20 @@ const Navbar = () => {
                     }`}
                 >
                     <div
-                        onPointerEnter={clearDropdownClose}
-                        onPointerLeave={scheduleDropdownClose}
-                        onKeyDown={(event) => {
-                            if (event.key !== 'Escape' || !panelOpen) return
-                            event.stopPropagation()
-                            const trigger =
-                                dropdownIndex === null
-                                    ? null
-                                    : notchRef.current?.querySelector<HTMLButtonElement>(
-                                          `[data-gooey-index="${dropdownIndex}"] > button`,
-                                      )
-                            closeDropdown()
-                            trigger?.focus()
-                        }}
-                        onBlur={(event) => {
-                            if (!panelOpen) return
-                            const next = event.relatedTarget as Node | null
-                            if (!next) return
-                            if (notchRef.current?.contains(next)) return
-                            closeDropdown()
-                        }}
-                        className={`relative mx-auto w-[70vw] bg-white transition-[border-radius] duration-200 max-lg:w-[calc(100vw-3rem)] motion-reduce:transition-none lg:max-w-[calc(100vw-12rem)] ${
-                            isOpen ? 'rounded-b-none' : 'rounded-b-[18px]'
-                        }`}
+                        ref={desktopMenuRef}
+                        onPointerLeave={scheduleMenuClose}
+                        className="relative mx-auto w-[70vw] max-lg:w-[calc(100vw-3rem)] lg:max-w-[calc(100vw-12rem)]"
                     >
-                        <div className="relative flex items-center justify-between gap-4 px-4 py-2.5 sm:px-6">
+                        <div
+                            className={`relative flex items-center justify-between gap-4 bg-white px-4 py-2.5 transition-[border-radius] duration-200 sm:px-6 motion-reduce:transition-none ${
+                                isOpen ? 'rounded-b-none' : 'rounded-b-[18px]'
+                            }`}
+                        >
                             <Link
                                 to="/#home"
                                 onClick={() => {
                                     closeMobile()
+                                    setFullMenuOpen(false)
                                     if (
                                         location.pathname === '/' &&
                                         location.hash === '#home'
@@ -497,12 +453,16 @@ const Navbar = () => {
                                         scrollToTop()
                                     }
                                 }}
-                                className="flex h-8 w-auto shrink-0 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]/60 focus-visible:ring-offset-2 sm:h-9 lg:h-10 [&>svg]:h-full [&>svg]:w-auto"
+                                className="flex h-6 w-auto shrink-0 items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]/60 focus-visible:ring-offset-2 sm:h-7 lg:h-8 [&>svg]:h-full [&>svg]:w-auto"
                                 aria-label="VillaCorz Beach House"
                                 dangerouslySetInnerHTML={{ __html: logoMarkup }}
                             />
 
-                            <div className="flex items-center gap-6">
+                            <div
+                                className="absolute left-1/2 hidden -translate-x-1/2 lg:block"
+                                onPointerEnter={openMenu}
+                                onFocus={openMenu}
+                            >
                                 <GooeyNav
                                     key={isAdmin ? 'admin-nav' : 'guest-nav'}
                                     items={items}
@@ -511,40 +471,49 @@ const Navbar = () => {
                                     onNavigate={goTo}
                                     color="#006dfc"
                                     hoverColor="rgba(0, 109, 252, 0.14)"
-                                    className="hidden lg:block"
                                     listClassName={gooeyListClassName}
                                     linkClassName={gooeyLinkClassName}
-                                    dropdownOpenIndex={dropdownIndex}
-                                    onDropdownHover={openDropdown}
-                                    onDropdownLeave={scheduleDropdownClose}
-                                    onDropdownToggle={toggleDropdown}
-                                    onDropdownDismiss={closeDropdown}
                                     renderPanels={false}
-                                    dropdownPanelId="desktop-dropdown"
+                                    dropdownOpenIndex={null}
+                                    dropdownPanelId="desktop-menu"
                                 />
-
-                                <button
-                                    ref={toggleRef}
-                                    type="button"
-                                    aria-label={isOpen ? 'Close menu' : 'Open menu'}
-                                    aria-expanded={isOpen}
-                                    aria-controls="primary-navigation"
-                                    onClick={() => {
-                                        if (isOpen) {
-                                            closeMobile()
-                                        } else {
-                                            setIsOpen(true)
-                                        }
-                                    }}
-                                    className="inline-flex h-11 w-11 -mr-1.5 items-center justify-center rounded-xl border border-black/10 bg-black/[0.02] text-black transition hover:bg-black/5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]/60 focus-visible:ring-offset-2 lg:hidden"
-                                >
-                                    {isOpen ? (
-                                        <X className="h-6 w-6" aria-hidden="true" />
-                                    ) : (
-                                        <Menu className="h-6 w-6" aria-hidden="true" />
-                                    )}
-                                </button>
                             </div>
+
+                            {desktopAction && (
+                                <div className="absolute right-4 top-1/2 hidden -translate-y-1/2 lg:block">
+                                    <DirectionalButton
+                                        fillColor="#ffffff"
+                                        textColor="#006dfc"
+                                        onClick={desktopAction.onClick}
+                                        className="bg-[#006dfc] px-4 py-2 font-poppins text-[clamp(0.625rem,0.75vw,0.75rem)] font-semibold tracking-wide text-white"
+                                    >
+                                        {desktopAction.label}
+                                    </DirectionalButton>
+                                </div>
+                            )}
+
+                            <button
+                                ref={toggleRef}
+                                type="button"
+                                aria-label={isOpen ? 'Close menu' : 'Open menu'}
+                                aria-expanded={isOpen}
+                                aria-controls="primary-navigation"
+                                onClick={() => {
+                                    if (isOpen) {
+                                        closeMobile()
+                                    } else {
+                                        setFullMenuOpen(false)
+                                        setIsOpen(true)
+                                    }
+                                }}
+                                className="inline-flex h-11 w-11 -mr-1.5 items-center justify-center rounded-xl border border-black/10 bg-black/[0.02] text-black transition hover:bg-black/5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]/60 focus-visible:ring-offset-2 lg:hidden"
+                            >
+                                {isOpen ? (
+                                    <X className="h-6 w-6" aria-hidden="true" />
+                                ) : (
+                                    <Menu className="h-6 w-6" aria-hidden="true" />
+                                )}
+                            </button>
 
                             <span
                                 aria-hidden="true"
@@ -559,88 +528,62 @@ const Navbar = () => {
                         </div>
 
                         <div
-                            id="desktop-dropdown"
-                            aria-hidden={!panelOpen}
-                            inert={!panelOpen}
-                            className={`grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${
-                                panelOpen
+                            id="desktop-menu"
+                            inert={!fullMenuOpen}
+                            aria-hidden={!fullMenuOpen}
+                            onPointerEnter={clearMenuClose}
+                            className={`mx-1 mt-1 grid rounded-[18px] bg-white shadow-[0_18px_40px_-24px_rgba(0,0,0,0.45)] transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none ${
+                                fullMenuOpen
                                     ? 'pointer-events-auto grid-rows-[1fr] opacity-100'
                                     : 'pointer-events-none grid-rows-[0fr] opacity-0'
                             }`}
                         >
-                            <div
-                                className="overflow-hidden"
-                                onPointerEnter={clearDropdownClose}
-                            >
-                                <div className="px-3 pb-3 pt-1 sm:px-4 sm:pb-4">
-                                    <ul
-                                        aria-label={
-                                            panelDropdown
-                                                ? `${panelDropdown.label} menu`
-                                                : undefined
-                                        }
-                                        className={`grid gap-2.5 ${panelGridClassName}`}
+                            <div className="overflow-hidden rounded-[18px]">
+                                <div className="px-6 pb-5 pt-4 sm:px-8">
+                                    <div
+                                        className={`grid gap-x-8 gap-y-5 sm:grid-cols-2 ${menuGridClassName}`}
                                     >
-                                        {panelChildren.map((child, index) => {
-                                            const active = child.href === activeHref
-
-                                            return (
-                                                <li
-                                                    key={`${child.href}-${index}`}
-                                                >
-                                                    <Link
-                                                        to={child.href}
-                                                        aria-current={
-                                                            active ? 'page' : undefined
-                                                        }
-                                                        onClick={closeDropdown}
-                                                        className={`${dropdownCardBaseClassName} ${
-                                                            active
-                                                                ? dropdownCardActiveClassName
-                                                                : dropdownCardIdleClassName
-                                                        }`}
-                                                    >
-                                                        <span
-                                                            aria-hidden="true"
-                                                            className="grid size-9 shrink-0 place-items-center rounded-lg border border-black/[0.05] bg-white text-[#006dfc] shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
-                                                        >
-                                                            {child.icon}
-                                                        </span>
-                                                        <span className="flex min-w-0 flex-col">
-                                                            <span className="font-poppins text-[13px] font-semibold leading-5 text-slate-800">
-                                                                {child.label}
-                                                            </span>
-                                                            {child.description && (
-                                                                <span className="mt-0.5 text-[11.5px] font-normal leading-4 text-slate-500 text-wrap-pretty">
-                                                                    {child.description}
+                                        {menuGroups.map((group) => (
+                                            <div key={group.label}>
+                                                <p className="mb-2 font-poppins text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                                    {group.label}
+                                                </p>
+                                                <ul className="flex flex-col gap-0.5">
+                                                    {group.links.map((link) => (
+                                                        <li key={link.href}>
+                                                            <Link
+                                                                to={link.href}
+                                                                onClick={(
+                                                                    event,
+                                                                ) => {
+                                                                    event.preventDefault()
+                                                                    goTo(
+                                                                        link.href,
+                                                                    )
+                                                                }}
+                                                                className={`group flex items-center gap-2.5 rounded-md py-1.5 font-poppins text-[13px] font-semibold text-slate-700 transition-colors hover:bg-transparent hover:text-[#003079] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] ${
+                                                                    link.href ===
+                                                                    activeHref
+                                                                        ? 'text-[#003079]'
+                                                                        : ''
+                                                                }`}
+                                                            >
+                                                                {link.icon}
+                                                                <span>
+                                                                    {link.label}
                                                                 </span>
-                                                            )}
-                                                        </span>
-                                                    </Link>
-                                                </li>
-                                            )
-                                        })}
-                                    </ul>
+                                                            </Link>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                {!loading && !user && (
-                    <div className="absolute right-0 top-[30px] hidden -translate-y-1/2 items-center lg:flex">
-                        <DirectionalButton
-                            fillColor="#ffffff"
-                            textColor="#006dfc"
-                            onClick={() => navigate('/auth?mode=login')}
-                            className="bg-[#006dfc] px-5 py-2.5 font-poppins text-[clamp(0.6875rem,0.8vw,0.75rem)] font-semibold tracking-wide text-white"
-                        >
-                            LOGIN
-                        </DirectionalButton>
-                    </div>
-                )}
-
-                {!loading && user && <SettingsNotch />}
 
                 <div
                     ref={panelRef}

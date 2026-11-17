@@ -7,14 +7,11 @@ import {
     type CSSProperties,
     type ReactNode,
 } from 'react'
-import { ChevronDown } from 'lucide-react'
 import './GooeyNav.css'
 
 export type GooeyNavChild = {
     label: string
     href: string
-    /** Supporting line shown under the label in the dropdown panel. */
-    description?: string
     /** Optional leading icon rendered inside the dropdown row. */
     icon?: ReactNode
     /** Optional group heading; consecutive children with the same group share one. */
@@ -28,8 +25,6 @@ export type GooeyNavItem = {
     children?: GooeyNavChild[]
     /** Which edge of the trigger the dropdown panel aligns to. */
     align?: 'start' | 'end'
-    /** Extra classes for the dropdown chevron, e.g. responsive visibility. */
-    chevronClassName?: string
 }
 
 type GooeyNavProps = {
@@ -96,10 +91,10 @@ const isPlainClick = (event: {
     event.button === 0
 
 const defaultPanelClassName =
-    'absolute top-full z-50 mt-2.5 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-black/[0.06] bg-white p-1.5 shadow-[0_18px_40px_-16px_rgba(15,23,42,0.35),0_2px_8px_rgba(15,23,42,0.06)]'
+    'absolute top-full z-50 mt-2 min-w-44 max-w-[calc(100vw-2rem)] bg-white px-2 py-1.5 shadow-[0_12px_30px_-18px_rgba(15,23,42,0.5)]'
 
 const defaultChildLinkClassName =
-    'flex min-h-11 items-start gap-3 rounded-xl px-3 py-2.5 font-poppins text-[0.8125rem] uppercase tracking-[0.1em] text-gray-600 transition-[color,background-color] duration-150 hover:bg-[#006dfc]/8 hover:text-[#003079] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#006dfc]/60 aria-[current=page]:bg-[#006dfc]/10 aria-[current=page]:font-semibold aria-[current=page]:text-[#003079]'
+    'group flex min-h-0 items-center gap-2.5 rounded-none px-1 py-2 font-poppins text-[13px] font-semibold normal-case tracking-normal text-slate-800 transition-colors duration-150 hover:bg-transparent hover:text-[#003079] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#006dfc]/60 aria-[current=page]:font-semibold aria-[current=page]:text-[#003079]'
 
 const VERTEX = `#version 300 es
 in vec2 aPosition;
@@ -1227,12 +1222,6 @@ const GooeyNav = ({
                                     }}
                                 >
                                     <span>{item.label}</span>
-                                    <ChevronDown
-                                        className={`size-3.5 shrink-0 transition-transform duration-200 motion-reduce:transition-none ${
-                                            open ? 'rotate-180' : ''
-                                        } ${item.chevronClassName ?? ''}`.trim()}
-                                        aria-hidden="true"
-                                    />
                                 </button>
                             ) : (
                                 <a
@@ -1310,25 +1299,11 @@ const GooeyNav = ({
                                                             )
                                                         }}
                                                     >
-                                                        {child.icon && (
-                                                            <span
-                                                                aria-hidden="true"
-                                                                className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-[#006dfc]/8 text-[#006dfc]"
-                                                            >
-                                                                {child.icon}
-                                                            </span>
-                                                        )}
+                                                        {child.icon}
                                                         <span className="flex min-w-0 flex-col">
                                                             <span className="truncate">
                                                                 {child.label}
                                                             </span>
-                                                            {child.description && (
-                                                                <span className="mt-0.5 text-[11.5px] font-normal normal-case leading-4 tracking-normal text-gray-500">
-                                                                    {
-                                                                        child.description
-                                                                    }
-                                                                </span>
-                                                            )}
                                                         </span>
                                                     </a>
                                                 </li>
@@ -1346,18 +1321,10 @@ const GooeyNav = ({
                 className={`${listClassName} gooey-nav__list--active`.trim()}
                 aria-hidden="true"
             >
-                {items.map((item, index) => (
+                {items.map((item) => (
                     <li key={item.label} className="relative">
                         <span className={linkClassName}>
                             {item.label}
-                            {item.children?.length ? (
-                                <ChevronDown
-                                    className={`size-3.5 shrink-0 transition-transform duration-200 motion-reduce:transition-none ${
-                                        openIndex === index ? 'rotate-180' : ''
-                                    } ${item.chevronClassName ?? ''}`.trim()}
-                                    aria-hidden="true"
-                                />
-                            ) : null}
                         </span>
                     </li>
                 ))}
