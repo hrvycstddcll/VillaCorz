@@ -5,6 +5,7 @@ export type AdminStat = {
     label: string
     value: string
     delta?: { value: number; percent: number | null }
+    deltaDirection?: 'higher' | 'lower'
     suffix?: string
     href?: string
     onClick?: () => void
@@ -19,8 +20,14 @@ type AdminStatStripProps = {
 const focusRing =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
 
-const deltaTone = (val: number) =>
-    val > 0 ? 'text-emerald-700' : val < 0 ? 'text-rose-700' : 'text-slate-500'
+const deltaTone = (val: number, direction: 'higher' | 'lower' = 'higher') => {
+    const improvement = direction === 'higher' ? val : -val
+    return improvement > 0
+        ? 'text-emerald-700'
+        : improvement < 0
+          ? 'text-rose-700'
+          : 'text-slate-500'
+}
 
 const deltaText = (d: { value: number; percent: number | null }) => {
     if (d.percent !== null) {
@@ -80,7 +87,7 @@ const StatContent = ({ stat }: { stat: AdminStat }) => (
         </span>
         {stat.delta && (
             <span
-                className={`font-mono text-[10px] font-medium tabular-nums ${deltaTone(stat.delta.value)}`}
+                className={`font-mono text-[10px] font-medium tabular-nums ${deltaTone(stat.delta.value, stat.deltaDirection)}`}
             >
                 {deltaText(stat.delta)}
             </span>

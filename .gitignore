@@ -17,3 +17,17 @@ coverage/
 **/.cursor/skills/
 **/.github/skills/
 **/.opencode/skills/
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# Logs and IDE files
+*.log
+.vscode/
+.idea/
+
+# Build output
+dist/
+coverage/

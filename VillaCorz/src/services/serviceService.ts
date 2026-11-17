@@ -25,39 +25,11 @@ export const updateService = (id: number, payload: FormData) => {
     )
 }
 
-export const updateServiceStatus = (service: Service, status: Service['status']) => {
-    const payload = new FormData()
-    payload.append('name', service.name)
-    payload.append('kind', service.kind)
-    payload.append('description', service.description ?? '')
-    payload.append('price', String(service.price))
-    payload.append('weekend_price', service.weekend_price == null ? '' : String(service.weekend_price))
-    payload.append('weekday_discount_type', service.weekday_discount_type ?? '')
-    payload.append(
-        'weekday_discount_value',
-        service.weekday_discount_value == null ? '' : String(service.weekday_discount_value),
-    )
-    payload.append('weekend_discount_type', service.weekend_discount_type ?? '')
-    payload.append(
-        'weekend_discount_value',
-        service.weekend_discount_value == null ? '' : String(service.weekend_discount_value),
-    )
-    payload.append('pax', service.pax == null ? '' : String(service.pax))
-    payload.append('features_present', '1')
-    service.features?.forEach((feature) => payload.append('features[]', feature))
-    payload.append('amenities_present', '1')
-    service.amenities?.forEach((amenity) => payload.append('amenities[]', amenity))
-    payload.append('status', status)
-    payload.append('image_order_present', '1')
+export const updateServiceStatus = (service: Service, status: Service['status']) =>
+    api.patch<ApiEnvelope<Service>>(`/services/${service.id}/status`, { status })
 
-    service.images.forEach((image) =>
-        payload.append('image_order[]', `existing:${image.id}`),
-    )
-    const primaryImage = service.images.find((image) => image.is_primary) ?? service.images[0]
-    if (primaryImage) payload.append('primary_image', `existing:${primaryImage.id}`)
-
-    return updateService(service.id, payload)
-}
+export const adjustServicePrice = (id: number, price: number) =>
+    api.patch<ApiEnvelope<Service>>(`/services/${id}/price`, { price })
 
 export const deleteService = (id: number) =>
     api.delete<ApiEnvelope<null>>(`/services/${id}`)

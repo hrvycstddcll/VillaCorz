@@ -393,6 +393,52 @@ class ServiceManagementTest extends TestCase
         $this->assertDatabaseMissing('services', ['name' => 'Photo Shoot']);
     }
 
+    public function test_admin_can_adjust_a_service_price(): void
+    {
+        $admin = $this->makeUser('admin');
+        $service = Service::create([
+            'created_by' => $admin->id,
+            'name' => 'Garden Suite',
+            'description' => 'A quiet suite.',
+            'price' => 3000,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->patchJson("/api/services/{$service->id}/price", ['price' => 3450])
+            ->assertOk()
+            ->assertJsonPath('data.price', '3450.00');
+
+        $this->assertDatabaseHas('services', [
+            'id' => $service->id,
+            'price' => 3450,
+        ]);
+    }
+
+    public function test_price_adjustment_requires_an_admin_and_a_valid_price(): void
+    {
+        $customer = $this->makeUser('customer');
+        $service = Service::create([
+            'created_by' => $customer->id,
+            'name' => 'Garden Suite',
+            'description' => 'A quiet suite.',
+            'price' => 3000,
+            'status' => 'active',
+        ]);
+
+        $this->patchJson("/api/services/{$service->id}/price", ['price' => 3450])
+            ->assertUnauthorized();
+
+        $this->actingAs($customer)
+            ->patchJson("/api/services/{$service->id}/price", ['price' => 3450])
+            ->assertForbidden();
+
+        $admin = $this->makeUser('admin');
+        $this->actingAs($admin)
+            ->patchJson("/api/services/{$service->id}/price", ['price' => -1])
+            ->assertUnprocessable();
+    }
+
     private function makeUser(string $role): User
     {
         return User::create([

@@ -150,6 +150,12 @@ export type DashboardMetrics = {
     new_bookings: number
     new_users: number
     website_visits: number
+    cancelled_bookings: number
+    expired_payments: number
+    pending_payments: number
+    conversion_rate: number
+    churn_rate: number
+    dropoff_rate: number
 }
 
 export type DashboardSeriesPoint = {
@@ -180,6 +186,9 @@ export type DashboardComparison = {
     new_bookings: { current: number; previous: number; delta: number; percent: number | null }
     new_users: { current: number; previous: number; delta: number; percent: number | null }
     website_visits: { current: number; previous: number; delta: number; percent: number | null }
+    conversion_rate: { current: number; previous: number; delta: number; percent: number | null }
+    churn_rate: { current: number; previous: number; delta: number; percent: number | null }
+    dropoff_rate: { current: number; previous: number; delta: number; percent: number | null }
 }
 
 export type DashboardTopService = {
@@ -219,6 +228,74 @@ export type DashboardSummary = {
         adr: number
         revpar: number
         booked_forward_revenue: number
+    }
+    funnel: {
+        visits: number
+        bookings: number
+        paid: number
+        dropoff_total: number
+        steps: Array<{
+            key: string
+            label: string
+            count: number
+            dropoff: number | null
+            dropoff_rate: number | null
+        }>
+    }
+    dropoff_reasons: Array<{
+        key: string
+        label: string
+        count: number
+        share: number
+    }>
+    pricing_insights: {
+        model: string
+        forecast_preset?: string
+        forecast_window?: {
+            start: string
+            end: string
+        }
+        forecast: Array<{
+            date: string
+            label: string
+            expected_bookings: number
+            expected_occupancy: number
+            factor: number
+            is_weekend: boolean
+            holiday: string | null
+        }>
+        holiday_days: number
+        average_forecast_occupancy: number
+        accuracy: {
+            window_days: number
+            model: string
+            mae: number
+            mape: number | null
+            points: Array<{
+                date: string
+                label: string
+                actual_bookings: number
+                predicted_bookings: number
+            }>
+        } | null
+        recommendations: Array<{
+            service_id: number
+            name: string
+            current_price: number
+            suggested_price: number
+            change_percent: number
+            direction: 'increase' | 'decrease' | 'hold'
+            confidence: 'low' | 'medium' | 'high'
+            current_occupancy: number
+            forward_occupancy: number
+            demand_score: number
+            reasons: string[]
+        }>
+        factors: Array<{
+            key: string
+            label: string
+            impact: string
+        }>
     }
 }
 export type CreateBookingInput = {

@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Local database dumps
+/database/dumps/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal

@@ -55,6 +55,52 @@
   }
 }
 
+@keyframes dash-rise {
+  from {
+    transform: scaleX(0);
+    opacity: 0.35;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dash-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes dash-fade {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.dash-bar {
+  transform-origin: left center;
+  animation: dash-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dash-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: dash-draw 1200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.dash-fade {
+  animation: dash-fade 600ms ease-out both;
+}
+
 @layer components {
   .directional-button {
     position: relative;

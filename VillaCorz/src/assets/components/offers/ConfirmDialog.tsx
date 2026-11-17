@@ -6,6 +6,8 @@ type ConfirmDialogProps = {
     description: string
     confirmLabel: string
     cancelLabel?: string
+    loadingLabel?: string
+    confirmVariant?: 'danger' | 'primary'
     loading?: boolean
     error?: string
     onCancel: () => void
@@ -20,11 +22,18 @@ const ConfirmDialog = ({
     description,
     confirmLabel,
     cancelLabel = 'Cancel',
+    loadingLabel = 'Working…',
+    confirmVariant = 'danger',
     loading = false,
     error,
     onCancel,
     onConfirm,
 }: ConfirmDialogProps) => {
+    const confirmButtonTone =
+        confirmVariant === 'primary'
+            ? 'bg-[#006dfc] hover:bg-[#005bd3]'
+            : 'bg-rose-600 hover:bg-rose-700'
+
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape' && !loading) {
@@ -59,7 +68,13 @@ const ConfirmDialog = ({
                 className="w-full max-w-md rounded-2xl bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.22)]"
             >
                 <div className="flex items-start justify-between gap-4">
-                    <span className="grid size-11 shrink-0 place-items-center rounded-full bg-rose-50 text-rose-600">
+                    <span
+                        className={`grid size-11 shrink-0 place-items-center rounded-full ${
+                            confirmVariant === 'primary'
+                                ? 'bg-amber-50 text-amber-700'
+                                : 'bg-rose-50 text-rose-600'
+                        }`}
+                    >
                         <AlertTriangle className="size-5" aria-hidden="true" />
                     </span>
                     <button
@@ -108,12 +123,12 @@ const ConfirmDialog = ({
                         type="button"
                         onClick={onConfirm}
                         disabled={loading}
-                        className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
+                        className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${confirmButtonTone} ${focusRing}`}
                     >
                         {loading && (
                             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                         )}
-                        {loading ? 'Deleting…' : confirmLabel}
+                        {loading ? loadingLabel : confirmLabel}
                     </button>
                 </div>
             </section>

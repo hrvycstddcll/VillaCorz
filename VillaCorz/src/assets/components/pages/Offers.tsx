@@ -653,6 +653,7 @@ const Offers = () => {
                     title={`Delete “${deletingService.name}”?`}
                     description="This permanently removes the offer and its stored images. Archive it instead if you need to keep its booking history."
                     confirmLabel="Delete permanently"
+                    loadingLabel="Deleting…"
                     loading={deleting}
                     error={deleteError}
                     onCancel={() => {

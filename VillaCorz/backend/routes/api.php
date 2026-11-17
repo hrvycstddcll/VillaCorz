@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AdminOfferController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ContactController;
@@ -55,7 +56,8 @@ Route::post('/resend-otp', [AuthController::class, 'resendOtp'])
     ->middleware('throttle:3,1');
 
 // Login and logout
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:5,1');
 
 Route::post('/logout', [AuthController::class, 'logout'])
     ->middleware('auth:sanctum');
@@ -100,6 +102,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
 
     Route::get('/dashboard', [DashboardController::class, 'summary']);
+    Route::get('/admin/offers', AdminOfferController::class);
     Route::get('/reports/export', [AdminReportController::class, 'export']);
     Route::get('/reports', [AdminReportController::class, 'index']);
     Route::get('/reports/schedules', [AdminReportController::class, 'schedules']);
@@ -109,6 +112,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     Route::post('/services', [ServiceController::class, 'store']);
     Route::put('/services/{id}', [ServiceController::class, 'update']);
+    Route::patch('/services/{id}/price', [ServiceController::class, 'adjustPrice']);
+    Route::patch('/services/{id}/status', [ServiceController::class, 'updateStatus']);
     Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
 
     Route::patch('/reviews/{id}/status', [ServiceReviewController::class, 'setStatus']);

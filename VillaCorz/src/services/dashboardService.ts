@@ -7,8 +7,27 @@ import type {
     DashboardSummary,
 } from './types'
 
-export const getDashboard = (range: 7 | 30 | 90 = 30) =>
-    api.get<ApiEnvelope<DashboardSummary>>(`/dashboard?range=${range}`)
+export type DashboardForecastOptions = {
+    forecastPreset?: '14' | '30' | '60'
+    backtestRange?: 7 | 14 | 30
+    includeHolidays?: boolean
+    includeWeekends?: boolean
+}
+
+export const getDashboard = (
+    range: 7 | 30 | 90 = 30,
+    options: DashboardForecastOptions = {},
+) => {
+    const params = new URLSearchParams({
+        range: String(range),
+        forecast_preset: String(options.forecastPreset ?? '30'),
+        backtest_range: String(options.backtestRange ?? 14),
+        include_holidays: String(options.includeHolidays ?? true),
+        include_weekends: String(options.includeWeekends ?? true),
+    })
+
+    return api.get<ApiEnvelope<DashboardSummary>>(`/dashboard?${params.toString()}`)
+}
 
 export const trackPageView = (path: string, referrer?: string) =>
     api.post('/page-views', { path, referrer })

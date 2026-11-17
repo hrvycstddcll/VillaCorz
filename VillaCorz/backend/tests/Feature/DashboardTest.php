@@ -9,11 +9,30 @@ use App\Models\Payment;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function fakeSarimaxForecast(array $overrides = []): void
+    {
+        Http::fake([
+            '*' => Http::response(array_replace([
+                'model' => 'sarimax',
+                'forecast' => [[
+                    'date' => now()->addDay()->toDateString(),
+                    'expected_bookings' => 0,
+                    'expected_occupancy' => 0,
+                    'factor' => 1,
+                    'is_weekend' => false,
+                    'holiday' => null,
+                ]],
+                'backtest' => null,
+            ], $overrides)),
+        ]);
+    }
 
     private function makeUser(string $role): User
     {
@@ -104,6 +123,7 @@ class DashboardTest extends TestCase
 
     public function test_admin_gets_dashboard_summary_with_expected_shape(): void
     {
+        $this->fakeSarimaxForecast();
         $admin = $this->makeUser('admin');
 
         $response = $this->actingAs($admin)
@@ -124,10 +144,12 @@ class DashboardTest extends TestCase
         $this->assertArrayHasKey('contact_messages', $data['action_center']);
         $this->assertArrayHasKey('occupancy', $data['operational']);
         $this->assertCount(7, $data['revenue_by_weekday']);
+        $this->assertSame('sarimax', $data['pricing_insights']['model']);
     }
 
     public function test_dashboard_reflects_a_paid_booking_in_the_range(): void
     {
+        $this->fakeSarimaxForecast();
         $admin = $this->makeUser('admin');
         $customer = $this->makeUser('customer');
         $service = $this->makeService();
@@ -145,6 +167,72 @@ class DashboardTest extends TestCase
 
         $references = collect($response->json('data.recent_bookings'))->pluck('reference');
         $this->assertTrue($references->contains($booking->reference));
+    }
+
+    public function test_price_increase_recommendations_have_a_minimum_five_hundred_peso_increase(): void
+    {
+        $this->fakeSarimaxForecast([
+            'forecast' => [[
+                'date' => now()->addDay()->toDateString(),
+                'expected_bookings' => 0,
+                'expected_occupancy' => 0,
+                'factor' => 1,
+                'is_weekend' => false,
+                'holiday' => 'Test holiday',
+            ]],
+        ]);
+        $admin = $this->makeUser('admin');
+        $service = $this->makeService();
+
+        $response = $this->actingAs($admin)
+            ->getJson('/api/dashboard')
+            ->assertOk();
+
+        $recommendation = collect($response->json('data.pricing_insights.recommendations'))
+            ->firstWhere('service_id', $service->id);
+
+        $this->assertIsArray($recommendation);
+        $this->assertSame('increase', $recommendation['direction']);
+        $this->assertEquals(3000.0, (float) $recommendation['suggested_price']);
+        $this->assertEquals(20.0, (float) $recommendation['change_percent']);
+    }
+
+    public function test_dashboard_returns_more_than_five_recent_reservations_for_show_more(): void
+    {
+        $this->fakeSarimaxForecast();
+        $admin = $this->makeUser('admin');
+        $customer = $this->makeUser('customer');
+        $service = $this->makeService();
+
+        for ($index = 0; $index < 9; $index++) {
+            $this->seedPaidBooking($customer, $service);
+        }
+
+        $response = $this->actingAs($admin)
+            ->getJson('/api/dashboard')
+            ->assertOk();
+
+        $this->assertCount(9, $response->json('data.recent_bookings'));
+    }
+
+    public function test_dashboard_returns_service_unavailable_when_forecasting_fails(): void
+    {
+        Http::fake(['*' => Http::response(['detail' => 'forecast failed'], 500)]);
+
+        $this->actingAs($this->makeUser('admin'))
+            ->getJson('/api/dashboard')
+            ->assertServiceUnavailable()
+            ->assertJsonPath('message', 'SARIMAX forecasting service returned an error.');
+    }
+
+    public function test_dashboard_rejects_a_non_sarimax_forecast(): void
+    {
+        $this->fakeSarimaxForecast(['model' => 'weekday_average']);
+
+        $this->actingAs($this->makeUser('admin'))
+            ->getJson('/api/dashboard')
+            ->assertServiceUnavailable()
+            ->assertJsonPath('message', 'SARIMAX forecasting service returned an invalid model.');
     }
 
     public function test_page_view_tracking_records_a_row(): void

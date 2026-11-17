@@ -12,13 +12,27 @@ use App\Models\Payment;
 use App\Models\Service;
 use App\Models\ServiceReview;
 use App\Models\User;
+use App\Queries\Offers\OfferMetricsQuery;
 use Carbon\Carbon;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class DashboardController extends Controller
 {
     private const ALLOWED_RANGES = [7, 30, 90];
+
+    private const ALLOWED_FORECAST_PRESETS = ['14', '30', '60'];
+
+    private const ALLOWED_BACKTEST_RANGES = [7, 14, 30];
+
+    private const FORECAST_FULL_DAYS = 60;
+
+    private const RECENT_BOOKINGS_LIMIT = 20;
+
+    private const MINIMUM_PRICE_INCREASE = 500.0;
 
     public function summary(Request $request): JsonResponse
     {
@@ -26,6 +40,19 @@ class DashboardController extends Controller
         if (! in_array($range, self::ALLOWED_RANGES, true)) {
             $range = 30;
         }
+
+        $forecastPreset = (string) $request->input('forecast_preset', '30');
+        if (! in_array($forecastPreset, self::ALLOWED_FORECAST_PRESETS, true)) {
+            $forecastPreset = '30';
+        }
+
+        $backtestRange = (int) $request->integer('backtest_range', 14);
+        if (! in_array($backtestRange, self::ALLOWED_BACKTEST_RANGES, true)) {
+            $backtestRange = 14;
+        }
+
+        $includeHolidays = $request->boolean('include_holidays', true);
+        $includeWeekends = $request->boolean('include_weekends', true);
 
         $start = now()->startOfDay()->subDays($range - 1);
         $end = now()->endOfDay();
@@ -65,6 +92,36 @@ class DashboardController extends Controller
             ->whereBetween('created_at', [$start, $end])
             ->count();
 
+        $cancelledBookings = Booking::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->where('status', 'cancelled')
+            ->count();
+
+        $expiredPayments = Payment::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->where('status', 'expired')
+            ->count();
+
+        $pendingPayments = Payment::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->where('status', 'pending')
+            ->count();
+
+        $conversionRate = $newBookings > 0
+            ? round(($paidCount / $newBookings) * 100, 1)
+            : 0.0;
+        $churnRate = $newBookings > 0
+            ? round(($cancelledBookings / $newBookings) * 100, 1)
+            : 0.0;
+        $dropoffRate = $websiteVisits > 0
+            ? round((max(0, $websiteVisits - $paidCount) / $websiteVisits) * 100, 1)
+            : 0.0;
+
+        $visitsToBookingDropoff = max(0, $websiteVisits - $newBookings);
+        $bookingToPaidDropoff = max(0, $newBookings - $paidCount);
+        $totalDropoff = $visitsToBookingDropoff + $bookingToPaidDropoff;
+        $dropoffReasonTotal = $expiredPayments + $cancelledBookings + $pendingPayments;
+
         $revenueByWeekday = array_fill(0, 7, 0.0);
         Payment::query()
             ->where('status', 'paid')
@@ -77,65 +134,9 @@ class DashboardController extends Controller
                 }
             });
 
-        $services = Service::query()
-            ->withAvg('reviews as rating_average', 'rating')
-            ->withCount(['reviews as reviews_count'])
-            ->get(['id', 'name', 'kind', 'status']);
-        $offerMetrics = $services->map(function (Service $service) use ($range, $start, $end) {
-            $roomBookings = BookingRoom::query()
-                ->where('service_id', $service->id)
-                ->whereHas('booking', function ($query) use ($start, $end) {
-                    $query->whereBetween('created_at', [$start, $end])
-                        ->where('status', 'confirmed');
-                })
-                ->with('booking:id,status,check_in,check_out')
-                ->get();
-
-            $paidRooms = BookingRoom::query()
-                ->where('service_id', $service->id)
-                ->whereHas('booking.payments', function ($query) use ($start, $end) {
-                    $query->where('status', 'paid')
-                        ->whereBetween('paid_at', [$start, $end]);
-                })
-                ->get(['booking_id', 'line_total']);
-
-            $occupiedNights = BookingRoom::query()
-                ->where('service_id', $service->id)
-                ->whereHas('booking', function ($query) use ($start, $end) {
-                    $query->where('status', 'confirmed')
-                        ->whereDate('check_in', '<', $end->toDateString())
-                        ->whereDate('check_out', '>', $start->toDateString())
-                        ->whereHas('payments', fn ($paymentQuery) => $paymentQuery->where('status', 'paid'));
-                })
-                ->with('booking:id,nights,check_in,check_out')
-                ->get()
-                ->sum(function (BookingRoom $room) use ($start, $end) {
-                    $booking = $room->booking;
-                    if ($booking === null) {
-                        return 0;
-                    }
-
-                    $occupiedFrom = max($start->toDateString(), $booking->check_in->toDateString());
-                    $occupiedUntil = min($end->toDateString(), $booking->check_out->toDateString());
-
-                    return max(0, Carbon::parse($occupiedFrom)->diffInDays(Carbon::parse($occupiedUntil)));
-                });
-
-            $availabilityDays = $service->status === 'active' ? $range : 0;
-
-            return [
-                'service_id' => $service->id,
-                'name' => $service->name,
-                'bookings' => $roomBookings->pluck('booking_id')->unique()->count(),
-                'revenue' => (float) $paidRooms->sum('line_total'),
-                'occupancy' => $availabilityDays > 0
-                    ? round(($occupiedNights / $availabilityDays) * 100, 1)
-                    : 0,
-                'rating' => $service->rating_average !== null
-                    ? (float) $service->rating_average
-                    : 0,
-            ];
-        })->values();
+        $offerMetricsQuery = app(OfferMetricsQuery::class);
+        $services = $offerMetricsQuery->services();
+        $offerMetrics = $offerMetricsQuery->metricsFor($services, $range, $start, $end);
 
         $paidStayRooms = BookingRoom::query()
             ->whereHas('booking', function ($query) use ($start, $end) {
@@ -179,22 +180,7 @@ class DashboardController extends Controller
             })
             ->sum('amount');
 
-        $availabilityBookings = BookingRoom::query()
-            ->whereHas('booking', function ($query) {
-                $query->where('status', 'confirmed')
-                    ->whereDate('check_in', '<', now()->addDays(30)->toDateString())
-                    ->whereDate('check_out', '>', now()->toDateString());
-            })
-            ->with('booking:id,check_in,check_out')
-            ->get(['service_id', 'booking_id']);
-        $availability = $availabilityBookings
-            ->filter(fn (BookingRoom $room) => $room->service_id !== null && $room->booking !== null)
-            ->groupBy('service_id')
-            ->map(fn ($rooms) => $rooms->map(fn (BookingRoom $room) => [
-                'check_in' => $room->booking->check_in->toDateString(),
-                'check_out' => $room->booking->check_out->toDateString(),
-            ])->values())
-            ->all();
+        $availability = $offerMetricsQuery->availability();
 
         $actionCenter = [
             'pending_cancellations' => CancellationRequest::query()->where('status', 'pending')->count(),
@@ -236,12 +222,35 @@ class DashboardController extends Controller
             ->whereBetween('created_at', [$prevStart, $prevEnd])
             ->count();
 
+        $prevPaidCount = Payment::query()
+            ->where('status', 'paid')
+            ->whereBetween('paid_at', [$prevStart, $prevEnd])
+            ->count();
+
+        $prevCancelledBookings = Booking::query()
+            ->whereBetween('created_at', [$prevStart, $prevEnd])
+            ->where('status', 'cancelled')
+            ->count();
+
+        $prevConversionRate = $prevNewBookings > 0
+            ? round(($prevPaidCount / $prevNewBookings) * 100, 1)
+            : 0.0;
+        $prevChurnRate = $prevNewBookings > 0
+            ? round(($prevCancelledBookings / $prevNewBookings) * 100, 1)
+            : 0.0;
+        $prevDropoffRate = $prevWebsiteVisits > 0
+            ? round((max(0, $prevWebsiteVisits - $prevPaidCount) / $prevWebsiteVisits) * 100, 1)
+            : 0.0;
+
         $comparison = [
             'revenue' => $this->delta($revenue, $prevRevenue),
             'check_ins' => $this->delta($checkIns, $prevCheckIns),
             'new_bookings' => $this->delta($newBookings, $prevNewBookings),
             'new_users' => $this->delta($newUsers, $prevNewUsers),
             'website_visits' => $this->delta($websiteVisits, $prevWebsiteVisits),
+            'conversion_rate' => $this->delta($conversionRate, $prevConversionRate),
+            'churn_rate' => $this->delta($churnRate, $prevChurnRate),
+            'dropoff_rate' => $this->delta($dropoffRate, $prevDropoffRate),
         ];
 
         // --- Per-day series for the chart ---
@@ -288,7 +297,7 @@ class DashboardController extends Controller
             ->with(['user:id,firstname,lastname,email', 'rooms', 'payment'])
             ->latest('created_at')
             ->latest('id')
-            ->limit(8)
+            ->limit(self::RECENT_BOOKINGS_LIMIT)
             ->get()
             ->map(function (Booking $booking) {
                 return [
@@ -323,8 +332,73 @@ class DashboardController extends Controller
                     'new_bookings' => $newBookings,
                     'new_users' => $newUsers,
                     'website_visits' => $websiteVisits,
+                    'cancelled_bookings' => $cancelledBookings,
+                    'expired_payments' => $expiredPayments,
+                    'pending_payments' => $pendingPayments,
+                    'conversion_rate' => $conversionRate,
+                    'churn_rate' => $churnRate,
+                    'dropoff_rate' => $dropoffRate,
                 ],
                 'comparison' => $comparison,
+                'funnel' => [
+                    'visits' => $websiteVisits,
+                    'bookings' => $newBookings,
+                    'paid' => $paidCount,
+                    'dropoff_total' => $totalDropoff,
+                    'steps' => [
+                        [
+                            'key' => 'visits',
+                            'label' => 'Site visits',
+                            'count' => $websiteVisits,
+                            'dropoff' => null,
+                            'dropoff_rate' => null,
+                        ],
+                        [
+                            'key' => 'bookings',
+                            'label' => 'Bookings started',
+                            'count' => $newBookings,
+                            'dropoff' => $visitsToBookingDropoff,
+                            'dropoff_rate' => $websiteVisits > 0
+                                ? round(($visitsToBookingDropoff / $websiteVisits) * 100, 1)
+                                : 0.0,
+                        ],
+                        [
+                            'key' => 'paid',
+                            'label' => 'Payments completed',
+                            'count' => $paidCount,
+                            'dropoff' => $bookingToPaidDropoff,
+                            'dropoff_rate' => $newBookings > 0
+                                ? round(($bookingToPaidDropoff / $newBookings) * 100, 1)
+                                : 0.0,
+                        ],
+                    ],
+                ],
+                'dropoff_reasons' => [
+                    [
+                        'key' => 'expired_payments',
+                        'label' => 'Expired payments',
+                        'count' => $expiredPayments,
+                        'share' => $dropoffReasonTotal > 0
+                            ? round(($expiredPayments / $dropoffReasonTotal) * 100, 1)
+                            : 0.0,
+                    ],
+                    [
+                        'key' => 'cancelled_bookings',
+                        'label' => 'Cancelled bookings',
+                        'count' => $cancelledBookings,
+                        'share' => $dropoffReasonTotal > 0
+                            ? round(($cancelledBookings / $dropoffReasonTotal) * 100, 1)
+                            : 0.0,
+                    ],
+                    [
+                        'key' => 'pending_payments',
+                        'label' => 'Unpaid at window end',
+                        'count' => $pendingPayments,
+                        'share' => $dropoffReasonTotal > 0
+                            ? round(($pendingPayments / $dropoffReasonTotal) * 100, 1)
+                            : 0.0,
+                    ],
+                ],
                 'series' => $series,
                 'top_services' => $topServices,
                 'recent_bookings' => $recentBookings,
@@ -344,6 +418,14 @@ class DashboardController extends Controller
                         : 0,
                     'booked_forward_revenue' => $bookedForwardRevenue,
                 ],
+                'pricing_insights' => $this->buildPricingInsights(
+                    $services,
+                    $offerMetrics,
+                    $forecastPreset,
+                    $backtestRange,
+                    $includeHolidays,
+                    $includeWeekends,
+                ),
             ],
         ]);
     }
@@ -364,6 +446,407 @@ class DashboardController extends Controller
         ]);
 
         return response()->json(['success' => true], 201);
+    }
+
+    /**
+     * Build an advisory demand forecast and per-offer price recommendations.
+     */
+    private function buildPricingInsights(
+        $services,
+        $offerMetrics,
+        string $forecastPreset,
+        int $backtestRange,
+        bool $includeHolidays,
+        bool $includeWeekends,
+    ): array {
+        $historyStart = now()->subDays(90)->startOfDay();
+        $historyEnd = now()->endOfDay();
+
+        $historyBookings = Booking::query()
+            ->whereBetween('created_at', [$historyStart, $historyEnd])
+            ->where('status', 'confirmed')
+            ->get(['created_at']);
+
+        $historyDays = 90;
+
+        $historyCounts = $historyBookings
+            ->filter(fn (Booking $booking) => $booking->created_at !== null)
+            ->groupBy(fn (Booking $booking) => Carbon::parse($booking->created_at)->toDateString())
+            ->map(fn ($bookings) => $bookings->count());
+        $historySeries = [];
+        for ($offset = $historyDays - 1; $offset >= 0; $offset--) {
+            $dateKey = now()->subDays($offset)->toDateString();
+            $historySeries[] = [
+                'date' => $dateKey,
+                'bookings' => (int) ($historyCounts[$dateKey] ?? 0),
+            ];
+        }
+
+        $holidays = $this->philippineHolidays();
+        $activeServiceCount = max(1, $services->where('status', 'active')->count());
+
+        $today = now()->startOfDay();
+        $tomorrow = $today->copy()->addDay();
+        $forecastStart = $tomorrow->copy();
+        $selectedStart = $forecastStart->copy();
+        $presetDays = max(1, (int) $forecastPreset);
+        $selectedEnd = $selectedStart->copy()->addDays($presetDays - 1);
+        $forecastWindowDays = $presetDays;
+
+        $pythonHorizon = self::FORECAST_FULL_DAYS;
+        $pythonForecast = $this->requestPythonForecast(
+            $historySeries,
+            $holidays,
+            $activeServiceCount,
+            $pythonHorizon,
+            $backtestRange,
+            $includeHolidays,
+            $includeWeekends,
+        );
+        $forecast = $pythonForecast['forecast'];
+        $forecastModel = $pythonForecast['model'];
+        $backtest = $pythonForecast['backtest'];
+
+        $forwardStart = $selectedStart->toDateString();
+        $forwardEnd = $selectedEnd->copy()->addDay()->toDateString();
+        $forwardRooms = BookingRoom::query()
+            ->whereHas('booking', function ($query) use ($forwardStart, $forwardEnd) {
+                $query->where('status', 'confirmed')
+                    ->whereDate('check_in', '<', $forwardEnd)
+                    ->whereDate('check_out', '>', $forwardStart)
+                    ->whereHas('payments', fn ($paymentQuery) => $paymentQuery->where('status', 'paid'));
+            })
+            ->with('booking:id,check_in,check_out')
+            ->get(['service_id', 'booking_id']);
+
+        $forwardNights = [];
+        foreach ($forwardRooms as $room) {
+            if ($room->service_id === null || $room->booking === null) {
+                continue;
+            }
+
+            $occupiedFrom = max($forwardStart, $room->booking->check_in->toDateString());
+            $occupiedUntil = min($forwardEnd, $room->booking->check_out->toDateString());
+            $nights = max(
+                0,
+                Carbon::parse($occupiedFrom)->diffInDays(Carbon::parse($occupiedUntil)),
+            );
+            $forwardNights[(int) $room->service_id] = ($forwardNights[(int) $room->service_id] ?? 0) + $nights;
+        }
+
+        $metricsByService = $offerMetrics->keyBy('service_id');
+        $selectedStartDate = $selectedStart->toDateString();
+        $selectedEndDate = $selectedEnd->toDateString();
+        $selectedForecast = collect($forecast)->filter(
+            fn (array $day) => $day['date'] >= $selectedStartDate && $day['date'] <= $selectedEndDate,
+        );
+        $holidayDays = $selectedForecast->filter(fn ($day) => $day['holiday'] !== null)->count();
+        $avgForecastOccupancy = (float) ($selectedForecast->avg('expected_occupancy') ?? 0);
+        $avgWeekendOccupancy = (float) ($selectedForecast
+            ->filter(fn ($day) => $day['is_weekend'])
+            ->avg('expected_occupancy') ?? 0);
+        $avgHolidayOccupancy = (float) ($selectedForecast
+            ->filter(fn ($day) => $day['holiday'] !== null)
+            ->avg('expected_occupancy') ?? 0);
+
+        $recommendations = $services->where('status', 'active')->map(function (Service $service) use (
+            $metricsByService,
+            $forwardNights,
+            $forecastWindowDays,
+            $avgForecastOccupancy,
+            $avgWeekendOccupancy,
+            $avgHolidayOccupancy,
+            $holidayDays,
+        ) {
+            $metrics = $metricsByService->get($service->id);
+            $currentOccupancy = (float) ($metrics['occupancy'] ?? 0);
+            $forwardOccupancy = round((($forwardNights[(int) $service->id] ?? 0) / max(1, $forecastWindowDays)) * 100, 1);
+            $demandScore = ($currentOccupancy * 0.55) + ($forwardOccupancy * 0.25) + ($avgForecastOccupancy * 0.2);
+
+            $change = 0;
+            $reasons = [];
+            if ($demandScore >= 70) {
+                $change = $demandScore >= 80 ? 12 : 8;
+                $reasons[] = "Strong forward demand in the {$forecastWindowDays}-day forecast window";
+            } elseif ($demandScore < 40) {
+                $change = $demandScore < 25 ? -10 : -5;
+                $reasons[] = 'Soft occupancy in the current and forward window';
+            }
+
+            // Leisure destinations like Matabungkay fill up whenever guests are
+            // off work, so holidays always push the recommendation upward.
+            if ($holidayDays > 0) {
+                $holidayLift = $holidayDays >= 4 ? 15 : ($holidayDays >= 2 ? 12 : 8);
+                if ($change < $holidayLift) {
+                    $change = $holidayLift;
+                }
+                $reasons[] = "{$holidayDays} Philippine holiday date(s) fall in the forecast window";
+            }
+            if ($avgHolidayOccupancy >= 65 && $change < 15) {
+                $change = 15;
+                $reasons[] = 'Holiday dates show peak forecast occupancy';
+            }
+            if ($avgWeekendOccupancy >= 55 && $change < 5) {
+                $change = 5;
+                $reasons[] = 'Weekend forecast occupancy is above 55%';
+            }
+            if ($forwardOccupancy >= 60) {
+                $reasons[] = "Most of the {$forecastWindowDays}-day forecast window is already booked";
+            }
+            if ($currentOccupancy >= 75) {
+                $reasons[] = 'Recent occupancy is above target';
+            }
+            if ($reasons === []) {
+                $reasons[] = 'Demand is steady; hold the current price';
+            }
+            $reasons = array_values(array_unique($reasons));
+
+            $bookingCount = (int) ($metrics['bookings'] ?? 0);
+            $confidence = $bookingCount >= 5 ? 'high' : ($bookingCount >= 2 ? 'medium' : 'low');
+            $currentPrice = (float) $service->price;
+            $suggestedPrice = round($currentPrice * (1 + ($change / 100)), 2);
+            if ($change > 0) {
+                $suggestedPrice = round(
+                    max($suggestedPrice, $currentPrice + self::MINIMUM_PRICE_INCREASE),
+                    2,
+                );
+            }
+            $effectiveChange = $currentPrice > 0
+                ? round((($suggestedPrice - $currentPrice) / $currentPrice) * 100, 1)
+                : $change;
+
+            return [
+                'service_id' => $service->id,
+                'name' => $service->name,
+                'current_price' => $currentPrice,
+                'suggested_price' => $suggestedPrice,
+                'change_percent' => $effectiveChange,
+                'direction' => $change > 0 ? 'increase' : ($change < 0 ? 'decrease' : 'hold'),
+                'confidence' => $confidence,
+                'current_occupancy' => $currentOccupancy,
+                'forward_occupancy' => $forwardOccupancy,
+                'demand_score' => round($demandScore, 1),
+                'reasons' => $reasons,
+            ];
+        })->sortByDesc('demand_score')->values()->all();
+
+        return [
+            'model' => $forecastModel,
+            'forecast_preset' => $forecastPreset,
+            'forecast_window' => [
+                'start' => $selectedStart->toDateString(),
+                'end' => $selectedEnd->toDateString(),
+            ],
+            'forecast' => $forecast,
+            'holiday_days' => $holidayDays,
+            'average_forecast_occupancy' => round($avgForecastOccupancy, 1),
+            'accuracy' => $backtest,
+            'recommendations' => $recommendations,
+            'factors' => [
+                [
+                    'key' => 'holidays',
+                    'label' => 'Philippine holidays',
+                    'impact' => $includeHolidays
+                        ? 'Always lifts the suggested price; +45% demand on holiday dates'
+                        : 'Excluded from this forecast',
+                ],
+                [
+                    'key' => 'weekends',
+                    'label' => 'Weekend pattern',
+                    'impact' => $includeWeekends
+                        ? '+22% demand Fri–Sun when guests are off work'
+                        : 'Excluded from this forecast',
+                ],
+                [
+                    'key' => 'forward_bookings',
+                    'label' => 'Forward bookings',
+                    'impact' => 'Confirmed paid stays already on the books',
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Request and validate the required SARIMAX forecast from Python.
+     *
+     * @param  array<int, array{date: string, bookings: int}>  $history
+     * @param  array<string, string>  $holidays
+     * @return array{
+     *     forecast: array<int, array<string, mixed>>,
+     *     model: 'sarimax',
+     *     backtest: array<string, mixed>|null
+     * }
+     */
+    private function requestPythonForecast(
+        array $history,
+        array $holidays,
+        int $activeServiceCount,
+        int $horizon,
+        int $backtestDays,
+        bool $includeHolidays,
+        bool $includeWeekends,
+    ): array {
+        $url = rtrim((string) config('forecasting.url'), '/');
+        if ($url === '') {
+            throw new HttpException(503, 'SARIMAX forecasting service is not configured.');
+        }
+
+        try {
+            $response = Http::timeout(max(1, (int) config('forecasting.timeout', 4)))
+                ->acceptJson()
+                ->post($url.'/forecast', [
+                    'history' => $history,
+                    'holidays' => $holidays,
+                    'active_services' => max(1, $activeServiceCount),
+                    'horizon' => $horizon,
+                    'backtest_days' => $backtestDays,
+                    'include_holidays' => $includeHolidays,
+                    'include_weekends' => $includeWeekends,
+                ]);
+        } catch (ConnectionException $exception) {
+            throw new HttpException(503, 'SARIMAX forecasting service is unavailable.', $exception);
+        }
+
+        if (! $response->successful()) {
+            throw new HttpException(503, 'SARIMAX forecasting service returned an error.');
+        }
+
+        $payload = $response->json();
+        if (! is_array($payload) || ($payload['model'] ?? null) !== 'sarimax') {
+            throw new HttpException(503, 'SARIMAX forecasting service returned an invalid model.');
+        }
+
+        $forecast = $payload['forecast'] ?? null;
+        if (! is_array($forecast) || $forecast === []) {
+            throw new HttpException(503, 'SARIMAX forecasting service returned no forecast.');
+        }
+
+        $normalized = [];
+        foreach ($forecast as $point) {
+            if (
+                ! is_array($point)
+                || ! isset($point['date'], $point['expected_bookings'], $point['expected_occupancy'])
+                || ! is_numeric($point['expected_bookings'])
+                || ! is_numeric($point['expected_occupancy'])
+                || ! is_finite((float) $point['expected_bookings'])
+                || ! is_finite((float) $point['expected_occupancy'])
+            ) {
+                throw new HttpException(503, 'SARIMAX forecasting service returned an invalid forecast.');
+            }
+
+            $date = Carbon::parse((string) $point['date']);
+            $normalized[] = [
+                'date' => $date->toDateString(),
+                'label' => $date->format('M j'),
+                'expected_bookings' => round((float) $point['expected_bookings'], 1),
+                'expected_occupancy' => round((float) $point['expected_occupancy'], 1),
+                'factor' => round((float) ($point['factor'] ?? 1), 2),
+                'is_weekend' => (bool) ($point['is_weekend'] ?? false),
+                'holiday' => isset($point['holiday']) && $point['holiday'] !== ''
+                    ? (string) $point['holiday']
+                    : null,
+            ];
+        }
+
+        $backtest = null;
+        $rawBacktest = $payload['backtest'] ?? null;
+        if ($rawBacktest !== null) {
+            if (
+                ! is_array($rawBacktest)
+                || ($rawBacktest['model'] ?? null) !== 'sarimax'
+                || ! is_array($rawBacktest['points'] ?? null)
+            ) {
+                throw new HttpException(503, 'SARIMAX forecasting service returned an invalid backtest.');
+            }
+
+            $backtestPoints = [];
+            foreach ($rawBacktest['points'] as $point) {
+                if (
+                    ! is_array($point)
+                    || ! isset($point['date'], $point['actual_bookings'], $point['predicted_bookings'])
+                    || ! is_numeric($point['actual_bookings'])
+                    || ! is_numeric($point['predicted_bookings'])
+                    || ! is_finite((float) $point['actual_bookings'])
+                    || ! is_finite((float) $point['predicted_bookings'])
+                ) {
+                    throw new HttpException(503, 'SARIMAX forecasting service returned an invalid backtest point.');
+                }
+
+                $date = Carbon::parse((string) $point['date']);
+                $backtestPoints[] = [
+                    'date' => $date->toDateString(),
+                    'label' => $date->format('M j'),
+                    'actual_bookings' => round((float) $point['actual_bookings'], 1),
+                    'predicted_bookings' => round((float) $point['predicted_bookings'], 1),
+                ];
+            }
+
+            if ($backtestPoints !== []) {
+                $backtest = [
+                    'window_days' => (int) ($rawBacktest['window_days'] ?? $backtestDays),
+                    'model' => 'sarimax',
+                    'mae' => round((float) ($rawBacktest['mae'] ?? 0), 2),
+                    'mape' => isset($rawBacktest['mape']) && $rawBacktest['mape'] !== null
+                        ? round((float) $rawBacktest['mape'], 1)
+                        : null,
+                    'points' => $backtestPoints,
+                ];
+            }
+        }
+
+        return [
+            'forecast' => $normalized,
+            'model' => 'sarimax',
+            'backtest' => $backtest,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function philippineHolidays(): array
+    {
+        $holidays = [];
+        $currentYear = (int) now()->year;
+
+        foreach ([$currentYear, $currentYear + 1] as $year) {
+            $holidays["{$year}-01-01"] = "New Year's Day";
+            $holidays["{$year}-04-09"] = 'Araw ng Kagitingan';
+            $holidays["{$year}-05-01"] = 'Labor Day';
+            $holidays["{$year}-06-12"] = 'Independence Day';
+            $holidays["{$year}-08-21"] = 'Ninoy Aquino Day';
+            $holidays["{$year}-08-31"] = 'National Heroes Day';
+            $holidays["{$year}-11-30"] = 'Bonifacio Day';
+            $holidays["{$year}-12-25"] = 'Christmas Day';
+            $holidays["{$year}-12-30"] = 'Rizal Day';
+            $holidays["{$year}-12-31"] = "New Year's Eve";
+
+            $easter = $this->easterDate($year);
+            $holidays[$easter->copy()->subDays(3)->toDateString()] = 'Maundy Thursday';
+            $holidays[$easter->copy()->subDays(2)->toDateString()] = 'Good Friday';
+        }
+
+        return $holidays;
+    }
+
+    private function easterDate(int $year): Carbon
+    {
+        $a = $year % 19;
+        $b = intdiv($year, 100);
+        $c = $year % 100;
+        $d = intdiv($b, 4);
+        $e = $b % 4;
+        $f = intdiv($b + 8, 25);
+        $g = intdiv($b - $f + 1, 3);
+        $h = (19 * $a + $b - $d - $g + 15) % 30;
+        $i = intdiv($c, 4);
+        $k = $c % 4;
+        $l = (32 + 2 * $e + 2 * $i - $h - $k) % 7;
+        $m = intdiv($a + 11 * $h + 22 * $l, 451);
+        $month = intdiv($h + $l - 7 * $m + 114, 31);
+        $day = (($h + $l - 7 * $m + 114) % 31) + 1;
+
+        return Carbon::createFromDate($year, $month, $day)->startOfDay();
     }
 
     /**

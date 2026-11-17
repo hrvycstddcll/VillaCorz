@@ -371,6 +371,68 @@ class ServiceController extends Controller
         ]);
     }
 
+    public function adjustPrice(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'price' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $service = Service::findOrFail($id);
+        $previousPrice = (float) $service->price;
+        $service->update(['price' => $validated['price']]);
+
+        ActivityLogger::record(
+            'updated',
+            $request->user(),
+            "Adjusted the price for offer \u{201C}{$service->name}\u{201D}.",
+            Service::class,
+            $service->id,
+            [
+                'changed_fields' => ['price'],
+                'previous_price' => $previousPrice,
+                'new_price' => (float) $service->price,
+            ],
+            $request,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Offer price updated.',
+            'data' => $service->fresh('images'),
+        ]);
+    }
+
+    public function updateStatus(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:active,inactive'],
+        ]);
+
+        $service = Service::with('images')->findOrFail($id);
+        $previousStatus = $service->status;
+        $service->update(['status' => $validated['status']]);
+
+        ActivityLogger::record(
+            'updated',
+            $request->user(),
+            "Changed the status of offer \u{201C}{$service->name}\u{201D}.",
+            Service::class,
+            $service->id,
+            [
+                'changed_fields' => ['status'],
+                'previous_status' => $previousStatus,
+                'new_status' => $service->status,
+            ],
+            $request,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Offer status updated.',
+            'data' => $service->fresh('images'),
+        ]);
+    }
+
     public function destroy(Request $request, int $id, CloudinaryService $cloudinary): JsonResponse
     {
         $service = Service::with('images')
