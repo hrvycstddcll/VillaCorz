@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Settings } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../../services/useAuth'
+import { useAuth } from '../../../../services/useAuth'
 
 const REVEAL_THRESHOLD = 96
 

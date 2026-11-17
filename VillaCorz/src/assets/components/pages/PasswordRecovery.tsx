@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import axios from 'axios'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { MailCheck, ShieldCheck } from 'lucide-react'
-import AccountPasswordInput from '../ui/AccountPasswordInput'
+import AccountPasswordInput from '../ui/FormComponents/AccountPasswordInput'
 import {
     requestPasswordResetCode,
     resetAccountPassword,

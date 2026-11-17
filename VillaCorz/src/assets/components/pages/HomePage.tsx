@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
-import DirectionalButton from '../ui/DirectionalButton'
+import DirectionalButton from '../ui/InteractiveComponents/DirectionalButton'
 import { useAuth } from '../../../services/useAuth'
 
 const backgroundVideo =

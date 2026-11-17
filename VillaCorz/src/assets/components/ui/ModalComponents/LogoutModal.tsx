@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import MetaBalls from '../ui/MetaBalls.jsx'
+import MetaBalls from '../CssComponents/MetaBalls.jsx'
 
 const logoutMascot = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1791989872/logoutMascot.gif'
 

@@ -11,10 +11,10 @@ import {
     Trash2,
     UserRound,
 } from 'lucide-react'
-import AccountPasswordInput from '../ui/AccountPasswordInput'
-import BackButton from '../ui/BackButton'
-import PhoneNumberInput from '../ui/PhoneNumberInput'
-import PhoneVerifyModal from '../ui/PhoneVerifyModal'
+import AccountPasswordInput from '../ui/FormComponents/AccountPasswordInput'
+import BackButton from '../ui/InteractiveComponents/BackButton'
+import PhoneNumberInput from '../ui/FormComponents/PhoneNumberInput'
+import PhoneVerifyModal from '../ui/ModalComponents/PhoneVerifyModal'
 import { useAuth } from '../../../services/useAuth'
 import { formatPhoneNumber, normalizePhoneNumber } from '../../../lib/phoneNumber'
 import {

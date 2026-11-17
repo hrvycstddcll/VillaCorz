@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, Paperclip, Send } from 'lucide-react'
-import { getApiErrorMessage } from '../../../lib/apiError'
-import { requestCancellation } from '../../../services/bookingService'
+import { getApiErrorMessage } from '../../../../lib/apiError'
+import { requestCancellation } from '../../../../services/bookingService'
 
 const focusRing =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'

@@ -2,7 +2,7 @@ import {
     formatNationalMobile,
     nationalMobileDigits,
     PH_NATIONAL_PATTERN,
-} from '../../../lib/phoneNumber'
+} from '../../../../lib/phoneNumber'
 
 type PhoneNumberInputProps = {
     /** The 10 national digits, without the +63 prefix. */

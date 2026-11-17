@@ -11,8 +11,8 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SplitText } from 'gsap/SplitText'
 import api from '../../../services/api'
-import PixelCard from '../ui/PixelCard'
-import WarpText from '../ui/WarpText'
+import PixelCard from '../ui/CssComponents/PixelCard'
+import WarpText from '../ui/CssComponents/WarpText'
 import {
     MapContainer,
     TileLayer,

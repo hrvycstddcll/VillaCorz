@@ -29,7 +29,7 @@ import AdminEmptyState from '../admin/AdminEmptyState'
 import AdminFilterPills from '../admin/AdminFilterPills'
 import AdminStatStrip from '../admin/AdminStatStrip'
 import AdminTable, { type AdminTableColumn } from '../admin/AdminTable'
-import AdminPageHeader from '../ui/AdminPageHeader'
+import AdminPageHeader from '../ui/InteractiveComponents/AdminPageHeader'
 
 const pageSize = 20
 const reportOptions: Array<{ value: AdminReportKind | 'activity'; label: string }> = [

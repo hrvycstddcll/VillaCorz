@@ -1,6 +1,6 @@
-import { guestCapacity, money } from '../../../lib/format'
+import { guestCapacity, money } from '../../../../lib/format'
 import { ImageOff } from 'lucide-react'
-import star from '../../images/star.png'
+import star from '../../../images/star.png'
 
 export type ServiceTileStay = {
     id: string

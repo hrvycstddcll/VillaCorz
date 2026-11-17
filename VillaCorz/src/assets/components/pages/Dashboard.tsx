@@ -29,7 +29,7 @@ import AdminEmptyState from '../admin/AdminEmptyState'
 import AdminStatStrip from '../admin/AdminStatStrip'
 import AdminTable, { type AdminTableColumn } from '../admin/AdminTable'
 import AdminFilterPills from '../admin/AdminFilterPills'
-import AdminPageHeader from '../ui/AdminPageHeader'
+import AdminPageHeader from '../ui/InteractiveComponents/AdminPageHeader'
 import ConfirmDialog from '../offers/ConfirmDialog'
 
 const ranges = [7, 30, 90] as const

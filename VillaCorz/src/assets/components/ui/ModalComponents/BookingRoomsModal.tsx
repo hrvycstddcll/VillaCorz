@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Bed, Users, X } from 'lucide-react'
-import { money } from '../../../lib/format'
-import type { BookingRoom } from '../../../services/types'
+import { money } from '../../../../lib/format'
+import type { BookingRoom } from '../../../../services/types'
 
 const focusRing =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
