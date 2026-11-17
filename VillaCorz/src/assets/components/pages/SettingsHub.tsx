@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ChevronRight, LogOut, UserRound } from 'lucide-react'
-import BackButton from '../ui/BackButton'
-import LogoutModal from '../ui/LogoutModal'
+import BackButton from '../ui/InteractiveComponents/BackButton'
+import LogoutModal from '../ui/ModalComponents/LogoutModal'
 import { useAuth } from '../../../services/useAuth'
 
 const optionCardClassName =

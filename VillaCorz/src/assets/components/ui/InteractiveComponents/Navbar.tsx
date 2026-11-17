@@ -7,7 +7,7 @@ import {
     type ReactNode,
 } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import logoSvg from '../../VillaCorz-SVGLogo.svg?raw'
+import logoSvg from '../../../VillaCorz-SVGLogo.svg?raw'
 import {
     BarChart3,
     BedDouble,
@@ -22,10 +22,10 @@ import {
     X,
 } from 'lucide-react'
 import DirectionalButton from './DirectionalButton'
-import GooeyNav, { type GooeyNavChild, type GooeyNavItem } from './GooeyNav'
+import GooeyNav, { type GooeyNavChild, type GooeyNavItem } from '../CssComponents/GooeyNav'
 import SettingsNotch from './SettingsNotch'
-import { useAuth } from '../../../services/useAuth'
-import { scrollToHash, scrollToTop } from '../../../lib/smoothScroll'
+import { useAuth } from '../../../../services/useAuth'
+import { scrollToHash, scrollToTop } from '../../../../lib/smoothScroll'
 
 const buttonColor = '#3d8bff'
 

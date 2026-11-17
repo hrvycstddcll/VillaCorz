@@ -11,8 +11,8 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SplitText } from 'gsap/SplitText'
 import api from '../../../services/api'
-import PixelCard from '../ui/PixelCard'
-import WarpText from '../ui/WarpText'
+import PixelCard from '../ui/CssComponents/PixelCard'
+import WarpText from '../ui/CssComponents/WarpText'
 import {
     MapContainer,
     TileLayer,
@@ -832,27 +832,27 @@ const Contact = () => {
                                 className="contact-note"
                             >
                                 <p className="contact-note__title">
-                                    <WarpText
-                                        text="VillaCorz"
-                                        color="#fff"
-                                        fontSize="clamp(6rem, 12vw, 10rem)"
-                                        fontWeight={800}
-                                        fontFamily="inherit"
-                                        letterSpacing="-0.06em"
-                                        style={{ height: '400px' }}
-                                    />
+                                        <WarpText
+                                            text="Stay with us"
+                                            color="#fff"
+                                            fontSize="clamp(6rem, 12vw, 10rem)"
+                                            fontWeight={800}
+                                            fontFamily="inherit"
+                                            letterSpacing="-0.06em"
+                                            style={{ height: '120px' }}
+                                        />
                                 </p>
 
                                 <p className="contact-note__description">
-                                    <WarpText
-                                        text="We look forward to welcoming you to VillaCorz."
-                                        color="#fff"
-                                        fontSize="clamp(5rem, 10vw, 8rem)"
-                                        fontWeight={800}
-                                        fontFamily="inherit"
-                                        letterSpacing="-0.06em"
-                                        style={{ height: '400px' }}
-                                    />
+                                        <WarpText
+                                            text="We'll respond shortly."
+                                            color="#fff"
+                                            fontSize="clamp(5rem, 10vw, 8rem)"
+                                            fontWeight={800}
+                                            fontFamily="inherit"
+                                            letterSpacing="-0.06em"
+                                            style={{ height: '120px' }}
+                                        />
                                 </p>
                             </blockquote>
                         </div>

@@ -7,9 +7,9 @@ import {
     deleteServiceReview,
     getServiceReviews,
     canReviewService,
-} from '../../../services/serviceService'
-import { useAuth } from '../../../services/useAuth'
-import type { ServiceReview } from '../../../services/types'
+} from '../../../../services/serviceService'
+import { useAuth } from '../../../../services/useAuth'
+import type { ServiceReview } from '../../../../services/types'
 
 type Props = {
     serviceId: number

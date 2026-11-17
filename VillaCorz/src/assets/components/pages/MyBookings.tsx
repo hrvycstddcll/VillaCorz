@@ -7,9 +7,9 @@ import {
     getBookings,
 } from '../../../services/bookingService'
 import type { Booking, BookingRoom, CancellationRequest } from '../../../services/types'
-import BackButton from '../ui/BackButton'
-import BookingRoomsModal from '../ui/BookingRoomsModal'
-import CancelRequestModal from '../ui/CancelRequestModal'
+import BackButton from '../ui/InteractiveComponents/BackButton'
+import BookingRoomsModal from '../ui/ModalComponents/BookingRoomsModal'
+import CancelRequestModal from '../ui/ModalComponents/CancelRequestModal'
 
 const formatDate = (value: string) => {
     const date = new Date(`${value}T00:00:00`)

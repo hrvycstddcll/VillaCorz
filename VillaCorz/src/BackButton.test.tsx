@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
-import BackButton from './assets/components/ui/BackButton'
+import BackButton from './assets/components/ui/InteractiveComponents/BackButton'
 
 function LocationDisplay() {
     const location = useLocation()
