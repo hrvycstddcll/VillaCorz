@@ -567,44 +567,6 @@ const Dashboard = () => {
                                 price changes until you confirm them.
                             </p>
                         </div>
-                        <div className="flex flex-wrap items-end gap-3">
-                            <label className="grid gap-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                Forecast window
-                                <select
-                                    value={forecastPreset}
-                                    onChange={(event) =>
-                                        setForecastPreset(
-                                            event.target.value as (typeof forecastPresets)[number],
-                                        )
-                                    }
-                                    className={`min-h-11 rounded-lg border border-[rgba(0,0,0,0.12)] bg-white px-3 text-xs font-medium normal-case tracking-normal text-slate-800 ${focusRing}`}
-                                >
-                                    {forecastPresets.map((preset) => (
-                                        <option key={preset} value={preset}>
-                                            {preset} days
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="grid gap-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                Backtest
-                                <select
-                                    value={backtestRange}
-                                    onChange={(event) =>
-                                        setBacktestRange(
-                                            Number(event.target.value) as (typeof backtestRanges)[number],
-                                        )
-                                    }
-                                    className={`min-h-11 rounded-lg border border-[rgba(0,0,0,0.12)] bg-white px-3 text-xs font-medium normal-case tracking-normal text-slate-800 ${focusRing}`}
-                                >
-                                    {backtestRanges.map((days) => (
-                                        <option key={days} value={days}>
-                                            Last {days} days
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                        </div>
                     </div>
 
                     <div className="flex flex-wrap gap-x-5 gap-y-2">
@@ -889,11 +851,11 @@ const Dashboard = () => {
                                 No active offers are available to price.
                             </p>
                         ) : (
-                            <ul className="mt-3 divide-y divide-[rgba(0,0,0,0.06)]">
+                            <ul className="mt-3 grid gap-4 sm:grid-cols-2">
                                 {recommendations.map((recommendation) => (
                                     <li
                                         key={recommendation.service_id}
-                                        className="py-3 first:pt-1"
+                                        className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm"
                                     >
                                         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                                             <p className="text-sm font-semibold text-slate-900">
