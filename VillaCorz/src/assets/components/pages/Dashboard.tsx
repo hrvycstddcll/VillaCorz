@@ -439,24 +439,7 @@ const Dashboard = () => {
                         )}
                     </div>
 
-                    <AdminCard className="min-w-0" padding={false}>
-                        <div className="flex items-start justify-between gap-4 px-5 pt-5">
-                            <div>
-                                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                    Cash flow
-                                </p>
-                                <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
-                                    Revenue by day
-                                </h2>
-                            </div>
-                            <span className="inline-flex min-h-11 items-center gap-2 text-xs text-slate-600">
-                                <span
-                                    aria-hidden="true"
-                                    className="size-1.5 rounded-full bg-[#006dfc]"
-                                />
-                                Revenue
-                            </span>
-                        </div>
+                    <AdminCard className="min-w-0 border-0 shadow-none" padding={false}>
                         <div className="px-3 pb-4 pt-3 sm:px-5">
                             {loading ? (
                                 <p role="status" className="py-12 text-center text-sm text-slate-500">
@@ -1127,7 +1110,7 @@ const Dashboard = () => {
                     </AdminCard>
                 </section>
 
-                <section>
+                <section className="grid gap-8 lg:grid-cols-2">
                     <AdminCard>
                         <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                             Stay performance
@@ -1164,9 +1147,7 @@ const Dashboard = () => {
                             </p>
                         </div>
                     </AdminCard>
-                </section>
 
-                <section className="grid gap-8 lg:grid-cols-2">
                     <AdminCard>
                         <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                             Weekly pattern
@@ -1214,7 +1195,9 @@ const Dashboard = () => {
                             )}
                         </div>
                     </AdminCard>
+                </section>
 
+                <section>
                     <AdminCard padding={false}>
                         <div className="px-5 pt-5">
                             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">

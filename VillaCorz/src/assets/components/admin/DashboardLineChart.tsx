@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 
 export type DashboardChartPoint = {
     label: string
@@ -57,6 +58,36 @@ const DashboardLineChart = ({
         activePoint === null ? null : points[activePoint.index] ?? null
     const visibleLabelStep = Math.max(1, Math.ceil(points.length / 5))
 
+    const handleMouseMove = (event: ReactMouseEvent<SVGSVGElement>) => {
+        const rect = event.currentTarget.getBoundingClientRect()
+        const x =
+            (event.clientX - rect.left) * (chartWidth / rect.width)
+        let nearestIndex = 0
+        let minDistance = Infinity
+        points.forEach((point, index) => {
+            const pointX = getCoordinates(
+                point.values[series[0]?.key ?? ''] ?? 0,
+                index,
+            ).x
+            const distance = Math.abs(pointX - x)
+            if (distance < minDistance) {
+                minDistance = distance
+                nearestIndex = index
+            }
+        })
+        const point = points[nearestIndex]
+        if (!point) return
+        const pointX = getCoordinates(
+            point.values[series[0]?.key ?? ''] ?? 0,
+            nearestIndex,
+        ).x
+        const pointY = getCoordinates(
+            point.values[series[0]?.key ?? ''] ?? 0,
+            nearestIndex,
+        ).y
+        setActivePoint({ index: nearestIndex, x: pointX, y: pointY })
+    }
+
     return (
         <div
             className="relative w-full"
@@ -67,6 +98,8 @@ const DashboardLineChart = ({
                 className="absolute inset-0 size-full"
                 role="group"
                 aria-label={ariaLabel}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={() => setActivePoint(null)}
             >
                 {[0, 0.5, 1].map((tick) => {
                     const y = padding.top + plotHeight * (1 - tick)
@@ -109,7 +142,7 @@ const DashboardLineChart = ({
                             fill="none"
                             stroke={item.color}
                             strokeDasharray={item.strokeDasharray}
-                            strokeWidth="2"
+                                    strokeWidth="1"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                         />
@@ -139,7 +172,20 @@ const DashboardLineChart = ({
                                     {point.label}
                                 </text>
                             )}
-                            {series.map((item) => {
+                {activePoint && (
+                    <line
+                        x1={activePoint.x}
+                        x2={activePoint.x}
+                        y1={padding.top}
+                        y2={chartHeight - padding.bottom}
+                        stroke="#94a3b8"
+                        strokeWidth="1"
+                        strokeDasharray="3 3"
+                        pointerEvents="none"
+                    />
+                )}
+
+                {series.map((item) => {
                                 const value = point.values[item.key] ?? 0
                                 const { y } = getCoordinates(value, index)
                                 const active = activePoint?.index === index
