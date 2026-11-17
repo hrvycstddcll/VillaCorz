@@ -11,6 +11,8 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SplitText } from 'gsap/SplitText'
 import api from '../../../services/api'
+import PixelCard from '../ui/PixelCard'
+import MeshLettering from '../ui/MeshLettering'
 import {
     MapContainer,
     TileLayer,
@@ -48,30 +50,30 @@ const REVEAL_GROUPS: {
     selector: string
     animation: gsap.TweenVars
 }[] = [
-    {
-        selector: '[data-animate="heading-aside"]',
-        animation: { y: 26, duration: 0.9 },
-    },
-    {
-        selector: '[data-animate="map-copy"]',
-        animation: { y: 24, duration: 0.85 },
-    },
-    {
-        selector: '[data-animate="map-actions"]',
-        animation: { y: 18, duration: 0.8 },
-    },
-    {
-        selector: '[data-animate="block-title"]',
-        animation: { y: 22, duration: 0.85 },
-    },
-    {
-        selector: '[data-animate="contact"]',
-        animation: { y: 24, duration: 0.8, stagger: 0.12 },
-    },
-    { selector: '[data-animate="form"]', animation: { x: 42, duration: 1 } },
-    { selector: '[data-animate="map"]', animation: { y: 34, duration: 1 } },
-    { selector: '[data-animate="directions"]', animation: { y: 16 } },
-]
+        {
+            selector: '[data-animate="heading-aside"]',
+            animation: { y: 26, duration: 0.9 },
+        },
+        {
+            selector: '[data-animate="map-copy"]',
+            animation: { y: 24, duration: 0.85 },
+        },
+        {
+            selector: '[data-animate="map-actions"]',
+            animation: { y: 18, duration: 0.8 },
+        },
+        {
+            selector: '[data-animate="block-title"]',
+            animation: { y: 22, duration: 0.85 },
+        },
+        {
+            selector: '[data-animate="contact"]',
+            animation: { y: 24, duration: 0.8, stagger: 0.12 },
+        },
+        { selector: '[data-animate="form"]', animation: { x: 42, duration: 1 } },
+        { selector: '[data-animate="map"]', animation: { y: 34, duration: 1 } },
+        { selector: '[data-animate="directions"]', animation: { y: 16 } },
+    ]
 
 const VILLA_LOCATION: Coordinates = {
     lat: 13.95007,
@@ -192,59 +194,59 @@ function LocationSection({
             >
                 <div className="contact-map-frame">
                     <div className="contact-map-canvas">
-                    <MapContainer
-                        center={[VILLA_LOCATION.lat, VILLA_LOCATION.lng]}
-                        zoom={15}
-                        scrollWheelZoom={false}
-                        className="contact-map"
-                    >
-                        <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            maxZoom={19}
-                        />
-                        <MapViewport userLocation={userLocation} />
-                        <CircleMarker
+                        <MapContainer
                             center={[VILLA_LOCATION.lat, VILLA_LOCATION.lng]}
-                            radius={11}
-                            pathOptions={{
-                                color: '#ffffff',
-                                weight: 3,
-                                fillColor: '#006dfc',
-                                fillOpacity: 1,
-                            }}
+                            zoom={15}
+                            scrollWheelZoom={false}
+                            className="contact-map"
                         >
-                            <Popup>
-                                <strong>{VILLA_NAME}</strong>
-                                <br />
-                                Your destination
-                            </Popup>
-                        </CircleMarker>
-                        {userLocation && (
+                            <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                maxZoom={19}
+                            />
+                            <MapViewport userLocation={userLocation} />
                             <CircleMarker
-                                center={[userLocation.lat, userLocation.lng]}
-                                radius={8}
+                                center={[VILLA_LOCATION.lat, VILLA_LOCATION.lng]}
+                                radius={11}
                                 pathOptions={{
                                     color: '#ffffff',
                                     weight: 3,
-                                    fillColor: '#16a34a',
+                                    fillColor: '#006dfc',
                                     fillOpacity: 1,
                                 }}
                             >
-                                <Popup>Your current location</Popup>
+                                <Popup>
+                                    <strong>{VILLA_NAME}</strong>
+                                    <br />
+                                    Your destination
+                                </Popup>
                             </CircleMarker>
-                        )}
-                        {routeCoordinates.length > 0 && (
-                            <Polyline
-                                positions={routeCoordinates}
-                                pathOptions={{
-                                    color: '#006dfc',
-                                    weight: 5,
-                                    opacity: 0.85,
-                                }}
-                            />
-                        )}
-                    </MapContainer>
+                            {userLocation && (
+                                <CircleMarker
+                                    center={[userLocation.lat, userLocation.lng]}
+                                    radius={8}
+                                    pathOptions={{
+                                        color: '#ffffff',
+                                        weight: 3,
+                                        fillColor: '#16a34a',
+                                        fillOpacity: 1,
+                                    }}
+                                >
+                                    <Popup>Your current location</Popup>
+                                </CircleMarker>
+                            )}
+                            {routeCoordinates.length > 0 && (
+                                <Polyline
+                                    positions={routeCoordinates}
+                                    pathOptions={{
+                                        color: '#006dfc',
+                                        weight: 5,
+                                        opacity: 0.85,
+                                    }}
+                                />
+                            )}
+                        </MapContainer>
                     </div>
 
                     <span
@@ -757,7 +759,6 @@ const Contact = () => {
                         className="contact-block__header"
                     >
                         <span className="contact-eyebrow">
-                            <span className="contact-eyebrow__line" />
                             Say hello
                         </span>
 
@@ -773,9 +774,12 @@ const Contact = () => {
 
                         <div className="contact-details">
 
-                            <div
+                            <PixelCard
                                 data-animate="contact"
                                 className="contact-row"
+                                theme="light"
+                                variant="blue"
+                                radius={12}
                             >
                                 <span className="contact-row__index">
                                     01
@@ -792,11 +796,14 @@ const Contact = () => {
                                 </div>
 
                                 <MapPin className="contact-row__icon" />
-                            </div>
+                            </PixelCard>
 
-                            <div
+                            <PixelCard
                                 data-animate="contact"
                                 className="contact-row"
+                                theme="light"
+                                variant="blue"
+                                radius={12}
                             >
                                 <span className="contact-row__index">
                                     02
@@ -818,19 +825,18 @@ const Contact = () => {
                                 </div>
 
                                 <Mail className="contact-row__icon" />
-                            </div>
+                            </PixelCard>
 
                             <blockquote
                                 data-animate="contact"
                                 className="contact-note"
                             >
                                 <p className="contact-note__title">
-                                    Your getaway is just a message away.
+                                    <MeshLettering />
                                 </p>
 
                                 <p className="contact-note__description">
-                                    We look forward to welcoming you to
-                                    VillaCorz.
+                                    <MeshLettering text="We look forward to welcoming you to VillaCorz." />
                                 </p>
                             </blockquote>
                         </div>
@@ -928,11 +934,10 @@ const Contact = () => {
                                                 : 'status'
                                         }
                                         ref={feedbackRef}
-                                        className={`contact-form__feedback ${
-                                            formFeedback.type === 'error'
+                                        className={`contact-form__feedback ${formFeedback.type === 'error'
                                                 ? 'contact-form__feedback--error'
                                                 : 'contact-form__feedback--success'
-                                        }`}
+                                            }`}
                                     >
                                         {formFeedback.message}
                                     </p>
