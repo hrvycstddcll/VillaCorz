@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
 if (-not (Test-Path ".venv\Scripts\python.exe")) {
-    python -m venv .venv
+    py -m venv .venv
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to create the forecasting service virtual environment."
     }

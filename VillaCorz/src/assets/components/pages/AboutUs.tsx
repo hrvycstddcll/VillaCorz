@@ -12,6 +12,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { AirVent, BadgePercent, ShieldCheck, Users } from 'lucide-react'
 import logoUrl from '../../VillaCorz-SVGLogo.svg'
 import TopView from '../../matabungkay-top-view-1600.jpg'
+import SpotlightCard from '../ui/SpotlightCard'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -47,6 +48,7 @@ const reasons = [
 ]
 
 const tiltStyles = `
+.vc-tilt-root,.vc-tilt-inner,.vc-tilt-flipper,.vc-tilt-face{height:100%}
 .vc-tilt-root{perspective:1000px}
 .vc-tilt-inner{position:relative;transform-style:preserve-3d;will-change:transform}
 .vc-tilt-flipper{position:relative;transform-style:preserve-3d}
@@ -479,21 +481,35 @@ const AboutUs = () => {
 
                 <div
                     data-reason-grid
-                    className="mx-auto grid w-full max-w-6xl gap-5 px-5 pb-20 sm:grid-cols-2 sm:gap-6 sm:px-8 lg:grid-cols-4 lg:pb-24"
+                    className="mx-auto grid w-full max-w-6xl items-stretch gap-5 px-5 pb-20 sm:grid-cols-2 sm:gap-6 sm:px-8 lg:grid-cols-4 lg:pb-24"
+                    style={{ gridAutoRows: '1fr' }}
                 >
-                    {reasons.map(({ icon: Icon, tilt, title, body }) => (
-                        <TiltedCard key={title} data-reason-card tiltClass={tilt}>
-                            <div className="h-full rounded-2xl bg-white/55 p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_40px_-24px_rgba(15,40,80,0.28)] ring-1 ring-white/70 backdrop-blur-xl transition-[background-color,box-shadow] duration-300 hover:bg-white/70 hover:shadow-[0_2px_4px_rgba(15,23,42,0.05),0_28px_56px_-24px_rgba(0,109,252,0.35)]">
-                                <div className="flex size-11 items-center justify-center rounded-xl bg-[#006dfc]/10 text-[#006dfc] ring-1 ring-[#006dfc]/15">
+                    {reasons.map(({ icon: Icon, title, body }) => (
+                        <TiltedCard key={title} data-reason-card tiltClass="" className="h-full" style={{ height: '100%' }}>
+                            <SpotlightCard
+                                theme="light"
+                                spotlightColor="#006dfc"
+                                intensity={0.12}
+                                spotlightSize={220}
+                                softness={0.7}
+                                shape="circle"
+                                borderGlow={0.5}
+                                proximity={80}
+                                smoothing={0.3}
+                                flare
+                                className="h-full transition-all duration-300 hover:backdrop-blur-md hover:bg-blue-500/10 hover:border-blue-400/30 hover:shadow-lg hover:shadow-blue-500/10"
+                                style={{ padding: '1.5rem', height: '100%' }}
+                            >
+                                <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-[#006dfc]/10 text-[#006dfc] ring-1 ring-[#006dfc]/15">
                                     <Icon className="size-5" aria-hidden="true" />
                                 </div>
-                                <h3 className="mt-4 font-serif text-lg font-semibold leading-snug text-balance text-black">
+                                <h3 className="mt-4 font-instrument text-lg font-medium leading-snug text-balance text-black">
                                     {title}
                                 </h3>
                                 <p className="mt-2.5 font-poppins text-[0.78rem] leading-relaxed text-gray-600">
                                     {body}
                                 </p>
-                            </div>
+                            </SpotlightCard>
                         </TiltedCard>
                     ))}
                 </div>
