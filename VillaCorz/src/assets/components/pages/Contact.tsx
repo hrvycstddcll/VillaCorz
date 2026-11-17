@@ -12,7 +12,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SplitText } from 'gsap/SplitText'
 import api from '../../../services/api'
 import PixelCard from '../ui/PixelCard'
-import MeshLettering from '../ui/MeshLettering'
+import WarpText from '../ui/WarpText'
 import {
     MapContainer,
     TileLayer,
@@ -832,11 +832,27 @@ const Contact = () => {
                                 className="contact-note"
                             >
                                 <p className="contact-note__title">
-                                    <MeshLettering />
+                                    <WarpText
+                                        text="VillaCorz"
+                                        color="#fff"
+                                        fontSize="clamp(6rem, 12vw, 10rem)"
+                                        fontWeight={800}
+                                        fontFamily="inherit"
+                                        letterSpacing="-0.06em"
+                                        style={{ height: '400px' }}
+                                    />
                                 </p>
 
                                 <p className="contact-note__description">
-                                    <MeshLettering text="We look forward to welcoming you to VillaCorz." />
+                                    <WarpText
+                                        text="We look forward to welcoming you to VillaCorz."
+                                        color="#fff"
+                                        fontSize="clamp(5rem, 10vw, 8rem)"
+                                        fontWeight={800}
+                                        fontFamily="inherit"
+                                        letterSpacing="-0.06em"
+                                        style={{ height: '400px' }}
+                                    />
                                 </p>
                             </blockquote>
                         </div>
@@ -881,7 +897,7 @@ const Contact = () => {
                                             required
                                             maxLength={120}
                                             autoComplete="name"
-                                            placeholder="Enter your name"
+                                            placeholder={"Enter your name\u00A0"}
                                             className="contact-form__input"
                                         />
                                     </div>
@@ -901,7 +917,7 @@ const Contact = () => {
                                             required
                                             maxLength={254}
                                             autoComplete="email"
-                                            placeholder="Enter your email"
+                                            placeholder={"Enter your email\u00A0"}
                                             className="contact-form__input"
                                         />
                                     </div>
@@ -921,7 +937,7 @@ const Contact = () => {
                                         rows={5}
                                         required
                                         maxLength={5000}
-                                        placeholder="How can we help you?"
+                                        placeholder={"How can we help you?\u00A0"}
                                         className="contact-form__textarea"
                                     />
                                 </div>
