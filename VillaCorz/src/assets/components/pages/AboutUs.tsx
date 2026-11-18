@@ -11,14 +11,10 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { AirVent, BadgePercent, ShieldCheck, Users } from 'lucide-react'
 import logoUrl from '../../VillaCorz-SVGLogo.svg'
-import TopView from '../../matabungkay-top-view-1600.jpg'
 import SpotlightCard from '../ui/SpotlightCard'
+import CountUp from '../ui/CountUp'
 
 gsap.registerPlugin(ScrollTrigger)
-
-const beachPhoto = TopView
-const logo =
-    'https://res.cloudinary.com/ql4hruc3/image/upload/v1791786033/VillaCorzLogo.png'
 
 const reasons = [
     {
@@ -417,50 +413,129 @@ const AboutUs = () => {
                 </div>
             </div>
 
-            <div className="relative z-10 mx-auto w-full max-w-7xl px-5 pb-20 sm:px-8 sm:pb-28">
-                <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-14">
-                    <div className="max-w-md">
-                        <h3 className="font-instrument text-2xl text-black sm:text-3xl">
+            <div className="relative z-10 mx-auto w-full max-w-7xl px-5 pb-8 sm:px-8 sm:pb-12">
+                <div className="grid items-start gap-10 pt-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-14">
+                    <div className="max-w-md pl-[3.8rem] sm:pl-[7.0rem]">
+                        <h3 className="font-instrument text-2xl tracking-[-0.05em] text-black sm:text-3xl">
                             About Us
                         </h3>
 
-                        <p className="font-poppins mt-4 text-justify text-[0.8rem] leading-relaxed text-gray-600 sm:text-sm">
-                            Villa Corz is a private beach house in Lian, Batangas, made for
-                            guests who want a simple, comfortable, and well-priced seaside
-                            stay. Whether you are planning a family gathering, a barkada
-                            reunion, or a team-building retreat, we offer clean, affordable
-                            rooms and spacious common areas where everyone can relax. The
-                            property provides two ways to stay: book individual rooms for a
-                            smaller group, or reserve the whole house for up to 28 guests.
-                            Either way, you get a relaxed, secure, and welcoming base by the
-                            sea.
+                        <p className="font-helvetica-world mt-4 text-justify text-[0.8rem] leading-relaxed text-gray-600 sm:text-sm">
+                            Welcome to Villa Corz. Here we blend coastal comfort, flexible
+                            group stays, and genuine Batangueño warmth to create effortless
+                            seaside getaways just two hours from Manila.
                         </p>
-
-                        <div className="mt-8 flex items-center gap-3">
-                            <img
-                                src={logo}
-                                alt=""
-                                aria-hidden="true"
-                                className="size-10 rounded-full border border-black/10 bg-white object-contain p-0.5"
-                            />
-                            <div>
-                                <p className="font-serif text-sm font-semibold text-black">
-                                    Villa Corz
-                                </p>
-                                <p className="text-[0.7rem] text-gray-500">
-                                    Located: Mabuhangray, Lian, Batangas
-                                </p>
-                            </div>
-                        </div>
                     </div>
 
-                    <img
-                        data-about-photo
-                        src={beachPhoto}
-                        alt="Aerial view of the Villa Corz beach house shoreline"
-                        decoding="async"
-                        className="h-56 w-full rounded-3xl object-cover shadow-[0_20px_50px_-20px_rgba(0,0,0,0.35)] sm:h-72 lg:h-80"
-                    />
+                    <div className="mt-10 max-w-md lg:max-w-none">
+                        <p className="font-helvetica-world max-w-[calc(100%-4rem)] text-justify text-[0.8rem] leading-relaxed text-gray-600 sm:max-w-[calc(100%-7rem)] sm:text-sm">
+                            Located in Lian, Batangas near the iconic shores of Matabungkay
+                            and the hidden coves of Ligtasin and Kaynipa our private beach
+                            house offers the sweet spot between crowded commercial resorts
+                            and cramped rentals. Enjoy clean, air-conditioned rooms, spacious
+                            common areas, and golden sunsets in a relaxed setting where time
+                            slows down. Whether you are planning an intimate weekend or a
+                            full-house celebration, we make booking simple and well-priced.
+                            Reserve individual rooms for a smaller barkada, or claim the
+                            entire villa exclusively for 30 to 35 guests giving your family,
+                            friends, or team a secure, welcoming home by the sea.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="relative z-10 mx-auto w-full max-w-7xl px-5 py-4 sm:px-8">
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                        {
+                            node: (
+                                <>
+                                    30–
+                                    <CountUp
+                                        from={0}
+                                        to={35}
+                                        trigger="view"
+                                        mode="roll"
+                                        easing="expo"
+                                        duration={1.8}
+                                        replayOnHover={true}
+                                    />
+                                </>
+                            ),
+                            label: 'MAX GROUP CAPACITY',
+                        },
+                        {
+                            node: (
+                                <CountUp
+                                    from={0}
+                                    to={2}
+                                    suffix=" Mins"
+                                    trigger="view"
+                                    mode="roll"
+                                    easing="expo"
+                                    duration={1.8}
+                                    replayOnHover={true}
+                                />
+                            ),
+                            label: 'WALK TO THE SHORE',
+                        },
+                        {
+                            node: (
+                                <CountUp
+                                    from={0}
+                                    to={2}
+                                    suffix=" Hrs"
+                                    trigger="view"
+                                    mode="roll"
+                                    easing="expo"
+                                    duration={1.8}
+                                    replayOnHover={true}
+                                />
+                            ),
+                            label: 'DRIVE FROM METRO MANILA',
+                        },
+                        {
+                            node: (
+                                <CountUp
+                                    from={0}
+                                    to={100}
+                                    suffix="%"
+                                    trigger="view"
+                                    mode="roll"
+                                    easing="expo"
+                                    duration={1.8}
+                                    replayOnHover={true}
+                                />
+                            ),
+                            label: 'AIR-CONDITIONED ROOMS',
+                        },
+                    ].map((item, idx) => (
+                        <div
+                            key={idx}
+                            className="flex cursor-pointer flex-col items-center justify-center rounded-2xl py-6 transition-all duration-300 hover:scale-105"
+                        >
+                            <span
+                                className="font-instrument font-semibold text-black"
+                                style={{
+                                    fontSize: 'clamp(3.5rem, 5vw, 5rem)',
+                                    letterSpacing: '-0.04em',
+                                    lineHeight: 1,
+                                }}
+                            >
+                                {item.node}
+                            </span>
+                            <span
+                                className="mt-3 font-poppins text-gray-500"
+                                style={{
+                                    fontSize: '0.7rem',
+                                    letterSpacing: '0.14em',
+                                    textTransform: 'uppercase',
+                                }}
+                            >
+                                {item.label}
+                            </span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
