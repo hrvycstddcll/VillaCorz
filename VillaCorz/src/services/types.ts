@@ -418,3 +418,45 @@ export type AdminReportSchedule = {
     frequency: 'weekly' | 'monthly'
     next_run_at: string
 }
+
+export type AssistantPage = 'dashboard' | 'reports' | 'offers' | 'other'
+
+export type AssistantChatContext = {
+    page: AssistantPage
+    report?: AdminReportKind | 'activity'
+    from?: string
+    to?: string
+    range?: 7 | 30 | 90
+}
+
+export type AssistantChatMessage = {
+    role: 'user' | 'assistant'
+    content: string
+}
+
+export type AssistantChatRequest = {
+    message: string
+    context: AssistantChatContext
+    history: AssistantChatMessage[]
+}
+
+export type AssistantChatResponse = {
+    answer: string
+    sources: {
+        page: AssistantPage
+        report: AdminReportKind | 'activity' | null
+        window: {
+            start: string
+            end: string
+            days: number
+            capped_to_90_days: boolean
+        }
+    }
+    generated_at: string
+}
+
+export type AssistantStatus = {
+    enabled: boolean
+    reachable: boolean
+    model: string
+}
