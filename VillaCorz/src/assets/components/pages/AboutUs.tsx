@@ -13,6 +13,7 @@ import { AirVent, BadgePercent, ShieldCheck, Users } from 'lucide-react'
 import logoUrl from '../../VillaCorz-SVGLogo.svg'
 import SpotlightCard from '../ui/SpotlightCard'
 import CountUp from '../ui/CountUp'
+import AccordionGallery from '../ui/AccordionGallery'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -537,6 +538,18 @@ const AboutUs = () => {
                         </div>
                     ))}
                 </div>
+            </div>
+
+            <div className="relative z-10 w-full mt-8" style={{ marginBottom: 0, paddingBottom: 0 }}>
+                <AccordionGallery
+                    height="100vh"
+                    gap={0}
+                    radius={0}
+                    tilt={0}
+                    grayscale={false}
+                    expandRatio={0.82}
+                    trigger="click"
+                />
             </div>
 
             <div className='relative z-10 flex flex-col'>
