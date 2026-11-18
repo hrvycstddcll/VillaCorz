@@ -1,20 +1,21 @@
 
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\AdminAssistantController;
 use App\Http\Controllers\Api\AdminOfferController;
+use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PhoneNumberController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\ServiceReviewController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 // Authenticated user
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
@@ -100,6 +101,10 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/activity-logs/summary', [ActivityLogController::class, 'summary']);
     Route::get('/activity-logs/export', [ActivityLogController::class, 'export']);
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+
+    Route::get('/assistant/status', [AdminAssistantController::class, 'status']);
+    Route::post('/assistant/chat', [AdminAssistantController::class, 'chat'])
+        ->middleware('throttle:10,1');
 
     Route::get('/dashboard', [DashboardController::class, 'summary']);
     Route::get('/admin/offers', AdminOfferController::class);

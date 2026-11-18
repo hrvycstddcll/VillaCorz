@@ -22,6 +22,7 @@ import PasswordRecovery from './assets/components/pages/PasswordRecovery'
 import ManageOffers from './assets/components/pages/Offers'
 import Contact from './assets/components/pages/Contact'
 import Navbar from './assets/components/ui/InteractiveComponents/Navbar'
+import AdminAssistantPanel from './assets/components/admin/AdminAssistantPanel'
 import Auth from './assets/components/auth/Auth'
 import { AuthProvider } from './services/AuthContext'
 import { useAuth } from './services/useAuth'
@@ -110,6 +111,7 @@ function AdminLayout() {
         <div className="min-h-screen bg-slate-50 text-slate-800">
             <NavbarSpacer />
             <Outlet />
+            <AdminAssistantPanel />
         </div>
     )
 }

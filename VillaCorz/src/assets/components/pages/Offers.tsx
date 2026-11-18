@@ -5,6 +5,8 @@ import {
     useMemo,
     useRef,
     useState,
+    type KeyboardEvent as ReactKeyboardEvent,
+    type MouseEvent as ReactMouseEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
 import axios from 'axios'
@@ -165,14 +167,12 @@ const OfferActionsMenu = ({
             menu.style.visibility = 'visible'
         }
 
-        const closeOnScroll = () => setOpen(false)
-
         positionMenu()
         window.addEventListener('resize', positionMenu)
-        window.addEventListener('scroll', closeOnScroll, { capture: true, passive: true })
+        window.addEventListener('scroll', positionMenu, { capture: true, passive: true })
         return () => {
             window.removeEventListener('resize', positionMenu)
-            window.removeEventListener('scroll', closeOnScroll, { capture: true })
+            window.removeEventListener('scroll', positionMenu, { capture: true })
         }
     }, [open])
 
@@ -286,6 +286,9 @@ const Offers = () => {
     const [deleteError, setDeleteError] = useState('')
     const [deleting, setDeleting] = useState(false)
     const [selectedCalendar, setSelectedCalendar] = useState<Service | null>(null)
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set())
+    const [bulkUpdating, setBulkUpdating] = useState(false)
+    const selectionAnchorRef = useRef<number | null>(null)
 
     const loadData = useCallback(async () => {
         setLoading(true)
@@ -295,7 +298,13 @@ const Offers = () => {
                 getServices(),
                 getDashboard(30),
             ])
-            setServices(serviceResponse.data.data ?? [])
+            const nextServices = serviceResponse.data.data ?? []
+            setServices(nextServices)
+            setSelectedIds((current) => {
+                const availableIds = new Set(nextServices.map((service) => service.id))
+                const next = new Set([...current].filter((id) => availableIds.has(id)))
+                return next.size === current.size ? current : next
+            })
             setSummary(dashboardResponse.data.data)
         } catch (loadFailure) {
             setError(getErrorMessage(loadFailure))
@@ -359,6 +368,57 @@ const Offers = () => {
             })
     }, [filter, search, services, sort, summary])
 
+    const handleSelectService = <T extends HTMLElement,>(
+        event: ReactMouseEvent<T> | ReactKeyboardEvent<T>,
+        service: Service,
+    ) => {
+        const additive = event.ctrlKey || event.metaKey
+        const anchorId = selectionAnchorRef.current
+
+        if (event.shiftKey && anchorId !== null) {
+            const anchorIndex = visibleServices.findIndex((item) => item.id === anchorId)
+            const targetIndex = visibleServices.findIndex((item) => item.id === service.id)
+            if (anchorIndex !== -1 && targetIndex !== -1) {
+                const start = Math.min(anchorIndex, targetIndex)
+                const end = Math.max(anchorIndex, targetIndex)
+                setSelectedIds((current) => {
+                    const next = additive ? new Set(current) : new Set<number>()
+                    visibleServices.slice(start, end + 1).forEach((item) => next.add(item.id))
+                    return next
+                })
+                return
+            }
+        }
+
+        selectionAnchorRef.current = service.id
+        setSelectedIds((current) => {
+            if (!additive) return new Set([service.id])
+            const next = new Set(current)
+            if (next.has(service.id)) next.delete(service.id)
+            else next.add(service.id)
+            return next
+        })
+    }
+
+    const handleSelectionKeyDown = <T extends HTMLElement,>(
+        event: ReactKeyboardEvent<T>,
+        service: Service,
+    ) => {
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            const list = event.currentTarget.closest('[data-offer-list]')
+            const rows = Array.from(list?.querySelectorAll<HTMLElement>('[tabindex="0"]') ?? [])
+            const index = rows.indexOf(event.currentTarget)
+            event.preventDefault()
+            rows[index + (event.key === 'ArrowDown' ? 1 : -1)]?.focus()
+            return
+        }
+
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            handleSelectService(event, service)
+        }
+    }
+
     const openAddForm = () => {
         setEditingService(null)
         setFormOpen(true)
@@ -394,12 +454,43 @@ const Offers = () => {
         }
     }
 
+    const archiveSelected = async () => {
+        const selected = services.filter((service) => selectedIds.has(service.id))
+        if (selected.length === 0 || bulkUpdating) return
+        setBulkUpdating(true)
+        const results = await Promise.allSettled(
+            selected.map((service) =>
+                updateServiceStatus(service, service.status === 'active' ? 'inactive' : 'active'),
+            ),
+        )
+        const succeeded = results.filter((result) => result.status === 'fulfilled').length
+        const failed = results.length - succeeded
+        setSelectedIds(new Set())
+        selectionAnchorRef.current = null
+        setNotice({
+            tone: failed ? 'error' : 'success',
+            message: failed
+                ? `${succeeded} offers updated; ${failed} could not be updated.`
+                : `${succeeded} offers updated.`,
+        })
+        await loadData()
+        setBulkUpdating(false)
+    }
+
     const confirmDelete = async () => {
         if (!deletingService) return
+        const deletingId = deletingService.id
         setDeleting(true)
         setDeleteError('')
         try {
-            const response = await deleteService(deletingService.id)
+            const response = await deleteService(deletingId)
+            setSelectedIds((current) => {
+                if (!current.has(deletingId)) return current
+                const next = new Set(current)
+                next.delete(deletingId)
+                return next
+            })
+            if (selectionAnchorRef.current === deletingId) selectionAnchorRef.current = null
             setDeletingService(null)
             setNotice({
                 tone: 'success',
@@ -450,6 +541,11 @@ const Offers = () => {
         />
     )
 
+    const selectionRowClass = (service: Service) =>
+        selectedIds.has(service.id)
+            ? 'cursor-pointer select-none bg-[#006dfc]/5 shadow-[inset_3px_0_0_#006dfc] hover:bg-[#006dfc]/10'
+            : 'cursor-pointer select-none'
+
     const columns: AdminTableColumn<Service>[] = [
         {
             key: 'offer',
@@ -457,7 +553,11 @@ const Offers = () => {
             render: (service) => (
                 <button
                     type="button"
-                    onClick={() => openEditForm(service)}
+                    onClick={(event) => {
+                        event.stopPropagation()
+                        openEditForm(service)
+                    }}
+                    onKeyDown={(event) => event.stopPropagation()}
                     className={`flex min-h-11 flex-col items-start justify-center rounded-sm text-left ${focusRing}`}
                 >
                     <span className="font-medium text-slate-950">{service.name}</span>
@@ -490,7 +590,13 @@ const Offers = () => {
             align: 'right',
             className: 'w-14 min-w-[3.5rem]',
             render: (service) => (
-                <div className="flex justify-end">{renderOfferActions(service)}</div>
+                <div
+                    className="flex justify-end"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                >
+                    {renderOfferActions(service)}
+                </div>
             ),
         },
     ]
@@ -645,6 +751,33 @@ const Offers = () => {
                                 }))}
                             />
                         </div>
+                        {selectedIds.size > 0 && (
+                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#006dfc]/20 bg-[#006dfc]/5 px-3 py-2">
+                                <span className="text-xs font-semibold text-[#006dfc]">
+                                    {selectedIds.size} selected
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedIds(new Set())
+                                            selectionAnchorRef.current = null
+                                        }}
+                                        className={`min-h-11 rounded-lg px-3 text-xs font-semibold text-slate-700 hover:bg-white ${focusRing}`}
+                                    >
+                                        Clear
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => void archiveSelected()}
+                                        disabled={bulkUpdating}
+                                        className={`min-h-11 rounded-lg bg-[#006dfc] px-3 text-xs font-semibold text-white hover:bg-[#0057c9] disabled:opacity-50 ${focusRing}`}
+                                    >
+                                        {bulkUpdating ? 'Updating…' : 'Archive / restore'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {loading ? (
@@ -675,16 +808,36 @@ const Offers = () => {
                         />
                     ) : (
                         <div className="px-5 pb-4">
-                            <div className="space-y-3 md:hidden">
+                            <div
+                                className="space-y-3 md:hidden"
+                                role="listbox"
+                                aria-label="Offer catalogue performance"
+                                aria-multiselectable="true"
+                                data-offer-list
+                            >
                                 {visibleServices.map((service) => (
                                     <article
                                         key={service.id}
-                                        className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4"
+                                        role="option"
+                                        aria-selected={selectedIds.has(service.id)}
+                                        aria-label={`${service.name}, ${service.kind}`}
+                                        tabIndex={0}
+                                        onClick={(event) => handleSelectService(event, service)}
+                                        onKeyDown={(event) => handleSelectionKeyDown(event, service)}
+                                        className={`rounded-xl border bg-white p-4 transition ${selectionRowClass(service)} ${
+                                            selectedIds.has(service.id)
+                                                ? 'border-[#006dfc]/40'
+                                                : 'border-[rgba(0,0,0,0.06)] hover:bg-slate-50'
+                                        } ${focusRing}`}
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <button
                                                 type="button"
-                                                onClick={() => openEditForm(service)}
+                                                onClick={(event) => {
+                                                    event.stopPropagation()
+                                                    openEditForm(service)
+                                                }}
+                                                onKeyDown={(event) => event.stopPropagation()}
                                                 className={`flex min-h-11 min-w-0 flex-1 flex-col items-start justify-center rounded-sm text-left ${focusRing}`}
                                             >
                                                 <span className="truncate font-medium text-slate-950">
@@ -694,7 +847,12 @@ const Offers = () => {
                                                     {service.kind}
                                                 </span>
                                             </button>
-                                            {renderOfferActions(service)}
+                                            <div
+                                                onClick={(event) => event.stopPropagation()}
+                                                onKeyDown={(event) => event.stopPropagation()}
+                                            >
+                                                {renderOfferActions(service)}
+                                            </div>
                                         </div>
                                         <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-[rgba(0,0,0,0.06)] pt-3">
                                             <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -711,13 +869,21 @@ const Offers = () => {
                                     </article>
                                 ))}
                             </div>
-                            <div className="hidden md:block">
+                            <div className="hidden md:block" data-offer-list>
                                 <AdminTable
                                     label="Offer catalogue performance"
                                     columns={columns}
                                     rows={visibleServices}
                                     rowKey={(service) => service.id}
                                     empty={null}
+                                    tableProps={{ role: 'grid', 'aria-multiselectable': true }}
+                                    rowProps={(service) => ({
+                                        tabIndex: 0,
+                                        'aria-selected': selectedIds.has(service.id),
+                                        onClick: (event) => handleSelectService(event, service),
+                                        onKeyDown: (event) => handleSelectionKeyDown(event, service),
+                                    })}
+                                    rowClassName={selectionRowClass}
                                 />
                             </div>
                             <p className="mt-3 text-[10px] leading-5 text-slate-500">
