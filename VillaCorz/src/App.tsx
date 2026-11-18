@@ -13,6 +13,7 @@ import { trackPageView } from './services/dashboardService'
 import Reports from './assets/components/pages/Reports'
 import HomePage from './assets/components/pages/HomePage'
 import AboutUs from './assets/components/pages/AboutUs'
+import Testimonials from './assets/components/pages/Testimonials'
 import Services from './assets/components/pages/Services'
 import MyBookings from './assets/components/pages/MyBookings'
 import Payment from './assets/components/pages/Payment'
@@ -267,6 +268,7 @@ function AppRoutes() {
                             <HomePage />
                             <Services bookingOnly />
                             <AboutUs />
+                            <Testimonials />
                             <Contact />
                         </>
                     }

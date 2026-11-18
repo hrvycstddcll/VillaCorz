@@ -460,3 +460,14 @@ export type AssistantStatus = {
     reachable: boolean
     model: string
 }
+
+export type FeaturedTestimonial = {
+    id: number
+    rating: number
+    title: string
+    quote: string
+    author: string
+    serviceName: string
+    createdAt: string
+    verified: boolean
+}

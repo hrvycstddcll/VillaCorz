@@ -18,7 +18,7 @@ class DemoSeederTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_reseed_populates_core_tables_without_reviews_and_targets_revenue(): void
+    public function test_reseed_populates_core_tables_with_room_reviews_and_targets_revenue(): void
     {
         $this->seedBaseline();
 
@@ -27,8 +27,20 @@ class DemoSeederTest extends TestCase
         $this->assertSame(14, User::count());
         $this->assertSame(6, Service::count());
         $this->assertSame(3, ServiceImage::count());
-        $this->assertSame(0, ServiceReview::count());
+        $this->assertSame(40, ServiceReview::count());
         $this->assertSame(0, ServiceReviewImage::count());
+
+        foreach (Service::where('kind', 'room')->where('status', 'active')->get() as $room) {
+            $reviews = ServiceReview::where('service_id', $room->id)->with('booking')->get();
+
+            $this->assertGreaterThanOrEqual(5, $reviews->count());
+            $this->assertLessThanOrEqual(10, $reviews->count());
+            $this->assertTrue($reviews->every(
+                fn (ServiceReview $review) => $review->rating === 5
+                    && $review->status === 'published'
+                    && $review->isVerified(),
+            ));
+        }
 
         foreach ([
             'bookings',

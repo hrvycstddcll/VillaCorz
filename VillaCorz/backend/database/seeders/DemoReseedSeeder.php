@@ -26,6 +26,7 @@ class DemoReseedSeeder extends Seeder
     {
         $this->resetData();
         $this->call(DemoCustomerSeeder::class);
+        $this->call(DemoReviewSeeder::class);
         $this->call(DemoDemandSeeder::class);
         $this->call(DemoAnalyticsSeeder::class);
         $this->seedOperationalData();
