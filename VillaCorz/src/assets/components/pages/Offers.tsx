@@ -1,11 +1,24 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react'
+import { createPortal } from 'react-dom'
 import axios from 'axios'
 import {
+    Archive,
     CalendarDays,
     CircleAlert,
+    MoreVertical,
+    Pencil,
     Plus,
     RefreshCw,
+    RotateCcw,
     Search,
+    Trash2,
     X,
 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
@@ -21,9 +34,8 @@ import type { DashboardSummary } from '../../../services/types'
 import AdminCard from '../admin/AdminCard'
 import AdminEmptyState from '../admin/AdminEmptyState'
 import AdminFilterPills from '../admin/AdminFilterPills'
-import AdminStatStrip from '../admin/AdminStatStrip'
+import AdminStatStrip, { type AdminStat } from '../admin/AdminStatStrip'
 import AdminTable, { type AdminTableColumn } from '../admin/AdminTable'
-import { WarmTooltip } from '../ui/InteractiveComponents/WarmTooltip'
 import AdminPageHeader from '../ui/InteractiveComponents/AdminPageHeader'
 import ConfirmDialog from '../offers/ConfirmDialog'
 import OfferFormModal from '../offers/OfferFormModal'
@@ -67,6 +79,193 @@ const getErrorMessage = (
 const serviceMetrics = (summary: DashboardSummary | null, service: Service) =>
     summary?.offer_metrics.find((metric) => metric.service_id === service.id)
 
+const performanceStats = (
+    summary: DashboardSummary | null,
+    service: Service,
+): AdminStat[] => {
+    const metrics = serviceMetrics(summary, service)
+    return [
+        {
+            label: 'Bookings',
+            value: numberFormatter.format(metrics?.bookings ?? 0),
+        },
+        {
+            label: 'Revenue',
+            value: money(metrics?.revenue ?? 0),
+        },
+        {
+            label: 'Occupancy',
+            value: `${metrics?.occupancy ?? 0}%`,
+        },
+        {
+            label: 'Rating',
+            value: Number(metrics?.rating ?? service.rating_average ?? 0).toFixed(1),
+            suffix: '/5',
+        },
+    ]
+}
+
+type OfferActionsMenuProps = {
+    service: Service
+    onEdit: (service: Service) => void
+    onCalendar: (service: Service) => void
+    onArchive: (service: Service) => void
+    onDelete: (service: Service) => void
+}
+
+const menuItemClass = `flex min-h-11 w-full items-center gap-2 px-3 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 ${focusRing}`
+
+const OfferActionsMenu = ({
+    service,
+    onEdit,
+    onCalendar,
+    onArchive,
+    onDelete,
+}: OfferActionsMenuProps) => {
+    const [open, setOpen] = useState(false)
+    const triggerRef = useRef<HTMLButtonElement>(null)
+    const menuRef = useRef<HTMLDivElement>(null)
+    const archived = service.status === 'inactive'
+
+    const closeMenu = () => {
+        setOpen(false)
+    }
+
+    useLayoutEffect(() => {
+        if (!open) return
+
+        const positionMenu = () => {
+            const trigger = triggerRef.current
+            const menu = menuRef.current
+            if (!trigger || !menu) return
+
+            const rect = trigger.getBoundingClientRect()
+            const width = menu.offsetWidth
+            const height = menu.offsetHeight
+            const navBottom =
+                document.getElementById('primary-nav')?.getBoundingClientRect().bottom ?? 0
+            const safeTop = Math.max(8, navBottom + 8)
+            const left = Math.min(
+                Math.max(8, rect.left + rect.width / 2 - width / 2),
+                Math.max(8, window.innerWidth - width - 8),
+            )
+            const spaceBelow = window.innerHeight - rect.bottom - 8
+            const spaceAbove = rect.top - safeTop - 8
+            const opensAbove = spaceBelow < height && spaceAbove >= height
+            const preferredTop = opensAbove
+                ? rect.top - height - 8
+                : rect.bottom + 8
+            const top = Math.max(
+                safeTop,
+                Math.min(preferredTop, Math.max(safeTop, window.innerHeight - height - 8)),
+            )
+
+            menu.style.top = `${top}px`
+            menu.style.left = `${left}px`
+            menu.style.visibility = 'visible'
+        }
+
+        const closeOnScroll = () => setOpen(false)
+
+        positionMenu()
+        window.addEventListener('resize', positionMenu)
+        window.addEventListener('scroll', closeOnScroll, { capture: true, passive: true })
+        return () => {
+            window.removeEventListener('resize', positionMenu)
+            window.removeEventListener('scroll', closeOnScroll, { capture: true })
+        }
+    }, [open])
+
+    useEffect(() => {
+        if (!open) return
+
+        const handleOutside = (event: MouseEvent) => {
+            const target = event.target as Node
+            if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return
+            closeMenu()
+        }
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return
+            closeMenu()
+            triggerRef.current?.focus()
+        }
+
+        document.addEventListener('mousedown', handleOutside)
+        document.addEventListener('keydown', handleEscape)
+        return () => {
+            document.removeEventListener('mousedown', handleOutside)
+            document.removeEventListener('keydown', handleEscape)
+        }
+    }, [open])
+
+    const runAction = (action: () => void) => {
+        closeMenu()
+        action()
+    }
+
+    return (
+        <>
+            <button
+                ref={triggerRef}
+                type="button"
+                onClick={() => (open ? closeMenu() : setOpen(true))}
+                aria-label={`Actions for ${service.name}`}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                className={`inline-grid size-11 shrink-0 place-items-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 ${focusRing}`}
+            >
+                <MoreVertical className="size-5" />
+            </button>
+            {open &&
+                createPortal(
+                    <div
+                        ref={menuRef}
+                        role="menu"
+                        className="fixed z-[80] w-52 rounded-xl border border-[rgba(0,0,0,0.06)] bg-white py-1 shadow-[0_12px_36px_rgba(0,0,0,0.12)]"
+                    >
+                        <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => runAction(() => onEdit(service))}
+                            className={menuItemClass}
+                        >
+                            <Pencil className="size-4" />
+                            Edit offer
+                        </button>
+                        <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => runAction(() => onCalendar(service))}
+                            className={menuItemClass}
+                        >
+                            <CalendarDays className="size-4" />
+                            View calendar
+                        </button>
+                        <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => runAction(() => onArchive(service))}
+                            className={menuItemClass}
+                        >
+                            {archived ? <RotateCcw className="size-4" /> : <Archive className="size-4" />}
+                            {archived ? 'Restore offer' : 'Archive offer'}
+                        </button>
+                        <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => runAction(() => onDelete(service))}
+                            className={`${menuItemClass} text-rose-700 hover:bg-rose-50`}
+                        >
+                            <Trash2 className="size-4" />
+                            Delete
+                        </button>
+                    </div>,
+                    document.body,
+                )}
+        </>
+    )
+}
+
 const Offers = () => {
     const [searchParams, setSearchParams] = useSearchParams()
     const filter = (filters.some((item) => item.value === searchParams.get('status'))
@@ -86,9 +285,7 @@ const Offers = () => {
     const [deletingService, setDeletingService] = useState<Service | null>(null)
     const [deleteError, setDeleteError] = useState('')
     const [deleting, setDeleting] = useState(false)
-    const [selectedIds, setSelectedIds] = useState<number[]>([])
     const [selectedCalendar, setSelectedCalendar] = useState<Service | null>(null)
-    const [bulkUpdating, setBulkUpdating] = useState(false)
 
     const loadData = useCallback(async () => {
         setLoading(true)
@@ -197,28 +394,6 @@ const Offers = () => {
         }
     }
 
-    const archiveSelected = async () => {
-        const selected = services.filter((service) => selectedIds.includes(service.id))
-        if (selected.length === 0 || bulkUpdating) return
-        setBulkUpdating(true)
-        const results = await Promise.allSettled(
-            selected.map((service) =>
-                updateServiceStatus(service, service.status === 'active' ? 'inactive' : 'active'),
-            ),
-        )
-        const succeeded = results.filter((result) => result.status === 'fulfilled').length
-        const failed = results.length - succeeded
-        setSelectedIds([])
-        setNotice({
-            tone: failed ? 'error' : 'success',
-            message: failed
-                ? `${succeeded} offers updated; ${failed} could not be updated.`
-                : `${succeeded} offers updated.`,
-        })
-        await loadData()
-        setBulkUpdating(false)
-    }
-
     const confirmDelete = async () => {
         if (!deletingService) return
         setDeleting(true)
@@ -238,9 +413,6 @@ const Offers = () => {
         }
     }
 
-    const allVisibleSelected =
-        visibleServices.length > 0 &&
-        visibleServices.every((service) => selectedIds.includes(service.id))
     const reservedDates = useMemo(() => {
         const dates = new Set<string>()
         const availability = selectedCalendar
@@ -266,30 +438,19 @@ const Offers = () => {
         })
     }, [])
 
+    const renderOfferActions = (service: Service) => (
+        <OfferActionsMenu
+            service={service}
+            onEdit={openEditForm}
+            onCalendar={setSelectedCalendar}
+            onArchive={(item) => {
+                void archiveService(item, item.status === 'active' ? 'inactive' : 'active')
+            }}
+            onDelete={setDeletingService}
+        />
+    )
+
     const columns: AdminTableColumn<Service>[] = [
-        {
-            key: 'select',
-            label: 'Select',
-            className: 'w-10',
-            render: (service) => (
-                <label className="inline-flex min-h-11 min-w-11 items-center">
-                    <span className="sr-only">Select {service.name}</span>
-                    <input
-                        type="checkbox"
-                        checked={selectedIds.includes(service.id)}
-                        onChange={(event) =>
-                            setSelectedIds((current) =>
-                                event.target.checked
-                                    ? [...current, service.id]
-                                    : current.filter((id) => id !== service.id),
-                            )
-                        }
-                        aria-label={`Select ${service.name}`}
-                        className={`size-4 accent-[#006dfc] ${focusRing}`}
-                    />
-                </label>
-            ),
-        },
         {
             key: 'offer',
             label: 'Offer',
@@ -305,25 +466,10 @@ const Offers = () => {
             ),
         },
         {
-            key: 'status',
-            label: 'Status',
-            render: (service) => (
-                <span className="inline-flex min-h-11 items-center gap-2 text-xs capitalize text-slate-700">
-                    <span
-                        aria-hidden="true"
-                        className={`size-1.5 rounded-full ${
-                            service.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'
-                        }`}
-                    />
-                    {service.status === 'active' ? 'Active' : 'Archived'}
-                </span>
-            ),
-        },
-        {
             key: 'price',
             label: 'Base price',
             align: 'right',
-            className: 'hidden sm:table-cell',
+            className: 'hidden lg:table-cell',
             render: (service) => (
                 <span className="font-mono text-xs tabular-nums">{money(Number(service.price))}</span>
             ),
@@ -331,67 +477,20 @@ const Offers = () => {
         {
             key: 'performance',
             label: '30-day performance',
-            render: (service) => {
-                const metrics = serviceMetrics(summary, service)
-                return (
-                    <AdminStatStrip
-                        stats={[
-                            {
-                                label: 'Bookings',
-                                value: numberFormatter.format(metrics?.bookings ?? 0),
-                            },
-                            {
-                                label: 'Revenue',
-                                value: money(metrics?.revenue ?? 0),
-                            },
-                            {
-                                label: 'Occupancy',
-                                value: `${metrics?.occupancy ?? 0}%`,
-                            },
-                            {
-                                label: 'Rating',
-                                value: Number(
-                                    metrics?.rating ?? service.rating_average ?? 0,
-                                ).toFixed(1),
-                                suffix: '/5',
-                            },
-                        ]}
-                        className="gap-x-2 gap-y-0"
-                    />
-                )
-            },
+            render: (service) => (
+                <AdminStatStrip
+                    stats={performanceStats(summary, service)}
+                    className="gap-x-3 gap-y-0"
+                />
+            ),
         },
         {
             key: 'actions',
-            label: 'Actions',
+            label: '',
             align: 'right',
+            className: 'w-14 min-w-[3.5rem]',
             render: (service) => (
-                <div className="flex items-center justify-end gap-1">
-<WarmTooltip content="View availability calendar" side="top">
-                    <button
-                        type="button"
-                        onClick={() => setSelectedCalendar(service)}
-                        aria-label={`View ${service.name} availability`}
-                        className={`inline-grid size-11 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 ${focusRing}`}
-                    >
-                        <CalendarDays className="size-4" aria-hidden="true" />
-                    </button>
-                </WarmTooltip>
-                    <button
-                        type="button"
-                        onClick={() => void archiveService(service, service.status === 'active' ? 'inactive' : 'active')}
-                        className={`min-h-11 rounded-lg px-2 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 ${focusRing}`}
-                    >
-                        {service.status === 'active' ? 'Archive' : 'Restore'}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setDeletingService(service)}
-                        className={`min-h-11 rounded-lg px-2 text-[10px] font-semibold text-rose-700 hover:bg-rose-50 ${focusRing}`}
-                    >
-                        Delete
-                    </button>
-                </div>
+                <div className="flex justify-end">{renderOfferActions(service)}</div>
             ),
         },
     ]
@@ -545,21 +644,6 @@ const Offers = () => {
                                             : services.filter((service) => service.status === option.value).length,
                                 }))}
                             />
-                            {selectedIds.length > 0 && (
-                                <div className="flex items-center gap-2">
-                                    <span className="font-mono text-xs tabular-nums text-slate-500">
-                                        {selectedIds.length} selected
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() => void archiveSelected()}
-                                        disabled={bulkUpdating}
-                                        className={`min-h-11 rounded-lg border border-[rgba(0,0,0,0.08)] px-3 text-xs font-semibold disabled:opacity-50 ${focusRing}`}
-                                    >
-                                        {bulkUpdating ? 'Updating…' : 'Archive / restore'}
-                                    </button>
-                                </div>
-                            )}
                         </div>
                     </div>
 
@@ -591,42 +675,51 @@ const Offers = () => {
                         />
                     ) : (
                         <div className="px-5 pb-4">
-                            <div className="mb-2 flex min-h-11 items-center gap-3">
-                                <label className="inline-flex min-h-11 min-w-11 items-center">
-                                    <span className="sr-only">Select all visible offers</span>
-                                    <input
-                                        type="checkbox"
-                                        checked={allVisibleSelected}
-                                        onChange={(event) =>
-                                            setSelectedIds((current) =>
-                                                event.target.checked
-                                                    ? Array.from(
-                                                          new Set([
-                                                              ...current,
-                                                              ...visibleServices.map((service) => service.id),
-                                                          ]),
-                                                      )
-                                                    : current.filter(
-                                                          (id) =>
-                                                              !visibleServices.some((service) => service.id === id),
-                                                      ),
-                                            )
-                                        }
-                                        aria-label="Select all visible offers"
-                                        className={`size-4 accent-[#006dfc] ${focusRing}`}
-                                    />
-                                </label>
-                                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                    Select all visible
-                                </span>
+                            <div className="space-y-3 md:hidden">
+                                {visibleServices.map((service) => (
+                                    <article
+                                        key={service.id}
+                                        className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => openEditForm(service)}
+                                                className={`flex min-h-11 min-w-0 flex-1 flex-col items-start justify-center rounded-sm text-left ${focusRing}`}
+                                            >
+                                                <span className="truncate font-medium text-slate-950">
+                                                    {service.name}
+                                                </span>
+                                                <span className="text-[10px] capitalize text-slate-500">
+                                                    {service.kind}
+                                                </span>
+                                            </button>
+                                            {renderOfferActions(service)}
+                                        </div>
+                                        <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-[rgba(0,0,0,0.06)] pt-3">
+                                            <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                                Base price
+                                            </span>
+                                            <span className="font-mono text-sm font-semibold tabular-nums text-slate-900">
+                                                {money(Number(service.price))}
+                                            </span>
+                                        </div>
+                                        <AdminStatStrip
+                                            stats={performanceStats(summary, service)}
+                                            className="mt-2 gap-x-3 gap-y-1"
+                                        />
+                                    </article>
+                                ))}
                             </div>
-                            <AdminTable
-                                label="Offer catalogue performance"
-                                columns={columns}
-                                rows={visibleServices}
-                                rowKey={(service) => service.id}
-                                empty={null}
-                            />
+                            <div className="hidden md:block">
+                                <AdminTable
+                                    label="Offer catalogue performance"
+                                    columns={columns}
+                                    rows={visibleServices}
+                                    rowKey={(service) => service.id}
+                                    empty={null}
+                                />
+                            </div>
                             <p className="mt-3 text-[10px] leading-5 text-slate-500">
                                 30-day performance reflects paid bookings and stays in the selected window. Archive keeps offer history; delete permanently removes the offer.
                             </p>
