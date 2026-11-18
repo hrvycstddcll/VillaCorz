@@ -13,14 +13,14 @@ use Illuminate\Support\Carbon;
 class DemoDemandSeeder extends Seeder
 {
     /**
-     * Seed enough historical booking demand for the forecast model to learn
-     * a smooth weekday/weekend/holiday curve. Safe to run more than once.
+     * Seed historical booking demand with a smooth weekday/weekend/holiday
+     * curve and roughly Php 225k paid revenue per rolling 30 days.
+     * Safe to run more than once.
      */
     public function run(): void
     {
         $this->backdateExistingDemoBookings();
         $this->resetDemandBookings();
-        $this->normalizeRoomPrices();
 
         $customers = User::where('email', 'like', '%@demo.villacorz.test')
             ->orderBy('id')
@@ -41,8 +41,8 @@ class DemoDemandSeeder extends Seeder
             $weekday = (int) $date->dayOfWeek;
             $isPeakMonth = in_array((int) $date->month, [4, 5, 11, 12], true);
 
-            $weekdayBase = [0 => 2, 1 => 1, 2 => 1, 3 => 1, 4 => 1, 5 => 2, 6 => 3];
-            $count = $weekdayBase[$weekday] ?? 1;
+            $weekdayBase = [0 => 3, 1 => 3, 2 => 3, 3 => 3, 4 => 3, 5 => 4, 6 => 4];
+            $count = $weekdayBase[$weekday] ?? 3;
             if (isset($holidays[$dateKey])) {
                 $count += 1;
             }
@@ -53,6 +53,7 @@ class DemoDemandSeeder extends Seeder
                 $count += 1;
             }
 
+            $candidates = [];
             for ($index = 0; $index < $count; $index++) {
                 $reference = 'VC-DEMAND-'.$dateKey.'-'.str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT);
 
@@ -67,9 +68,58 @@ class DemoDemandSeeder extends Seeder
                 $checkOut = $checkIn->copy()->addDays($nights);
                 $createdAt = $date->copy()
                     ->setTime(8 + (crc32('hour-'.$reference) % 13), crc32('minute-'.$reference) % 60);
-                $paidAt = $createdAt->copy()->addMinutes(10);
                 $customer = $customers[crc32('customer-'.$reference) % $customers->count()];
                 $total = $this->bookingTotal($service, $checkIn, $nights);
+
+                $candidates[] = [
+                    'index' => $index,
+                    'reference' => $reference,
+                    'service' => $service,
+                    'customer' => $customer,
+                    'nights' => $nights,
+                    'check_in' => $checkIn,
+                    'check_out' => $checkOut,
+                    'created_at' => $createdAt,
+                    'paid_at' => $createdAt->copy()->addMinutes(10),
+                    'total' => $total,
+                ];
+            }
+
+            $dailyTarget = crc32('revenue-'.$dateKey) % 3 === 0 ? 4000 : 3000;
+            $bestMask = 0;
+            $bestTotal = -1.0;
+            $limit = 1 << count($candidates);
+
+            for ($mask = 0; $mask < $limit; $mask++) {
+                $maskTotal = 0.0;
+
+                foreach ($candidates as $candidateIndex => $candidate) {
+                    if (($mask & (1 << $candidateIndex)) !== 0) {
+                        $maskTotal += $candidate['total'];
+                    }
+                }
+
+                if ($maskTotal <= $dailyTarget && $maskTotal > $bestTotal) {
+                    $bestTotal = $maskTotal;
+                    $bestMask = $mask;
+                }
+            }
+
+            foreach ($candidates as $candidateIndex => $candidate) {
+                if (($bestMask & (1 << $candidateIndex)) === 0) {
+                    continue;
+                }
+
+                $reference = $candidate['reference'];
+                $service = $candidate['service'];
+                $customer = $candidate['customer'];
+                $nights = $candidate['nights'];
+                $checkIn = $candidate['check_in'];
+                $checkOut = $candidate['check_out'];
+                $createdAt = $candidate['created_at'];
+                $paidAt = $candidate['paid_at'];
+                $total = $candidate['total'];
+                $index = $candidate['index'];
 
                 $booking = Booking::create([
                     'user_id' => $customer->id,
@@ -185,27 +235,6 @@ class DemoDemandSeeder extends Seeder
         Payment::query()->whereIn('booking_id', $bookingIds)->delete();
         BookingRoom::query()->whereIn('booking_id', $bookingIds)->delete();
         Booking::query()->whereIn('id', $bookingIds)->delete();
-    }
-
-    private function normalizeRoomPrices(): void
-    {
-        $prices = [
-            'Room 1' => [3000, 3000],
-            'Room 2' => [3000, 3000],
-            'Room 3' => [3000, 3000],
-            'Room 4' => [4000, 4000],
-            'Room 5' => [4000, 4000],
-            'The Whole Villa' => [15500, 17000],
-        ];
-
-        foreach ($prices as $name => [$weekday, $weekend]) {
-            Service::query()
-                ->where('name', $name)
-                ->update([
-                    'price' => $weekday,
-                    'weekend_price' => $weekend,
-                ]);
-        }
     }
 
     private function bookingTotal(Service $service, Carbon $checkIn, int $nights): float
