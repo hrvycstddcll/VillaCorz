@@ -334,7 +334,7 @@ const Dashboard = () => {
             value: data ? formatPercent(metrics?.churn_rate ?? 0) : '—',
             delta: data ? comparison?.churn_rate : undefined,
             deltaDirection: 'lower' as const,
-            href: data ? reportHref('cancellations') : undefined,
+            href: data ? reportHref('bookings', { status: 'cancelled' }) : undefined,
         },
         {
             label: 'Conversion',

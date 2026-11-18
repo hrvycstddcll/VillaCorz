@@ -411,7 +411,7 @@ const Navbar = () => {
         <nav
             id="primary-nav"
             aria-label="Primary"
-            className="fixed inset-x-0 top-0 z-50 w-full px-6"
+            className="fixed inset-x-0 top-0 z-[2147483647] w-full px-6"
         >
             <div
                 aria-hidden="true"

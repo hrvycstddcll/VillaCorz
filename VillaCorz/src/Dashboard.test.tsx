@@ -189,6 +189,23 @@ describe('Dashboard', () => {
         expect(within(metrics).queryByText('Site visits')).not.toBeInTheDocument()
     })
 
+    it('links the Churn KPI to cancelled bookings for the dashboard period', async () => {
+        render(
+            <MemoryRouter>
+                <Dashboard />
+            </MemoryRouter>,
+        )
+
+        await screen.findByRole('button', { name: 'Review adjustment' })
+        const metrics = screen.getAllByRole('group', { name: 'Key metrics' })[0]
+        const churnLink = await within(metrics).findByRole('link', { name: /Churn/ })
+
+        expect(churnLink).toHaveAttribute(
+            'href',
+            '/reports?report=bookings&from=2026-10-19&to=2026-11-17&status=cancelled',
+        )
+    })
+
     it('shows only five recent reservations until Show more is selected', async () => {
         render(
             <MemoryRouter>
