@@ -540,7 +540,7 @@ const AboutUs = () => {
                 </div>
             </div>
 
-            <div className="relative z-10 w-full" style={{ marginBottom: 0, paddingBottom: 0 }}>
+            <div className="relative z-10 w-full mt-8" style={{ marginBottom: 0, paddingBottom: 0 }}>
                 <AccordionGallery
                     height="100vh"
                     gap={0}

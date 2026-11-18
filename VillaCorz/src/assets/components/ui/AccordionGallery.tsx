@@ -227,8 +227,8 @@ const AccordionGallery = ({
                                 ref={(el) => {
                                     contentRefs.current[i] = el
                                 }}
-                                className="flex flex-col justify-center py-10 pl-16 pr-8"
-                                style={{ width: '38%', maxWidth: '440px', height: '100%', background: p.bg }}
+                                className="flex flex-col justify-center py-10 pl-20 pr-12 transition-all duration-500 ease-out overflow-visible"
+                                style={{ width: '50%', height: '100%', background: p.bg }}
                             >
                                 <h3
                                     className="text-white mb-4"
@@ -249,9 +249,9 @@ const AccordionGallery = ({
                                 </p>
                             </div>
                             <div
-                                className="relative overflow-hidden"
+                                className="relative overflow-hidden transition-all duration-500 ease-out"
                                 style={{
-                                    flex: 1,
+                                    width: '50%',
                                     height: '100%',
                                     marginTop: 0,
                                     paddingTop: 0,
@@ -265,13 +265,14 @@ const AccordionGallery = ({
                                     }}
                                     src={p.image}
                                     alt={p.label}
-                                    className="h-full w-full object-cover"
+                                    className="h-full w-full object-cover transition-transform duration-700 ease-out"
                                     style={{
                                         marginTop: 0,
                                         paddingTop: 0,
                                         top: 0,
                                         height: '100%',
                                         objectFit: 'cover',
+                                        transform: isOpen ? 'scale(1)' : 'scale(1.05)',
                                         filter: !isOpen && grayscale ? 'grayscale(100%)' : 'none',
                                     }}
                                 />
