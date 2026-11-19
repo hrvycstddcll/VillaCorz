@@ -15,6 +15,7 @@ import Reports from './assets/components/pages/Reports'
 import HomePage from './assets/components/pages/HomePage'
 import AboutUs from './assets/components/pages/AboutUs'
 import Testimonials from './assets/components/pages/Testimonials'
+import BeachHouse from './assets/components/pages/BeachHouse'
 import Gallery from './assets/components/pages/Gallery'
 import Services from './assets/components/pages/Services'
 import MyBookings from './assets/components/pages/MyBookings'
@@ -275,6 +276,7 @@ function AppRoutes() {
                             <AboutUs />
                             <Gallery />
                             <Testimonials />
+                            <BeachHouse />
                             <Contact />
                         </>
                     }
