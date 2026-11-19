@@ -93,3 +93,21 @@ test('keeps the assistant above the fixed booking bar on the home page', () => {
     expect(panel).toHaveClass('max-sm:bottom-24')
     expect(panel).not.toHaveClass('bottom-6')
 })
+
+test('keeps the assistant above the fixed booking bar on the services page', () => {
+    renderPanel('/services')
+
+    const launcher = screen.getByRole('button', {
+        name: 'Ask VillaCorz assistant',
+    })
+    expect(launcher).toHaveClass('bottom-24')
+    expect(launcher).not.toHaveClass('bottom-6')
+
+    fireEvent.click(launcher)
+
+    const panel = screen.getByRole('region', {
+        name: 'VillaCorz customer assistant',
+    })
+    expect(panel).toHaveClass('max-sm:bottom-24')
+    expect(panel).not.toHaveClass('max-sm:bottom-3')
+})

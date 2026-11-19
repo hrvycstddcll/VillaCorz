@@ -310,6 +310,12 @@ html.modal-open {
   overscroll-behavior: contain;
 }
 
+html.modal-open .customer-assistant-floating {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Anchored sections must clear the fixed navbar. */
 section[id] {
   scroll-margin-top: 6rem;

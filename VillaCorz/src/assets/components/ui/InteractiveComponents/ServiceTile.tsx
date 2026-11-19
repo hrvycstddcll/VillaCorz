@@ -205,101 +205,119 @@ const ServiceTile = (props: ServiceTileProps) => {
 
     return (
         <article
-            className={`group relative overflow-hidden rounded-xl bg-white text-left shadow-md ring-1 ${
+            className={`group relative min-w-0 overflow-hidden rounded-xl bg-white text-left shadow-md ring-1 ${
                 isSelected || isReservationSelected
                     ? 'ring-2 ring-[#006dfc]'
                     : 'ring-black/5'
             }`}
         >
-            <button
-                type="button"
-                onClick={onSelect}
-                aria-label={`View ${stay.title} photo and details`}
-                className="block w-full focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#006dfc]"
-            >
-                {stay.image ? (
-                    <img
-                        src={stay.image}
-                        alt={`${stay.title} interior`}
-                        className="h-56 w-full scale-[1.05] object-cover transition duration-500 group-hover:scale-[1.08] sm:h-64 lg:h-72"
-                    />
-                ) : (
-                    <div className="flex h-56 w-full items-center justify-center bg-slate-100 text-slate-400 sm:h-64 lg:h-72">
-                        <div className="flex flex-col items-center gap-2">
-                            <ImageOff className="size-8" aria-hidden="true" />
-                            <span className="text-xs font-medium">
-                                No image
+            <div className="relative aspect-[5/4] w-full overflow-hidden bg-slate-100">
+                <button
+                    type="button"
+                    onClick={onSelect}
+                    aria-label={`View ${stay.title} photo and details`}
+                    className="absolute inset-0 block w-full focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#006dfc]"
+                >
+                    {stay.image ? (
+                        <img
+                            src={stay.image}
+                            alt={`${stay.title} interior`}
+                            className="h-full w-full scale-[1.02] object-cover transition duration-500 group-hover:scale-[1.06] motion-reduce:transition-none"
+                        />
+                    ) : (
+                        <span className="absolute inset-0 flex items-center justify-center text-slate-400">
+                            <span className="flex flex-col items-center gap-2">
+                                <ImageOff className="size-8" aria-hidden="true" />
+                                <span className="text-xs font-medium">
+                                    No image
+                                </span>
                             </span>
-                        </div>
-                    </div>
-                )}
-            </button>
-            {stay.discountLabel ? <DiscountRibbon label={stay.discountLabel} /> : null}
-            {stay.badge ? (
-                <span className="pointer-events-none absolute right-2 top-[43%] z-20 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold leading-tight text-[#006dfc] shadow-sm sm:text-[11px]">
-                    {stay.badge}
-                </span>
-            ) : null}
-            <span className="absolute inset-x-0 bottom-0 top-[57%] flex items-end justify-between gap-2 bg-gradient-to-t from-slate-950/90 via-slate-950/55 to-transparent px-2 pb-2 pt-3 text-white shadow-[0_-8px_20px_rgba(0,0,0,0.2)] backdrop-blur-[1px] sm:px-2.5">
-                <span className="absolute left-0 top-0 inline-flex min-h-11 max-w-[62%] items-center gap-2 bg-white px-2 py-1.5 text-[#006dfc] shadow-sm sm:px-2.5">
-                    <span className="shrink-0 text-left text-[11px] font-semibold italic leading-[1.05] sm:text-xs">
-                        Weekdays
-                        <span className="block text-[10px] font-medium">Mon - Thu</span>
-                    </span>
-                    <span className="min-w-0 text-right">
-                        <span className="block whitespace-nowrap text-base font-bold leading-none sm:text-lg">
-                            {money(stay.price)}
                         </span>
-                        {stay.originalPrice != null &&
-                            stay.originalPrice > stay.price && (
-                                <span className="block whitespace-nowrap text-[10px] font-medium leading-none text-slate-500 line-through sm:text-[11px]">
-                                    {money(stay.originalPrice)}
+                    )}
+                </button>
+
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 top-[35%] bg-gradient-to-t from-slate-950/95 via-slate-950/65 to-transparent shadow-[0_-8px_20px_rgba(0,0,0,0.2)] backdrop-blur-[1px]"
+                />
+
+                {stay.discountLabel ? <DiscountRibbon label={stay.discountLabel} /> : null}
+                {stay.badge ? (
+                    <span className="pointer-events-none absolute right-2 top-[5.75rem] z-20 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold leading-tight text-[#006dfc] shadow-sm sm:right-2.5 sm:top-[6.25rem] sm:text-[11px]">
+                        {stay.badge}
+                    </span>
+                ) : null}
+
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 grid gap-2 p-3 text-white sm:p-3.5">
+                    <span className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-3">
+                        <span className="min-w-0">
+                            <span className="inline-flex min-h-11 max-w-full items-center gap-2 bg-white px-2 py-1.5 text-[#006dfc] shadow-sm sm:px-2.5">
+                                <span className="shrink-0 text-left text-[11px] font-semibold italic leading-[1.05] sm:text-xs">
+                                    Weekdays
+                                    <span className="block text-[10px] font-medium">Mon - Thu</span>
                                 </span>
-                            )}
-                    </span>
-                </span>
-                <span className="absolute left-2 top-14 min-w-0 text-left sm:left-2.5 sm:top-16">
-                    <span className="block text-sm font-bold leading-tight sm:text-base">
-                        {stay.title}
-                    </span>
-                    <span className="flex items-center gap-1 truncate text-[11px] leading-tight text-white/90 sm:text-xs">
-                        <span>{stay.capacity}</span>
-                        {stay.rating && (
-                            <RatingBadge rating={stay.rating} />
-                        )}
-                    </span>
-                </span>
-                <span className="absolute bottom-2 right-2 flex shrink-0 flex-col items-end gap-1.5 sm:right-2.5">
-                    <span className="rounded-md bg-white/20 px-2 py-1 text-center text-white shadow-sm ring-1 ring-white/25 backdrop-blur-sm sm:px-3">
-                        <span className="block text-[10px] font-medium leading-tight sm:text-[11px]">
-                            Weekends
-                        </span>
-                        <span className="block text-sm font-bold leading-tight sm:text-base">
-                            {money(stay.weekendPrice ?? stay.price)}
-                        </span>
-                        {stay.weekendOriginalPrice != null &&
-                            stay.weekendOriginalPrice >
-                                (stay.weekendPrice ?? stay.price) && (
-                                <span className="block whitespace-nowrap text-[10px] font-medium leading-tight text-white/80 line-through sm:text-[11px]">
-                                    {money(stay.weekendOriginalPrice)}
+                                <span className="min-w-0 text-right tabular-nums">
+                                    <span className="block whitespace-nowrap text-base font-bold leading-none sm:text-lg">
+                                        {money(stay.price)}
+                                    </span>
+                                    {stay.originalPrice != null &&
+                                        stay.originalPrice > stay.price && (
+                                            <span className="block whitespace-nowrap text-[10px] font-medium leading-none text-slate-500 line-through sm:text-[11px]">
+                                                {money(stay.originalPrice)}
+                                            </span>
+                                        )}
                                 </span>
-                            )}
+                            </span>
+
+                            <span className="mt-2 block min-w-0">
+                                <span
+                                    className="line-clamp-2 text-sm font-bold leading-tight sm:text-base"
+                                    title={stay.title}
+                                >
+                                    {stay.title}
+                                </span>
+                                <span className="mt-1 flex min-w-0 items-center gap-1 text-[11px] leading-tight text-white/90 sm:text-xs">
+                                    <span className="truncate">{stay.capacity}</span>
+                                    {stay.rating && (
+                                        <RatingBadge rating={stay.rating} />
+                                    )}
+                                </span>
+                            </span>
+                        </span>
+
+                        <span className="flex min-w-0 shrink-0 flex-row items-end gap-2 sm:flex-col sm:items-end">
+                            <span className="rounded-md bg-white/20 px-2 py-1 text-center shadow-sm ring-1 ring-white/25 backdrop-blur-sm sm:px-3">
+                                <span className="block text-[10px] font-medium leading-tight sm:text-[11px]">
+                                    Weekends
+                                </span>
+                                <span className="block whitespace-nowrap text-sm font-bold leading-tight tabular-nums sm:text-base">
+                                    {money(stay.weekendPrice ?? stay.price)}
+                                </span>
+                                {stay.weekendOriginalPrice != null &&
+                                    stay.weekendOriginalPrice >
+                                        (stay.weekendPrice ?? stay.price) && (
+                                        <span className="block whitespace-nowrap text-[10px] font-medium leading-tight text-white/80 line-through sm:text-[11px]">
+                                            {money(stay.weekendOriginalPrice)}
+                                        </span>
+                                    )}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={onToggleReservation}
+                                aria-label={
+                                    isReservationSelected
+                                        ? `${stay.title} is already in your booking`
+                                        : `Add ${stay.title} to your booking, good for ${guestCapacity(stay)} guests`
+                                }
+                                aria-pressed={isReservationSelected}
+                                className="pointer-events-auto min-h-11 rounded-md bg-white px-3 py-2 text-xs font-semibold text-[#006dfc] shadow-sm transition-colors duration-200 hover:bg-[#006dfc] hover:text-white hover:shadow-md active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3.5"
+                            >
+                                {isReservationSelected ? 'Added' : 'Add room'}
+                            </button>
+                        </span>
                     </span>
-                    <button
-                        type="button"
-                        onClick={onToggleReservation}
-                        aria-label={
-                            isReservationSelected
-                                ? `${stay.title} is already in your booking`
-                                : `Add ${stay.title} to your booking, good for ${guestCapacity(stay)} guests`
-                        }
-                        aria-pressed={isReservationSelected}
-                        className="min-h-11 rounded-md bg-white px-3 py-2 text-xs font-semibold text-[#006dfc] shadow-sm transition-colors duration-200 hover:bg-[#006dfc] hover:text-white hover:shadow-md active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3.5"
-                    >
-                        {isReservationSelected ? 'Added' : 'Add room'}
-                    </button>
                 </span>
-            </span>
+            </div>
         </article>
     )
 }
