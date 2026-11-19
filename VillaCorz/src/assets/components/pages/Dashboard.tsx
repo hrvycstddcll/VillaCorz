@@ -174,24 +174,24 @@ const Dashboard = () => {
         selectedForecastRecommendation === undefined
             ? []
             : forecastPoints.map((point) => {
-                  const peakDay =
-                      selectedForecastRecommendation.direction === 'increase'
-                          ? point.holiday !== null ||
-                            point.expected_occupancy >= 55
-                          : selectedForecastRecommendation.direction === 'decrease'
+                const peakDay =
+                    selectedForecastRecommendation.direction === 'increase'
+                        ? point.holiday !== null ||
+                        point.expected_occupancy >= 55
+                        : selectedForecastRecommendation.direction === 'decrease'
                             ? point.expected_occupancy < 40
                             : false
 
-                  return {
-                      label: point.label,
-                      annotation: point.holiday ?? undefined,
-                      values: {
-                          projected: peakDay
-                              ? selectedForecastRecommendation.suggested_price
-                              : selectedForecastRecommendation.current_price,
-                      },
-                  }
-              })
+                return {
+                    label: point.label,
+                    annotation: point.holiday ?? undefined,
+                    values: {
+                        projected: peakDay
+                            ? selectedForecastRecommendation.suggested_price
+                            : selectedForecastRecommendation.current_price,
+                    },
+                }
+            })
     const reportHref = (
         report: AdminReportKind,
         filters: { status?: string; date_field?: string } = {},
@@ -421,13 +421,12 @@ const Dashboard = () => {
                         )}
                         {data && comparison?.revenue && (
                             <p
-                                className={`mt-3 font-mono text-xs font-medium tabular-nums ${
-                                    comparison.revenue.delta > 0
+                                className={`mt-3 font-mono text-xs font-medium tabular-nums ${comparison.revenue.delta > 0
                                         ? 'text-emerald-700'
                                         : comparison.revenue.delta < 0
-                                          ? 'text-rose-700'
-                                          : 'text-slate-500'
-                                }`}
+                                            ? 'text-rose-700'
+                                            : 'text-slate-500'
+                                    }`}
                             >
                                 {comparison.revenue.percent !== null
                                     ? `${comparison.revenue.percent > 0 ? '+' : ''}${comparison.revenue.percent}%`
@@ -475,9 +474,9 @@ const Dashboard = () => {
                         value: stat.value,
                         delta: stat.delta
                             ? {
-                                  value: stat.delta.delta,
-                                  percent: stat.delta.percent,
-                              }
+                                value: stat.delta.delta,
+                                percent: stat.delta.percent,
+                            }
                             : undefined,
                         deltaDirection: stat.deltaDirection,
                         href: stat.href,
@@ -530,15 +529,14 @@ const Dashboard = () => {
                                                 {item.label}
                                             </span>
                                             <span
-                                                className={`font-mono text-sm font-semibold tabular-nums ${
-                                                    item.count > 0
+                                                className={`font-mono text-sm font-semibold tabular-nums ${item.count > 0
                                                         ? item.tone === 'rose'
                                                             ? 'text-rose-700'
                                                             : item.tone === 'amber'
-                                                              ? 'text-amber-700'
-                                                              : 'text-[#006dfc]'
+                                                                ? 'text-amber-700'
+                                                                : 'text-[#006dfc]'
                                                         : 'text-slate-500'
-                                                }`}
+                                                    }`}
                                             >
                                                 {numberFormatter.format(item.count)}
                                             </span>
@@ -615,11 +613,10 @@ const Dashboard = () => {
                                 type="button"
                                 aria-pressed={analysisView === tab.key}
                                 onClick={() => setAnalysisView(tab.key)}
-                                className={`min-h-11 border-b-2 px-3 text-xs font-semibold transition-colors ${focusRing} ${
-                                    analysisView === tab.key
+                                className={`min-h-11 border-b-2 px-3 text-xs font-semibold transition-colors ${focusRing} ${analysisView === tab.key
                                         ? 'border-[#006dfc] text-[#006dfc]'
                                         : 'border-transparent text-slate-500 hover:text-slate-900'
-                                }`}
+                                    }`}
                             >
                                 {tab.label}
                             </button>
@@ -712,21 +709,21 @@ const Dashboard = () => {
                                     >
                                         {isPrescriptive
                                             ? backtestRanges.map((days) => (
-                                                  <option
-                                                      key={days}
-                                                      value={days}
-                                                  >
-                                                      Last {days} days
-                                                  </option>
-                                              ))
+                                                <option
+                                                    key={days}
+                                                    value={days}
+                                                >
+                                                    Last {days} days
+                                                </option>
+                                            ))
                                             : forecastPresets.map((days) => (
-                                                  <option
-                                                      key={days}
-                                                      value={days}
-                                                  >
-                                                      {days} days
-                                                  </option>
-                                              ))}
+                                                <option
+                                                    key={days}
+                                                    value={days}
+                                                >
+                                                    {days} days
+                                                </option>
+                                            ))}
                                     </select>
                                 </label>
                             </div>
@@ -787,14 +784,14 @@ const Dashboard = () => {
                                     : 'Price prediction unavailable.'}
                             </p>
                         ) : isPrescriptive &&
-                          accuracyChartPoints.length === 0 ? (
+                            accuracyChartPoints.length === 0 ? (
                             <p className="py-16 text-center text-sm text-slate-500">
                                 Not enough booking history to compare a
                                 forecast with actual results yet.
                             </p>
                         ) : !isPrescriptive &&
-                          (predictionPoints.length === 0 ||
-                              !selectedForecastRecommendation) ? (
+                            (predictionPoints.length === 0 ||
+                                !selectedForecastRecommendation) ? (
                             <p className="py-16 text-center text-sm text-slate-500">
                                 Price projections are unavailable until an
                                 active offer has forecast data.
@@ -862,18 +859,17 @@ const Dashboard = () => {
                                                 {recommendation.name}
                                             </p>
                                             <span
-                                                className={`font-mono text-[10px] font-medium uppercase tracking-wide ${
-                                                    recommendation.direction ===
-                                                    'increase'
+                                                className={`font-mono text-[10px] font-medium uppercase tracking-wide ${recommendation.direction ===
+                                                        'increase'
                                                         ? 'text-emerald-700'
                                                         : recommendation.direction ===
                                                             'decrease'
-                                                          ? 'text-amber-700'
-                                                          : 'text-slate-500'
-                                                }`}
+                                                            ? 'text-amber-700'
+                                                            : 'text-slate-500'
+                                                    }`}
                                             >
                                                 {recommendation.direction ===
-                                                'hold'
+                                                    'hold'
                                                     ? 'Hold'
                                                     : `${recommendation.change_percent > 0 ? '+' : ''}${recommendation.change_percent}%`}
                                             </span>
@@ -900,7 +896,7 @@ const Dashboard = () => {
                                                 </span>
                                             </p>
                                             {recommendation.direction ===
-                                            'hold' ? (
+                                                'hold' ? (
                                                 <span className="text-[10px] text-slate-500">
                                                     No adjustment suggested
                                                 </span>
@@ -1001,63 +997,63 @@ const Dashboard = () => {
                                     aria-label="Visitor to paid booking funnel"
                                 >
                                     {funnelSteps.map((step) => {
-                                            const firstCount =
-                                                funnelSteps[0]?.count ?? 0
-                                            const width =
-                                                firstCount > 0
-                                                    ? Math.max(
-                                                          step.count > 0 ? 2 : 0,
-                                                          Math.min(
-                                                              100,
-                                                              (step.count /
-                                                                  firstCount) *
-                                                                  100,
-                                                          ),
-                                                      )
-                                                    : 0
+                                        const firstCount =
+                                            funnelSteps[0]?.count ?? 0
+                                        const width =
+                                            firstCount > 0
+                                                ? Math.max(
+                                                    step.count > 0 ? 2 : 0,
+                                                    Math.min(
+                                                        100,
+                                                        (step.count /
+                                                            firstCount) *
+                                                        100,
+                                                    ),
+                                                )
+                                                : 0
 
-                                            return (
-                                                <li key={step.key}>
-                                                    <div className="flex items-baseline justify-between gap-3">
-                                                        <span className="text-xs font-medium text-slate-700">
-                                                            {step.label}
-                                                        </span>
-                                                        <span className="font-mono text-xs font-semibold tabular-nums text-slate-900">
-                                                            {numberFormatter.format(
-                                                                step.count,
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    <div
-                                                        className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"
-                                                        role="img"
-                                                        aria-label={`${step.label}: ${width.toFixed(1)}% of visitors`}
-                                                    >
-                                                        <div
-                                                            className="h-full rounded-full bg-[#006dfc]"
-                                                            style={{
-                                                                width: `${width}%`,
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    {step.dropoff !== null &&
-                                                        step.dropoff_rate !==
-                                                            null && (
-                                                            <p className="mt-1 text-[10px] text-slate-500">
-                                                                {
-                                                                    numberFormatter.format(
-                                                                        step.dropoff,
-                                                                    )
-                                                                }{' '}
-                                                                dropped off ·{' '}
-                                                                {formatPercent(
-                                                                    step.dropoff_rate,
-                                                                )}
-                                                            </p>
+                                        return (
+                                            <li key={step.key}>
+                                                <div className="flex items-baseline justify-between gap-3">
+                                                    <span className="text-xs font-medium text-slate-700">
+                                                        {step.label}
+                                                    </span>
+                                                    <span className="font-mono text-xs font-semibold tabular-nums text-slate-900">
+                                                        {numberFormatter.format(
+                                                            step.count,
                                                         )}
-                                                </li>
-                                            )
-                                        })}
+                                                    </span>
+                                                </div>
+                                                <div
+                                                    className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"
+                                                    role="img"
+                                                    aria-label={`${step.label}: ${width.toFixed(1)}% of visitors`}
+                                                >
+                                                    <div
+                                                        className="h-full rounded-full bg-[#006dfc]"
+                                                        style={{
+                                                            width: `${width}%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                                {step.dropoff !== null &&
+                                                    step.dropoff_rate !==
+                                                    null && (
+                                                        <p className="mt-1 text-[10px] text-slate-500">
+                                                            {
+                                                                numberFormatter.format(
+                                                                    step.dropoff,
+                                                                )
+                                                            }{' '}
+                                                            dropped off ·{' '}
+                                                            {formatPercent(
+                                                                step.dropoff_rate,
+                                                            )}
+                                                        </p>
+                                                    )}
+                                            </li>
+                                        )
+                                    })}
                                 </ol>
                                 <p className="mt-4 border-t border-[rgba(0,0,0,0.06)] pt-3 text-[10px] leading-5 text-slate-500">
                                     Stage totals are period counts, not a
