@@ -178,7 +178,7 @@ const Testimonials = () => {
     return (
         <section
             id="testimonials"
-            className="relative scroll-mt-24 overflow-hidden border-t border-slate-100 bg-white py-14 sm:py-18 lg:py-20"
+            className="relative scroll-mt-24 overflow-hidden border-t border-slate-100 bg-white pt-14 pb-24 sm:pt-18 sm:pb-28 lg:pt-20 lg:pb-28"
         >
             <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
                 <div className="flex flex-col items-center text-center">

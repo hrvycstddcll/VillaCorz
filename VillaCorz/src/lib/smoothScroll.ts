@@ -67,6 +67,14 @@ export const scrollToTop = (immediate = true) => {
     })
 }
 
+export const pauseSmoothScroll = () => {
+    activeLenis?.stop()
+}
+
+export const resumeSmoothScroll = () => {
+    activeLenis?.start()
+}
+
 export const initSmoothScroll = () => {
     if (
         typeof window === 'undefined' ||

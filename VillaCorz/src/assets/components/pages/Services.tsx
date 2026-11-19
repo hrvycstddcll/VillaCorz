@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ChevronDown, ChevronUp, Fan } from 'lucide-react'
+import { BedDouble, Check, ChevronDown, ChevronUp, Fan } from 'lucide-react'
 import ServicesFooter, {
     type RoomGuests,
 } from '../ui/InteractiveComponents/ServicesFooter'
@@ -269,17 +269,17 @@ function PublicAccommodationSection({
                     <h2 id="public-title" className="text-base font-bold text-[#171717] sm:text-lg">
                         Private rooms
                     </h2>
-                    <p className="mt-0.5 text-[10px] text-slate-500 sm:text-xs">
+                    <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
                         Add a room to your booking, then choose its guest count in the booking panel.
                     </p>
                 </div>
-                <span className="hidden text-[10px] text-slate-500 sm:block">
+                <span className="hidden text-xs text-slate-500 sm:block">
                     {loading ? 'Loading rooms…' : `${rooms.length} rooms`}
                 </span>
             </div>
 
             {loading ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {Array.from({ length: 4 }).map((_, index) => (
                         <div
                             key={index}
@@ -305,7 +305,7 @@ function PublicAccommodationSection({
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {visibleRooms.map((stay) => (
                         <ServiceTile
                             key={stay.id}
@@ -327,7 +327,7 @@ function PublicAccommodationSection({
                     <button
                         type="button"
                         onClick={() => setShowAllRooms(true)}
-                        className="rounded-full bg-white px-5 py-2 text-sm text-slate-500 shadow-[0_4px_18px_rgba(15,23,42,0.12)] transition hover:text-[#006dfc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                        className="min-h-11 rounded-full bg-white px-5 py-2 text-sm text-slate-600 shadow-[0_4px_18px_rgba(15,23,42,0.12)] transition hover:text-[#006dfc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                     >
                         Show more
                     </button>
@@ -356,7 +356,7 @@ function ExclusiveAccommodationSection({
                 <h2 id="exclusive-title" className="text-base font-bold text-[#171717] sm:text-lg">
                     Whole villa
                 </h2>
-                <p className="mt-0.5 text-[10px] text-slate-500 sm:text-xs">
+                <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
                     Choose the whole villa in the booking panel to reserve it for your group.
                 </p>
             </div>
@@ -427,7 +427,7 @@ function RoomDetailView({
                         {stay.pax != null &&
                             (stay.additionalHeadWeekdayPrice ?? 0) > 0 &&
                             (stay.additionalHeadWeekendPrice ?? 0) > 0 && (
-                                <p className="mt-1 text-[11px] text-slate-500">
+                                <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
                                     Additional guest:{' '}
                                     {money(
                                         stay.additionalHeadWeekdayPrice ?? 0,
@@ -446,7 +446,7 @@ function RoomDetailView({
                             <h3 className="text-sm font-semibold text-slate-700">
                                 Room Features
                             </h3>
-                            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-2 text-[10px] font-semibold text-emerald-500 sm:text-xs">
+                            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-2 text-xs font-semibold text-emerald-700 sm:text-sm">
                                 {stay.amenities.map((amenity, index) => {
                                     const icon = amenityIcon(amenity)
 
@@ -490,7 +490,7 @@ function RoomDetailView({
                         </div>
                     )}
 
-                    <p className="mt-6 text-[11px] leading-5 text-slate-600">
+                    <p className="mt-6 text-xs leading-5 text-slate-600 sm:text-sm">
                         {stay.description}
                     </p>
 
@@ -823,7 +823,7 @@ function ReservationView({
                                 } satisfies ServicesRouteState,
                             })
                         }
-                        className="inline-flex min-h-10 items-center rounded-lg bg-[#0875f9] px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                        className="inline-flex min-h-10 items-center rounded-lg bg-[#006dfc] px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
                     >
                         Back to services
                     </button>
@@ -902,7 +902,7 @@ function ReservationView({
                                     className="flex min-w-0 items-start justify-between gap-3 py-3"
                                 >
                                     <div className="min-w-0 text-xs leading-5 text-slate-600">
-                                        <p className="break-words font-semibold text-[#0875f9]">
+                                        <p className="break-words font-semibold text-[#006dfc]">
                                             {stay.title} #{index + 1}
                                         </p>
                                         <p>{room.adults} Adults{room.kids ? ` · ${room.kids} Kids` : ''}</p>
@@ -952,7 +952,7 @@ function ReservationView({
                                     <p className="text-xs leading-5 text-slate-500">
                                         <Link
                                             to="/account/settings"
-                                            className="font-semibold text-[#0875f9] hover:underline"
+                                            className="font-semibold text-[#006dfc] hover:underline"
                                         >
                                             Link your mobile number
                                         </Link>
@@ -965,7 +965,7 @@ function ReservationView({
                             aria-haspopup="dialog"
                             aria-expanded={showPaymentMethods}
                             onClick={() => setShowPaymentMethods(true)}
-                            className="inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-sm font-semibold text-[#0875f9] hover:bg-slate-50 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                            className="inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-sm font-semibold text-[#006dfc] hover:bg-slate-50 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                         >
                             Change
                         </button>
@@ -1052,7 +1052,7 @@ function ReservationView({
                                                         value={option.name}
                                                         checked={paymentMethod === option.name}
                                                         onChange={() => setPaymentMethod(option.name)}
-                                                        className="size-5 accent-[#0875f9]"
+                                                        className="size-5 accent-[#006dfc]"
                                                     />
                                                 </label>
                                             ))}
@@ -1106,7 +1106,7 @@ function ReservationView({
                                                         value={option.name}
                                                         checked={paymentMethod === option.name}
                                                         onChange={() => setPaymentMethod(option.name)}
-                                                        className="size-5 accent-[#0875f9]"
+                                                        className="size-5 accent-[#006dfc]"
                                                     />
                                                 </label>
                                             ))}
@@ -1116,7 +1116,7 @@ function ReservationView({
                                 <button
                                     type="button"
                                     onClick={() => setShowPaymentMethods(false)}
-                                    className="mt-4 min-h-12 w-full rounded-lg bg-[#0875f9] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                                    className="mt-4 min-h-12 w-full rounded-lg bg-[#006dfc] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
                                 >
                                     Confirm Payment Method
                                 </button>
@@ -1125,7 +1125,7 @@ function ReservationView({
                     )}
                     <div className="mt-4 flex items-center justify-between rounded-lg border border-slate-100 p-3 shadow-[0_3px_12px_rgba(15,23,42,0.12)]">
                         <span className="text-sm text-slate-600">Total payment</span>
-                        <strong className="text-xl font-semibold tabular-nums text-[#0875f9]">{money(total)}</strong>
+                        <strong className="text-xl font-semibold tabular-nums text-[#006dfc]">{money(total)}</strong>
                     </div>
                 </section>
 
@@ -1163,7 +1163,7 @@ function ReservationView({
                                     value={firstName}
                                     onChange={(event) => setFirstName(event.target.value)}
                                     readOnly={Boolean(user?.firstname)}
-                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#0875f9] focus:ring-1 focus:ring-[#0875f9] read-only:bg-slate-50 sm:text-sm"
+                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] read-only:bg-slate-50 sm:text-sm"
                                 />
                             </label>
                             <label className="block space-y-1">
@@ -1174,7 +1174,7 @@ function ReservationView({
                                     value={lastName}
                                     onChange={(event) => setLastName(event.target.value)}
                                     readOnly={Boolean(user?.lastname)}
-                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#0875f9] focus:ring-1 focus:ring-[#0875f9] read-only:bg-slate-50 sm:text-sm"
+                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] read-only:bg-slate-50 sm:text-sm"
                                 />
                             </label>
                             <label className="block space-y-1 sm:col-span-2">
@@ -1186,7 +1186,7 @@ function ReservationView({
                                     value={email}
                                     onChange={(event) => setEmail(event.target.value)}
                                     readOnly={Boolean(user?.email)}
-                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#0875f9] focus:ring-1 focus:ring-[#0875f9] read-only:bg-slate-50 sm:text-sm"
+                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] read-only:bg-slate-50 sm:text-sm"
                                 />
                             </label>
                         </div>
@@ -1203,7 +1203,7 @@ function ReservationView({
                                             setPhoneChoice(event.target.value)
                                             setSubmitError('')
                                         }}
-                                        className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#0875f9] focus:ring-1 focus:ring-[#0875f9] sm:text-sm"
+                                        className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] sm:text-sm"
                                     >
                                         {savedNumbers.map((phone) => (
                                             <option key={phone.id} value={String(phone.id)}>
@@ -1254,11 +1254,11 @@ function ReservationView({
                         </div>
                         <div className="text-xs leading-5 text-slate-600">
                             <label className="flex min-h-11 items-start gap-3 rounded-md py-2">
-                                <input required type="checkbox" className="mt-0.5 size-5 shrink-0 accent-[#0875f9]" />
+                                <input required type="checkbox" className="mt-0.5 size-5 shrink-0 accent-[#006dfc]" />
                                 <span>
                                     I have read the information regarding the handling of my
                                     personal data and I agree.{' '}
-                                    <a href="/privacy" className="font-semibold text-[#0875f9] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]">
+                                    <a href="/privacy" className="font-semibold text-[#006dfc] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]">
                                         Privacy Policy
                                     </a>
                                 </span>
@@ -1277,7 +1277,7 @@ function ReservationView({
                             onClick={continueToPayment}
                             disabled={isSubmitting}
                             aria-busy={isSubmitting}
-                            className="min-h-12 w-full rounded-lg bg-[#0875f9] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none"
+                            className="min-h-12 w-full rounded-lg bg-[#006dfc] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none"
                         >
                             {isSubmitting ? 'Creating your booking…' : 'Continue to payment'}
                         </button>
@@ -1357,6 +1357,7 @@ function Services({
     )
     const [selectedRoomIndex, setSelectedRoomIndex] = useState(0)
     const [notice, setNotice] = useState('')
+    const [isBookingPanelOpen, setIsBookingPanelOpen] = useState(false)
 
     useEffect(() => {
         let active = true
@@ -1432,6 +1433,15 @@ function Services({
     const selectedRoomIds = roomGuests.flatMap((room) =>
         room.stayId ? [room.stayId] : [],
     )
+    const selectedStays = [...new Set(selectedRoomIds)].flatMap((id) => {
+        const stay =
+            publicRooms.find((room) => room.id === id) ??
+            (exclusiveStay?.id === id ? exclusiveStay : null)
+        return stay ? [stay] : []
+    })
+    const hasDates = Boolean(checkIn && checkOut)
+    const hasRooms = selectedStays.length > 0
+    const activeBookingStep = !hasDates ? 0 : !hasRooms ? 1 : 2
 
     const [resolvedIncomingId, setResolvedIncomingId] = useState<string | null>(
         null,
@@ -1556,6 +1566,7 @@ function Services({
     const handleCheckAvailability = () => {
         if (!checkIn || !checkOut || nights < 1) {
             setNotice('Choose a valid check-in and check-out date to continue.')
+            setIsBookingPanelOpen(true)
             return
         }
 
@@ -1570,6 +1581,7 @@ function Services({
 
         if (!roomGuests.some((room) => room.stayId)) {
             setNotice('Choose a room before continuing to your reservation.')
+            setIsBookingPanelOpen(true)
             return
         }
 
@@ -1602,21 +1614,165 @@ function Services({
         {!bookingOnly && !reservationOnly && (
         <main className="min-h-svh bg-white px-4 pb-12 pt-24 font-poppins sm:px-7 sm:pt-28">
             <div className="mx-auto grid max-w-7xl items-start gap-7 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-9">
-                <BookingCalendarPanel
-                    checkIn={checkIn}
-                    checkOut={checkOut}
-                    setCheckIn={setCheckIn}
-                    setCheckOut={setCheckOut}
-                    roomGuests={roomGuests}
-                    setRoomGuests={setRoomGuests}
-                    selectedRoomIndex={selectedRoomIndex}
-                    onSelectedRoomIndexChange={setSelectedRoomIndex}
-                    roomChoices={roomChoices}
-                    notice={notice}
-                    onDateChange={() => setNotice('')}
-                    onCheckAvailability={handleCheckAvailability}
-                />
-                <div className="min-w-0">
+                <div className="min-w-0 space-y-4 lg:sticky lg:top-24" inert={isBookingPanelOpen}>
+                    <BookingCalendarPanel
+                        checkIn={checkIn}
+                        checkOut={checkOut}
+                        setCheckIn={setCheckIn}
+                        setCheckOut={setCheckOut}
+                        roomGuests={roomGuests}
+                        setRoomGuests={setRoomGuests}
+                        selectedRoomIndex={selectedRoomIndex}
+                        onSelectedRoomIndexChange={setSelectedRoomIndex}
+                        roomChoices={roomChoices}
+                        notice={notice}
+                        isOpen={isBookingPanelOpen}
+                        onOpenChange={setIsBookingPanelOpen}
+                        onDateChange={() => setNotice('')}
+                        onCheckAvailability={handleCheckAvailability}
+                    />
+
+                    <section
+                        aria-labelledby="selected-stays-heading"
+                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
+                    >
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                    Your selection
+                                </p>
+                                <h2
+                                    id="selected-stays-heading"
+                                    className="mt-1 text-sm font-semibold text-slate-900"
+                                >
+                                    {hasRooms
+                                        ? `${selectedStays.length} room${
+                                              selectedStays.length === 1 ? '' : 's'
+                                          } ready`
+                                        : 'No rooms selected yet'}
+                                </h2>
+                            </div>
+                            <span
+                                aria-hidden="true"
+                                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f5f9ff] text-[#006dfc]"
+                            >
+                                <BedDouble className="size-5" />
+                            </span>
+                        </div>
+
+                        {hasRooms ? (
+                            <ul className="mt-3 space-y-2">
+                                {selectedStays.slice(0, 3).map((stay) => (
+                                    <li
+                                        key={stay.id}
+                                        className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 bg-white p-2"
+                                    >
+                                        <img
+                                            src={stay.image || wholeVilla}
+                                            alt=""
+                                            loading="lazy"
+                                            className="size-11 shrink-0 rounded-lg border border-slate-100 object-cover"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-[13px] font-semibold text-slate-800">
+                                                {stay.title}
+                                            </p>
+                                            <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                                                {stay.category === 'exclusive'
+                                                    ? 'Whole villa'
+                                                    : 'Private room'}{' '}
+                                                · {money(stay.price)}/night
+                                            </p>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="mt-3 rounded-xl border border-dashed border-[#d7e6ff] bg-[#f5f9ff] p-3 text-[11px] leading-5 text-slate-600">
+                                Pick a private room or the whole villa on the right
+                                to build your stay.
+                            </p>
+                        )}
+
+                        {selectedStays.length > 3 && (
+                            <p className="mt-2 text-[11px] text-slate-500">
+                                +{selectedStays.length - 3} more selected
+                            </p>
+                        )}
+                    </section>
+
+                    <section
+                        aria-labelledby="booking-guide-heading"
+                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
+                    >
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            How it works
+                        </p>
+                        <h2 id="booking-guide-heading" className="sr-only">
+                            Booking progress
+                        </h2>
+                        <ol className="mt-3 space-y-3">
+                            {[
+                                {
+                                    title: 'Set your dates',
+                                    description:
+                                        'Choose check-in and check-out in the booking form.',
+                                },
+                                {
+                                    title: 'Pick your rooms',
+                                    description:
+                                        'Select a private room or the whole villa.',
+                                },
+                                {
+                                    title: 'Review and continue',
+                                    description:
+                                        'Your choices carry over to the reservation page.',
+                                },
+                            ].map((step, index) => {
+                                const done = index < activeBookingStep
+                                const active = index === activeBookingStep
+
+                                return (
+                                    <li key={step.title} className="flex gap-3">
+                                        <span
+                                            className={`mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${
+                                                done
+                                                    ? 'bg-[#006dfc] text-white'
+                                                    : active
+                                                      ? 'border border-[#006dfc] bg-white text-[#006dfc]'
+                                                      : 'bg-slate-100 text-slate-400'
+                                            }`}
+                                        >
+                                            {done ? (
+                                                <Check
+                                                    className="size-3.5"
+                                                    aria-hidden="true"
+                                                />
+                                            ) : (
+                                                `0${index + 1}`
+                                            )}
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p
+                                                className={`text-xs font-semibold ${
+                                                    active || done
+                                                        ? 'text-slate-900'
+                                                        : 'text-slate-500'
+                                                }`}
+                                            >
+                                                {step.title}
+                                            </p>
+                                            <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
+                                                {step.description}
+                                            </p>
+                                        </div>
+                                    </li>
+                                )
+                            })}
+                        </ol>
+                    </section>
+                </div>
+                <div className="min-w-0" inert={isBookingPanelOpen}>
                 {isRoomDetailOpen && selectedStay ? (
                     <>
                         <RoomDetailView
@@ -1657,7 +1813,7 @@ function Services({
                         </p>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Filter accommodation">
+                    <div className="mt-4 flex flex-wrap gap-2" aria-label="Filter accommodation">
                         {[
                             { value: 'all', label: 'All' },
                             { value: 'public', label: 'Private rooms' },
@@ -1668,7 +1824,7 @@ function Services({
                                 type="button"
                                 onClick={() => setActiveFilter(value as 'all' | StayCategory)}
                                 aria-pressed={activeFilter === value}
-                                className={`rounded-full border px-3 py-1.5 text-[10px] font-medium shadow-sm transition sm:px-4 sm:text-xs ${
+                                className={`min-h-11 rounded-full border px-4 py-2 text-xs font-medium shadow-sm transition sm:text-sm ${
                                     activeFilter === value
                                         ? 'border-[#006dfc] bg-[#006dfc] text-white'
                                         : 'border-slate-300/80 bg-white/75 text-slate-700 backdrop-blur-md hover:border-[#006dfc]/50 hover:text-[#006dfc]'
