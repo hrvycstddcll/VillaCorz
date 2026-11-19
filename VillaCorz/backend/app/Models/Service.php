@@ -15,6 +15,8 @@ class Service extends Model
         'description',
         'price',
         'weekend_price',
+        'additional_head_weekday_price',
+        'additional_head_weekend_price',
         'weekday_discount_type',
         'weekday_discount_value',
         'weekend_discount_type',
@@ -28,6 +30,8 @@ class Service extends Model
     protected $casts = [
         'price' => 'decimal:2',
         'weekend_price' => 'decimal:2',
+        'additional_head_weekday_price' => 'decimal:2',
+        'additional_head_weekend_price' => 'decimal:2',
         'weekday_discount_value' => 'decimal:2',
         'weekend_discount_value' => 'decimal:2',
         'pax' => 'integer',

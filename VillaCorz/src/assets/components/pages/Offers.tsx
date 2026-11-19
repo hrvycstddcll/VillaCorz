@@ -5,8 +5,6 @@ import {
     useMemo,
     useRef,
     useState,
-    type KeyboardEvent as ReactKeyboardEvent,
-    type MouseEvent as ReactMouseEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
 import axios from 'axios'
@@ -15,7 +13,6 @@ import {
     CalendarDays,
     CircleAlert,
     MoreVertical,
-    Pencil,
     Plus,
     RefreshCw,
     RotateCcw,
@@ -109,7 +106,6 @@ const performanceStats = (
 
 type OfferActionsMenuProps = {
     service: Service
-    onEdit: (service: Service) => void
     onCalendar: (service: Service) => void
     onArchive: (service: Service) => void
     onDelete: (service: Service) => void
@@ -119,7 +115,6 @@ const menuItemClass = `flex min-h-11 w-full items-center gap-2 px-3 text-left te
 
 const OfferActionsMenu = ({
     service,
-    onEdit,
     onCalendar,
     onArchive,
     onDelete,
@@ -226,15 +221,6 @@ const OfferActionsMenu = ({
                         <button
                             type="button"
                             role="menuitem"
-                            onClick={() => runAction(() => onEdit(service))}
-                            className={menuItemClass}
-                        >
-                            <Pencil className="size-4" />
-                            Edit offer
-                        </button>
-                        <button
-                            type="button"
-                            role="menuitem"
                             onClick={() => runAction(() => onCalendar(service))}
                             className={menuItemClass}
                         >
@@ -286,9 +272,6 @@ const Offers = () => {
     const [deleteError, setDeleteError] = useState('')
     const [deleting, setDeleting] = useState(false)
     const [selectedCalendar, setSelectedCalendar] = useState<Service | null>(null)
-    const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set())
-    const [bulkUpdating, setBulkUpdating] = useState(false)
-    const selectionAnchorRef = useRef<number | null>(null)
 
     const loadData = useCallback(async () => {
         setLoading(true)
@@ -300,11 +283,6 @@ const Offers = () => {
             ])
             const nextServices = serviceResponse.data.data ?? []
             setServices(nextServices)
-            setSelectedIds((current) => {
-                const availableIds = new Set(nextServices.map((service) => service.id))
-                const next = new Set([...current].filter((id) => availableIds.has(id)))
-                return next.size === current.size ? current : next
-            })
             setSummary(dashboardResponse.data.data)
         } catch (loadFailure) {
             setError(getErrorMessage(loadFailure))
@@ -368,57 +346,6 @@ const Offers = () => {
             })
     }, [filter, search, services, sort, summary])
 
-    const handleSelectService = <T extends HTMLElement,>(
-        event: ReactMouseEvent<T> | ReactKeyboardEvent<T>,
-        service: Service,
-    ) => {
-        const additive = event.ctrlKey || event.metaKey
-        const anchorId = selectionAnchorRef.current
-
-        if (event.shiftKey && anchorId !== null) {
-            const anchorIndex = visibleServices.findIndex((item) => item.id === anchorId)
-            const targetIndex = visibleServices.findIndex((item) => item.id === service.id)
-            if (anchorIndex !== -1 && targetIndex !== -1) {
-                const start = Math.min(anchorIndex, targetIndex)
-                const end = Math.max(anchorIndex, targetIndex)
-                setSelectedIds((current) => {
-                    const next = additive ? new Set(current) : new Set<number>()
-                    visibleServices.slice(start, end + 1).forEach((item) => next.add(item.id))
-                    return next
-                })
-                return
-            }
-        }
-
-        selectionAnchorRef.current = service.id
-        setSelectedIds((current) => {
-            if (!additive) return new Set([service.id])
-            const next = new Set(current)
-            if (next.has(service.id)) next.delete(service.id)
-            else next.add(service.id)
-            return next
-        })
-    }
-
-    const handleSelectionKeyDown = <T extends HTMLElement,>(
-        event: ReactKeyboardEvent<T>,
-        service: Service,
-    ) => {
-        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            const list = event.currentTarget.closest('[data-offer-list]')
-            const rows = Array.from(list?.querySelectorAll<HTMLElement>('[tabindex="0"]') ?? [])
-            const index = rows.indexOf(event.currentTarget)
-            event.preventDefault()
-            rows[index + (event.key === 'ArrowDown' ? 1 : -1)]?.focus()
-            return
-        }
-
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            handleSelectService(event, service)
-        }
-    }
-
     const openAddForm = () => {
         setEditingService(null)
         setFormOpen(true)
@@ -454,29 +381,6 @@ const Offers = () => {
         }
     }
 
-    const archiveSelected = async () => {
-        const selected = services.filter((service) => selectedIds.has(service.id))
-        if (selected.length === 0 || bulkUpdating) return
-        setBulkUpdating(true)
-        const results = await Promise.allSettled(
-            selected.map((service) =>
-                updateServiceStatus(service, service.status === 'active' ? 'inactive' : 'active'),
-            ),
-        )
-        const succeeded = results.filter((result) => result.status === 'fulfilled').length
-        const failed = results.length - succeeded
-        setSelectedIds(new Set())
-        selectionAnchorRef.current = null
-        setNotice({
-            tone: failed ? 'error' : 'success',
-            message: failed
-                ? `${succeeded} offers updated; ${failed} could not be updated.`
-                : `${succeeded} offers updated.`,
-        })
-        await loadData()
-        setBulkUpdating(false)
-    }
-
     const confirmDelete = async () => {
         if (!deletingService) return
         const deletingId = deletingService.id
@@ -484,13 +388,6 @@ const Offers = () => {
         setDeleteError('')
         try {
             const response = await deleteService(deletingId)
-            setSelectedIds((current) => {
-                if (!current.has(deletingId)) return current
-                const next = new Set(current)
-                next.delete(deletingId)
-                return next
-            })
-            if (selectionAnchorRef.current === deletingId) selectionAnchorRef.current = null
             setDeletingService(null)
             setNotice({
                 tone: 'success',
@@ -532,7 +429,6 @@ const Offers = () => {
     const renderOfferActions = (service: Service) => (
         <OfferActionsMenu
             service={service}
-            onEdit={openEditForm}
             onCalendar={setSelectedCalendar}
             onArchive={(item) => {
                 void archiveService(item, item.status === 'active' ? 'inactive' : 'active')
@@ -540,11 +436,6 @@ const Offers = () => {
             onDelete={setDeletingService}
         />
     )
-
-    const selectionRowClass = (service: Service) =>
-        selectedIds.has(service.id)
-            ? 'cursor-pointer select-none bg-[#006dfc]/5 shadow-[inset_3px_0_0_#006dfc] hover:bg-[#006dfc]/10'
-            : 'cursor-pointer select-none'
 
     const columns: AdminTableColumn<Service>[] = [
         {
@@ -573,6 +464,21 @@ const Offers = () => {
             render: (service) => (
                 <span className="font-mono text-xs tabular-nums">{money(Number(service.price))}</span>
             ),
+        },
+        {
+            key: 'additional-head',
+            label: 'Extra head / night',
+            align: 'right',
+            className: 'hidden xl:table-cell',
+            render: (service) =>
+                service.pax != null ? (
+                    <span className="font-mono text-xs tabular-nums">
+                        {money(Number(service.additional_head_weekday_price ?? 50))} /{' '}
+                        {money(Number(service.additional_head_weekend_price ?? 100))}
+                    </span>
+                ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                ),
         },
         {
             key: 'performance',
@@ -751,33 +657,6 @@ const Offers = () => {
                                 }))}
                             />
                         </div>
-                        {selectedIds.size > 0 && (
-                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#006dfc]/20 bg-[#006dfc]/5 px-3 py-2">
-                                <span className="text-xs font-semibold text-[#006dfc]">
-                                    {selectedIds.size} selected
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSelectedIds(new Set())
-                                            selectionAnchorRef.current = null
-                                        }}
-                                        className={`min-h-11 rounded-lg px-3 text-xs font-semibold text-slate-700 hover:bg-white ${focusRing}`}
-                                    >
-                                        Clear
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => void archiveSelected()}
-                                        disabled={bulkUpdating}
-                                        className={`min-h-11 rounded-lg bg-[#006dfc] px-3 text-xs font-semibold text-white hover:bg-[#0057c9] disabled:opacity-50 ${focusRing}`}
-                                    >
-                                        {bulkUpdating ? 'Updating…' : 'Archive / restore'}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {loading ? (
@@ -807,28 +686,13 @@ const Offers = () => {
                             }
                         />
                     ) : (
-                        <div className="px-5 pb-4">
-                            <div
-                                className="space-y-3 md:hidden"
-                                role="listbox"
-                                aria-label="Offer catalogue performance"
-                                aria-multiselectable="true"
-                                data-offer-list
-                            >
+                        <div className="px-5 pb-5">
+                            <div className="space-y-3 md:hidden">
                                 {visibleServices.map((service) => (
                                     <article
                                         key={service.id}
-                                        role="option"
-                                        aria-selected={selectedIds.has(service.id)}
-                                        aria-label={`${service.name}, ${service.kind}`}
-                                        tabIndex={0}
-                                        onClick={(event) => handleSelectService(event, service)}
-                                        onKeyDown={(event) => handleSelectionKeyDown(event, service)}
-                                        className={`rounded-xl border bg-white p-4 transition ${selectionRowClass(service)} ${
-                                            selectedIds.has(service.id)
-                                                ? 'border-[#006dfc]/40'
-                                                : 'border-[rgba(0,0,0,0.06)] hover:bg-slate-50'
-                                        } ${focusRing}`}
+                                        onClick={() => openEditForm(service)}
+                                        className="cursor-pointer rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-5 transition hover:bg-slate-50"
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <button
@@ -862,6 +726,27 @@ const Offers = () => {
                                                 {money(Number(service.price))}
                                             </span>
                                         </div>
+                                        {service.pax != null && (
+                                            <div className="mt-2 flex items-baseline justify-between gap-3 text-[10px] text-slate-500">
+                                                <span>Extra head / night</span>
+                                                <span className="font-mono tabular-nums">
+                                                    {money(
+                                                        Number(
+                                                            service.additional_head_weekday_price ??
+                                                                50,
+                                                        ),
+                                                    )}{' '}
+                                                    weekday /{' '}
+                                                    {money(
+                                                        Number(
+                                                            service.additional_head_weekend_price ??
+                                                                100,
+                                                        ),
+                                                    )}{' '}
+                                                    weekend
+                                                </span>
+                                            </div>
+                                        )}
                                         <AdminStatStrip
                                             stats={performanceStats(summary, service)}
                                             className="mt-2 gap-x-3 gap-y-1"
@@ -869,21 +754,25 @@ const Offers = () => {
                                     </article>
                                 ))}
                             </div>
-                            <div className="hidden md:block" data-offer-list>
+                            <div className="hidden md:block">
                                 <AdminTable
                                     label="Offer catalogue performance"
                                     columns={columns}
                                     rows={visibleServices}
                                     rowKey={(service) => service.id}
                                     empty={null}
-                                    tableProps={{ role: 'grid', 'aria-multiselectable': true }}
+                                    cellClassName="px-4 py-3 first:pl-2 last:pr-2"
                                     rowProps={(service) => ({
                                         tabIndex: 0,
-                                        'aria-selected': selectedIds.has(service.id),
-                                        onClick: (event) => handleSelectService(event, service),
-                                        onKeyDown: (event) => handleSelectionKeyDown(event, service),
+                                        'aria-label': `Edit ${service.name}`,
+                                        onClick: () => openEditForm(service),
+                                        onKeyDown: (event) => {
+                                            if (event.key !== 'Enter' && event.key !== ' ') return
+                                            event.preventDefault()
+                                            openEditForm(service)
+                                        },
                                     })}
-                                    rowClassName={selectionRowClass}
+                                    rowClassName={() => 'cursor-pointer'}
                                 />
                             </div>
                             <p className="mt-3 text-[10px] leading-5 text-slate-500">

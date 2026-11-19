@@ -49,6 +49,9 @@ type Stay = {
     gallery: string[]
     price: number
     weekendPrice?: number
+    pax?: number | null
+    additionalHeadWeekdayPrice?: number
+    additionalHeadWeekendPrice?: number
     originalPrice?: number
     weekendOriginalPrice?: number
     discountLabel?: string
@@ -111,6 +114,13 @@ const toStay = (service: Service): Stay => {
         gallery: gallery.length > 0 ? gallery : [primaryImage],
         price: pricing.weekday.price,
         weekendPrice: pricing.weekend.price,
+        pax: service.pax,
+        additionalHeadWeekdayPrice: Number(
+            service.additional_head_weekday_price ?? 50,
+        ),
+        additionalHeadWeekendPrice: Number(
+            service.additional_head_weekend_price ?? 100,
+        ),
         originalPrice: pricing.weekday.originalPrice ?? undefined,
         weekendOriginalPrice: pricing.weekend.originalPrice ?? undefined,
         discountLabel: getOfferBadgeLabel(pricing) || undefined,
@@ -173,6 +183,13 @@ const toExclusiveStay = (service: Service): Stay => {
         gallery,
         price: weekdayPricing.price,
         weekendPrice: weekendPricing.price,
+        pax: service.pax,
+        additionalHeadWeekdayPrice: Number(
+            service.additional_head_weekday_price ?? 50,
+        ),
+        additionalHeadWeekendPrice: Number(
+            service.additional_head_weekend_price ?? 100,
+        ),
         originalPrice: weekdayPricing.originalPrice ?? undefined,
         weekendOriginalPrice: weekendPricing.originalPrice ?? undefined,
         discountLabel: getOfferBadgeLabel(pricing) || undefined,
@@ -407,6 +424,21 @@ function RoomDetailView({
                         <p className="mt-1 text-xs text-slate-600">
                             {stay.capacity}
                         </p>
+                        {stay.pax != null &&
+                            (stay.additionalHeadWeekdayPrice ?? 0) > 0 &&
+                            (stay.additionalHeadWeekendPrice ?? 0) > 0 && (
+                                <p className="mt-1 text-[11px] text-slate-500">
+                                    Additional guest:{' '}
+                                    {money(
+                                        stay.additionalHeadWeekdayPrice ?? 0,
+                                    )}{' '}
+                                    weekday /{' '}
+                                    {money(
+                                        stay.additionalHeadWeekendPrice ?? 0,
+                                    )}{' '}
+                                    weekend per night
+                                </p>
+                            )}
                     </div>
 
                     {hasAmenities && (
@@ -579,8 +611,14 @@ function ReservationView({
         ),
     )
     const total = assignedRooms.reduce(
-        (sum, { stay }) =>
-            sum + getReservationPrice(stay, checkIn, checkOut).total,
+        (sum, { room, stay }) =>
+            sum +
+            getReservationPrice(
+                stay,
+                checkIn,
+                checkOut,
+                room.adults + room.kids,
+            ).total,
         0,
     )
 
@@ -850,24 +888,46 @@ function ReservationView({
                     </div>
 
                     <div className="divide-y divide-slate-100">
-                        {assignedRooms.map(({ room, stay }, index) => (
-                            <div
-                                key={`${stay.id}-${index}`}
-                                className="flex min-w-0 items-start justify-between gap-3 py-3"
-                            >
-                                <div className="min-w-0 text-xs leading-5 text-slate-600">
-                                    <p className="break-words font-semibold text-[#0875f9]">
-                                        {stay.title} #{index + 1}
-                                    </p>
-                                    <p>{room.adults} Adults{room.kids ? ` · ${room.kids} Kids` : ''}</p>
-                                    <p>Not refundable</p>
-                                    <p>Payment Center / E-Wallet</p>
+                        {assignedRooms.map(({ room, stay }, index) => {
+                            const linePricing = getReservationPrice(
+                                stay,
+                                checkIn,
+                                checkOut,
+                                room.adults + room.kids,
+                            )
+
+                            return (
+                                <div
+                                    key={`${stay.id}-${index}`}
+                                    className="flex min-w-0 items-start justify-between gap-3 py-3"
+                                >
+                                    <div className="min-w-0 text-xs leading-5 text-slate-600">
+                                        <p className="break-words font-semibold text-[#0875f9]">
+                                            {stay.title} #{index + 1}
+                                        </p>
+                                        <p>{room.adults} Adults{room.kids ? ` · ${room.kids} Kids` : ''}</p>
+                                        {linePricing.extraHeads > 0 && (
+                                            <p>
+                                                Includes{' '}
+                                                {money(
+                                                    linePricing.additionalHeadTotal,
+                                                )}{' '}
+                                                additional head fee for{' '}
+                                                {linePricing.extraHeads}{' '}
+                                                {linePricing.extraHeads === 1
+                                                    ? 'guest'
+                                                    : 'guests'}
+                                            </p>
+                                        )}
+                                        <p>Not refundable</p>
+                                        <p>Payment Center / E-Wallet</p>
+                                    </div>
+                                    <strong className="shrink-0 text-sm font-semibold tabular-nums text-slate-700 sm:text-base">
+                                        {money(linePricing.total)}
+                                    </strong>
                                 </div>
-                                <strong className="shrink-0 text-sm font-semibold tabular-nums text-slate-700 sm:text-base">
-                                    {money(getReservationPrice(stay, checkIn, checkOut).total)}
-                                </strong>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
 
                     <section

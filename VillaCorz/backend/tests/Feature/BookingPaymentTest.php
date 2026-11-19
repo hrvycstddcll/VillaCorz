@@ -91,6 +91,176 @@ class BookingPaymentTest extends TestCase
         $this->assertSame(3600.0, $quote['total']);
     }
 
+    public function test_additional_heads_are_charged_per_weekday_night(): void
+    {
+        $service = $this->makeRoomService([
+            'price' => 1000,
+            'weekend_price' => 1500,
+            'pax' => 2,
+        ]);
+
+        $quote = app(PricingService::class)->quote(
+            collect([$service]),
+            '2026-11-16', // Monday
+            '2026-11-18', // Wednesday
+            [$service->id => 3],
+        );
+
+        $this->assertSame(2, $quote['nights']);
+        $this->assertSame(1, $quote['rooms'][0]['additional_heads']);
+        $this->assertSame(100.0, $quote['rooms'][0]['additional_head_total']);
+        $this->assertSame(2100.0, $quote['total']);
+    }
+
+    public function test_additional_heads_are_charged_per_weekend_night(): void
+    {
+        $service = $this->makeRoomService([
+            'price' => 1000,
+            'weekend_price' => 1500,
+            'pax' => 2,
+        ]);
+
+        $quote = app(PricingService::class)->quote(
+            collect([$service]),
+            '2026-11-13', // Friday
+            '2026-11-15', // Sunday
+            [$service->id => 4],
+        );
+
+        $this->assertSame(2, $quote['nights']);
+        $this->assertSame(2, $quote['rooms'][0]['additional_heads']);
+        $this->assertSame(400.0, $quote['rooms'][0]['additional_head_total']);
+        $this->assertSame(3400.0, $quote['total']);
+    }
+
+    public function test_additional_head_rates_follow_mixed_weekday_and_weekend_nights(): void
+    {
+        $service = $this->makeRoomService([
+            'price' => 1000,
+            'weekend_price' => 1500,
+            'pax' => 2,
+        ]);
+
+        $quote = app(PricingService::class)->quote(
+            collect([$service]),
+            '2026-11-12', // Thursday
+            '2026-11-16', // Monday
+            [$service->id => 3],
+        );
+
+        $this->assertSame(4, $quote['nights']);
+        $this->assertSame(350.0, $quote['rooms'][0]['additional_head_total']);
+        $this->assertSame(5850.0, $quote['total']);
+    }
+
+    public function test_no_additional_head_fee_at_or_below_pax(): void
+    {
+        $service = $this->makeRoomService([
+            'price' => 1000,
+            'weekend_price' => 1500,
+            'pax' => 4,
+        ]);
+
+        $quote = app(PricingService::class)->quote(
+            collect([$service]),
+            '2026-11-16',
+            '2026-11-18',
+            [$service->id => 4],
+        );
+
+        $this->assertSame(0, $quote['rooms'][0]['additional_heads']);
+        $this->assertSame(0.0, $quote['rooms'][0]['additional_head_total']);
+        $this->assertSame(2000.0, $quote['total']);
+    }
+
+    public function test_no_additional_head_fee_when_pax_is_not_set(): void
+    {
+        $service = $this->makeRoomService([
+            'price' => 1000,
+            'weekend_price' => 1500,
+            'pax' => null,
+        ]);
+
+        $quote = app(PricingService::class)->quote(
+            collect([$service]),
+            '2026-11-16',
+            '2026-11-18',
+            [$service->id => 6],
+        );
+
+        $this->assertSame(0, $quote['rooms'][0]['additional_heads']);
+        $this->assertSame(0.0, $quote['rooms'][0]['additional_head_total']);
+        $this->assertSame(2000.0, $quote['total']);
+    }
+
+    public function test_discounts_do_not_apply_to_additional_head_fees(): void
+    {
+        $service = $this->makeRoomService([
+            'price' => 1000,
+            'weekend_price' => 1500,
+            'weekday_discount_type' => 'fixed',
+            'weekday_discount_value' => 100,
+            'pax' => 2,
+        ]);
+
+        $quote = app(PricingService::class)->quote(
+            collect([$service]),
+            '2026-11-16',
+            '2026-11-18',
+            [$service->id => 3],
+        );
+
+        // Two weekday nights: (1000 - 100) + 50 per night.
+        $this->assertSame(100.0, $quote['rooms'][0]['additional_head_total']);
+        $this->assertSame(1900.0, $quote['total']);
+    }
+
+    public function test_booking_above_pax_charges_and_snapshots_additional_heads(): void
+    {
+        $user = User::factory()->create();
+        $service = $this->makeRoomService([
+            'price' => 1000,
+            'weekend_price' => 1500,
+            'pax' => 2,
+        ]);
+
+        $checkIn = now()->next('Monday')->startOfDay();
+        $checkOut = $checkIn->copy()->addDays(2);
+
+        $response = $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($service, [
+                'check_in' => $checkIn->toDateString(),
+                'check_out' => $checkOut->toDateString(),
+                'rooms' => [
+                    [
+                        'service_id' => $service->id,
+                        'adults' => 3,
+                        'kids' => 0,
+                    ],
+                ],
+            ]), [
+                'Idempotency-Key' => 'booking-key-additional-heads',
+            ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.total', '2100.00')
+            ->assertJsonPath('data.rooms.0.additional_heads', 1)
+            ->assertJsonPath('data.rooms.0.additional_head_total', '100.00');
+
+        $booking = Booking::query()
+            ->where('idempotency_key', 'booking-key-additional-heads')
+            ->firstOrFail();
+        $room = $booking->rooms()->firstOrFail();
+
+        $this->assertSame('2100.00', $booking->total);
+        $this->assertSame(1, $room->additional_heads);
+        $this->assertSame('50.00', $room->additional_head_weekday_price);
+        $this->assertSame('100.00', $room->additional_head_total);
+        $this->assertSame('2100.00', $room->line_total);
+        $this->assertSame($booking->total, $booking->payment?->amount);
+    }
+
     public function test_a_guest_can_create_a_booking_with_a_pending_payment(): void
     {
         $user = User::factory()->create();
@@ -623,6 +793,8 @@ class BookingPaymentTest extends TestCase
             'kind' => 'room',
             'price' => 1500,
             'weekend_price' => 1800,
+            'additional_head_weekday_price' => 50,
+            'additional_head_weekend_price' => 100,
             'pax' => 4,
             'status' => 'active',
         ], $overrides));

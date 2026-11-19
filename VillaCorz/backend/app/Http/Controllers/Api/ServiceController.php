@@ -73,6 +73,8 @@ class ServiceController extends Controller
                     'description' => $validated['description'] ?? null,
                     'price' => $validated['price'],
                     'weekend_price' => $validated['weekend_price'] ?? null,
+                    'additional_head_weekday_price' => $validated['additional_head_weekday_price'] ?? 50,
+                    'additional_head_weekend_price' => $validated['additional_head_weekend_price'] ?? 100,
                     'weekday_discount_type' => $validated['weekday_discount_type'] ?? null,
                     'weekday_discount_value' => filled($validated['weekday_discount_type'] ?? null)
                         ? ($validated['weekday_discount_value'] ?? null)
@@ -131,6 +133,8 @@ class ServiceController extends Controller
                 'status' => $service->status,
                 'price' => $service->price,
                 'weekend_price' => $service->weekend_price,
+                'additional_head_weekday_price' => $service->additional_head_weekday_price,
+                'additional_head_weekend_price' => $service->additional_head_weekend_price,
                 'weekday_discount_type' => $service->weekday_discount_type,
                 'weekday_discount_value' => $service->weekday_discount_value,
                 'weekend_discount_type' => $service->weekend_discount_type,
@@ -179,6 +183,8 @@ class ServiceController extends Controller
             'description',
             'price',
             'weekend_price',
+            'additional_head_weekday_price',
+            'additional_head_weekend_price',
             'weekday_discount_type',
             'weekday_discount_value',
             'weekend_discount_type',
@@ -226,6 +232,14 @@ class ServiceController extends Controller
 
         if ($request->exists('weekend_price')) {
             $detailUpdates['weekend_price'] = $validated['weekend_price'] ?? null;
+        }
+
+        if ($request->exists('additional_head_weekday_price')) {
+            $detailUpdates['additional_head_weekday_price'] = $validated['additional_head_weekday_price'] ?? 50;
+        }
+
+        if ($request->exists('additional_head_weekend_price')) {
+            $detailUpdates['additional_head_weekend_price'] = $validated['additional_head_weekend_price'] ?? 100;
         }
 
         if ($request->boolean('features_present')) {
@@ -483,6 +497,8 @@ class ServiceController extends Controller
             'description' => ['nullable', 'string'],
             'price' => ['required', 'numeric', 'min:0'],
             'weekend_price' => ['nullable', 'numeric', 'min:0'],
+            'additional_head_weekday_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'additional_head_weekend_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'weekday_discount_type' => ['nullable', 'in:percent,fixed'],
             'weekday_discount_value' => ['nullable', 'numeric', 'min:0'],
             'weekend_discount_type' => ['nullable', 'in:percent,fixed'],

@@ -60,6 +60,8 @@ export type Service = {
     description: string | null
     price: string | number
     weekend_price: string | number | null
+    additional_head_weekday_price: string | number | null
+    additional_head_weekend_price: string | number | null
     weekday_discount_type: ServiceDiscountType | null
     weekday_discount_value: string | number | null
     weekend_discount_type: ServiceDiscountType | null
@@ -89,8 +91,12 @@ export type BookingRoom = {
     kind: 'room' | 'exclusive'
     adults: number
     kids: number
+    additional_heads: number
     weekday_price: string
     weekend_price: string
+    additional_head_weekday_price: string
+    additional_head_weekend_price: string
+    additional_head_total: string
     line_total: string
     description: string | null
     image_url: string | null
