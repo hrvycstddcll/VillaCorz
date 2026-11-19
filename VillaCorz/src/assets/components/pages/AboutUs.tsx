@@ -3,15 +3,12 @@ import {
     useLayoutEffect,
     useRef,
     useState,
-    type HTMLAttributes,
-    type ReactNode,
-    type RefObject,
 } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { AirVent, BadgePercent, ShieldCheck, Users } from 'lucide-react'
 import logoUrl from '../../VillaCorz-SVGLogo.svg'
-import SpotlightCard from '../ui/SpotlightCard'
+
 import CountUp from '../ui/CountUp'
 import AccordionGallery from '../ui/AccordionGallery'
 
@@ -54,149 +51,6 @@ const tiltStyles = `
 .vc-tilt-back{position:absolute;inset:0;transform:rotateY(180deg);backface-visibility:hidden}
 `
 
-const GlareLayer = ({
-    glareRef,
-}: {
-    glareRef: RefObject<HTMLDivElement | null>
-}) => <div ref={glareRef} aria-hidden="true" className="vc-tilt-glare" />
-
-type TiltedCardProps = HTMLAttributes<HTMLDivElement> & {
-    children: ReactNode
-    back?: ReactNode
-    tiltClass?: string
-    rotationRange?: number
-    scaleOnHover?: number
-    glareEnable?: boolean
-    glareOpacity?: number
-    flipOnClick?: boolean
-}
-
-const TiltedCard = ({
-    children,
-    back,
-    className = '',
-    tiltClass = '',
-    rotationRange = 14,
-    scaleOnHover = 1.03,
-    glareEnable = true,
-    glareOpacity = 0.55,
-    flipOnClick = false,
-    ...rest
-}: TiltedCardProps) => {
-    const rootRef = useRef<HTMLDivElement>(null)
-    const innerRef = useRef<HTMLDivElement>(null)
-    const flipperRef = useRef<HTMLDivElement>(null)
-    const glareRef = useRef<HTMLDivElement>(null)
-    const flippedRef = useRef(false)
-
-    useLayoutEffect(() => {
-        const root = rootRef.current
-        const inner = innerRef.current
-        if (!root || !inner) return
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-
-        const glare = glareRef.current
-        const rotX = gsap.quickTo(inner, 'rotationX', {
-            duration: 0.35,
-            ease: 'power2.out',
-        })
-        const rotY = gsap.quickTo(inner, 'rotationY', {
-            duration: 0.35,
-            ease: 'power2.out',
-        })
-        const scaleTo = gsap.quickTo(inner, 'scale', {
-            duration: 0.35,
-            ease: 'power2.out',
-        })
-
-        let glareXTo: ((value: number) => void) | null = null
-        let glareYTo: ((value: number) => void) | null = null
-        let glareOpacityTo: ((value: number) => void) | null = null
-
-        if (glare && glareEnable) {
-            const proxy = { x: 50, y: 50 }
-            glareXTo = gsap.quickTo(proxy, 'x', {
-                duration: 0.35,
-                ease: 'power2.out',
-                onUpdate: () => glare.style.setProperty('--gx', `${proxy.x}%`),
-            })
-            glareYTo = gsap.quickTo(proxy, 'y', {
-                duration: 0.35,
-                ease: 'power2.out',
-                onUpdate: () => glare.style.setProperty('--gy', `${proxy.y}%`),
-            })
-            glareOpacityTo = gsap.quickTo(glare, 'opacity', {
-                duration: 0.35,
-                ease: 'power2.out',
-            })
-        }
-
-        const onPointerEnter = () => {
-            scaleTo(scaleOnHover)
-            glareOpacityTo?.(glareOpacity)
-        }
-
-        const onPointerMove = (event: PointerEvent) => {
-            const rect = root.getBoundingClientRect()
-            const px = (event.clientX - rect.left) / rect.width
-            const py = (event.clientY - rect.top) / rect.height
-            rotY((px - 0.5) * 2 * rotationRange)
-            rotX((0.5 - py) * 2 * rotationRange)
-            glareXTo?.(px * 100)
-            glareYTo?.(py * 100)
-        }
-
-        const onPointerLeave = () => {
-            scaleTo(1)
-            rotX(0)
-            rotY(0)
-            glareOpacityTo?.(0)
-        }
-
-        root.addEventListener('pointerenter', onPointerEnter)
-        root.addEventListener('pointermove', onPointerMove)
-        root.addEventListener('pointerleave', onPointerLeave)
-
-        return () => {
-            root.removeEventListener('pointerenter', onPointerEnter)
-            root.removeEventListener('pointermove', onPointerMove)
-            root.removeEventListener('pointerleave', onPointerLeave)
-        }
-    }, [rotationRange, scaleOnHover, glareEnable, glareOpacity])
-
-    const handleFlip = () => {
-        if (!flipOnClick || !flipperRef.current) return
-        flippedRef.current = !flippedRef.current
-        gsap.to(flipperRef.current, {
-            rotationY: flippedRef.current ? 180 : 0,
-            duration: 0.7,
-            ease: 'power3.inOut',
-        })
-    }
-
-    return (
-        <div
-            ref={rootRef}
-            {...rest}
-            className={`vc-tilt-root ${tiltClass} ${className}`}
-        >
-            <div ref={innerRef} className="vc-tilt-inner">
-                <div
-                    ref={flipperRef}
-                    className="vc-tilt-flipper"
-                    onClick={handleFlip}
-                    style={flipOnClick ? { cursor: 'pointer' } : undefined}
-                >
-                    <div className="vc-tilt-face">{children}</div>
-                    {back ? (
-                        <div className="vc-tilt-back">{back}</div>
-                    ) : null}
-                </div>
-                {glareEnable ? <GlareLayer glareRef={glareRef} /> : null}
-            </div>
-        </div>
-    )
-}
 
 const AboutUs = () => {
     const rootRef = useRef<HTMLElement>(null)
@@ -445,8 +299,8 @@ const AboutUs = () => {
                 </div>
             </div>
 
-            <div className="relative z-10 mx-auto w-full max-w-7xl px-5 py-4 sm:px-8">
-                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="relative z-10 w-full">
+                <div className="grid w-full grid-cols-1 gap-px border-y border-[#DFD7C8] bg-[#DFD7C8] md:grid-cols-2 lg:grid-cols-4">
                     {[
                         {
                             node: (
@@ -513,7 +367,7 @@ const AboutUs = () => {
                     ].map((item, idx) => (
                         <div
                             key={idx}
-                            className="flex cursor-pointer flex-col items-center justify-center rounded-2xl py-6 transition-all duration-300 hover:scale-105"
+                            className="flex min-h-[160px] flex-col items-center justify-center bg-white px-4 py-16 text-center"
                         >
                             <span
                                 className="font-instrument font-semibold text-black"
@@ -540,7 +394,52 @@ const AboutUs = () => {
                 </div>
             </div>
 
-            <div className="relative z-10 w-full mt-8" style={{ marginBottom: 0, paddingBottom: 0 }}>
+            <div className="relative z-10 w-full bg-white py-32">
+                <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-16 px-12 lg:grid-cols-2">
+                    <div className="flex flex-col justify-center">
+                        <h2 className="font-instrument text-[clamp(2.5rem,5vw,4rem)] leading-tight tracking-[-0.04em] text-black">
+                            Why{' '}
+                            <span className="italic text-[#006dfc]">Choose Us</span>?
+                        </h2>
+                        <p className="mt-5 max-w-md font-poppins text-sm leading-relaxed text-gray-600 sm:text-base">
+                            Step into an exclusive villa designed for effortless gatherings,
+                            peaceful group retreats, and unforgettable coastal stays.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col gap-6">
+                        <div className="flex items-start gap-4 rounded-2xl bg-white p-8 shadow-sm">
+                            <span className="text-3xl font-serif leading-none text-[#006dfc]">
+                                &ldquo;
+                            </span>
+                            <p className="font-poppins text-sm leading-relaxed text-gray-600 sm:text-base">
+                                Shared dining and lounge areas provide room for meals,
+                                conversation, and celebrations. With exclusive booking, the
+                                entire property is yours, which makes it well suited to
+                                birthdays, reunions, and group events.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3">
+                            {reasons.map(({ icon: Icon, title }) => (
+                                <div
+                                    key={title}
+                                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm"
+                                >
+                                    <span className="flex size-8 items-center justify-center rounded-lg bg-[#006dfc]/10 text-[#006dfc]">
+                                        <Icon className="size-4" aria-hidden="true" />
+                                    </span>
+                                    <span className="font-instrument text-sm font-medium text-black">
+                                        {title}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="relative z-10 w-full" style={{ marginBottom: 0, paddingBottom: 0 }}>
                 <AccordionGallery
                     height="100vh"
                     gap={0}
@@ -550,57 +449,6 @@ const AboutUs = () => {
                     expandRatio={0.82}
                     trigger="click"
                 />
-            </div>
-
-            <div className='relative z-10 flex flex-col'>
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-                >
-                    <div className="absolute left-1/2 top-12 h-56 w-[min(85vw,30rem)] -translate-x-1/2 rounded-full bg-[#006dfc]/8 blur-2xl" />
-                    <div className="absolute right-8 bottom-4 h-40 w-56 rounded-full bg-[#006dfc]/6 blur-2xl" />
-                </div>
-
-                <div className='flex justify-center items-center py-[1.5rem]'>
-                    <span className='font-instrument text-2xl text-black sm:text-3xl'>
-                        Why Choose Our Villa?
-                    </span>
-                </div>
-
-                <div
-                    data-reason-grid
-                    className="mx-auto grid w-full max-w-6xl items-stretch gap-5 px-5 pb-20 sm:grid-cols-2 sm:gap-6 sm:px-8 lg:grid-cols-4 lg:pb-24"
-                    style={{ gridAutoRows: '1fr' }}
-                >
-                    {reasons.map(({ icon: Icon, title, body }) => (
-                        <TiltedCard key={title} data-reason-card tiltClass="" className="h-full" style={{ height: '100%' }}>
-                            <SpotlightCard
-                                theme="light"
-                                spotlightColor="#006dfc"
-                                intensity={0.12}
-                                spotlightSize={220}
-                                softness={0.7}
-                                shape="circle"
-                                borderGlow={0.5}
-                                proximity={80}
-                                smoothing={0.3}
-                                flare
-                                className="h-full transition-all duration-300 hover:backdrop-blur-md hover:bg-blue-500/10 hover:border-blue-400/30 hover:shadow-lg hover:shadow-blue-500/10"
-                                style={{ padding: '1.5rem', height: '100%' }}
-                            >
-                                <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-[#006dfc]/10 text-[#006dfc] ring-1 ring-[#006dfc]/15">
-                                    <Icon className="size-5" aria-hidden="true" />
-                                </div>
-                                <h3 className="mt-4 font-instrument text-lg font-medium leading-snug text-balance text-black">
-                                    {title}
-                                </h3>
-                                <p className="mt-2.5 font-poppins text-[0.78rem] leading-relaxed text-gray-600">
-                                    {body}
-                                </p>
-                            </SpotlightCard>
-                        </TiltedCard>
-                    ))}
-                </div>
             </div>
         </section>
     )
