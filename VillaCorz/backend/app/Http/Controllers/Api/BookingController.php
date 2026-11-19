@@ -178,17 +178,6 @@ class BookingController extends Controller
                     ]);
                 }
 
-                foreach ($roomsInput as $room) {
-                    $service = $services->get($room['service_id']);
-                    $guests = $room['adults'] + $room['kids'];
-
-                    if ($service?->pax !== null && $guests > (int) $service->pax) {
-                        throw ValidationException::withMessages([
-                            'rooms' => "{$service->name} is only good for {$service->pax} guests.",
-                        ]);
-                    }
-                }
-
                 $exclusiveServiceId = Service::query()
                     ->where('kind', 'exclusive')
                     ->value('id');
@@ -200,10 +189,17 @@ class BookingController extends Controller
                     $exclusiveServiceId !== null ? (int) $exclusiveServiceId : null,
                 );
 
+                $guestsByServiceId = collect($roomsInput)
+                    ->mapWithKeys(fn (array $room) => [
+                        $room['service_id'] => $room['adults'] + $room['kids'],
+                    ])
+                    ->all();
+
                 $quote = $pricing->quote(
                     $services->values(),
                     $validated['check_in'],
                     $validated['check_out'],
+                    $guestsByServiceId,
                 );
 
                 if ($quote['nights'] < 1) {
@@ -248,8 +244,12 @@ class BookingController extends Controller
                         'kind' => $service->kind,
                         'adults' => (int) ($room['adults'] ?? 1),
                         'kids' => (int) ($room['kids'] ?? 0),
+                        'additional_heads' => $quotedRoom['additional_heads'],
                         'weekday_price' => $quotedRoom['weekday_price'],
                         'weekend_price' => $quotedRoom['weekend_price'],
+                        'additional_head_weekday_price' => $quotedRoom['additional_head_weekday_price'],
+                        'additional_head_weekend_price' => $quotedRoom['additional_head_weekend_price'],
+                        'additional_head_total' => $quotedRoom['additional_head_total'],
                         'line_total' => $quotedRoom['line_total'],
                     ]);
                 }
@@ -629,8 +629,12 @@ public function cancel(Request $request, string $reference): JsonResponse
                 'kind' => $room->kind,
                 'adults' => $room->adults,
                 'kids' => $room->kids,
+                'additional_heads' => $room->additional_heads,
                 'weekday_price' => (string) $room->weekday_price,
                 'weekend_price' => (string) $room->weekend_price,
+                'additional_head_weekday_price' => (string) $room->additional_head_weekday_price,
+                'additional_head_weekend_price' => (string) $room->additional_head_weekend_price,
+                'additional_head_total' => (string) $room->additional_head_total,
                 'line_total' => (string) $room->line_total,
                 'description' => $room->service?->description,
                 'image_url' => $room->service?->images?->first()?->image_url,

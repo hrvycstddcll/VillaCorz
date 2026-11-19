@@ -45,6 +45,7 @@ type FlexCarouselProps = {
     interval?: number
     captions?: boolean
     captureWheel?: boolean
+    forceFallback?: boolean
     ariaLabel?: string
     onChange?: (index: number, item: FlexCarouselItem) => void
     onSelect?: (index: number, item: FlexCarouselItem) => void

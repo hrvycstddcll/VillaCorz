@@ -246,6 +246,7 @@ const FlexCarousel = forwardRef(function FlexCarousel({
     interval = 4,
     captions = true,
     captureWheel = true,
+    forceFallback = false,
     ariaLabel = 'Image carousel',
     onChange,
     onSelect,
@@ -263,6 +264,7 @@ const FlexCarousel = forwardRef(function FlexCarousel({
     const [revealed, setRevealed] = useState(false)
     const [focusOpen, setFocusOpen] = useState(false)
     const [webglSupported, setWebglSupported] = useState(true)
+    const useFallback = forceFallback || !webglSupported
 
     const base = BEND_PRESETS[preset] || BEND_PRESETS.liquid
     const pick = (value, key) => (value === undefined || value === null ? base[key] : value)
@@ -303,6 +305,7 @@ const FlexCarousel = forwardRef(function FlexCarousel({
     }, [itemsKey])
 
     useEffect(() => {
+        if (forceFallback) return undefined
         const container = containerRef.current
         if (!container) return undefined
 
@@ -1276,7 +1279,7 @@ const FlexCarousel = forwardRef(function FlexCarousel({
             gl.getExtension('WEBGL_lose_context')?.loseContext()
             if (canvas.parentNode) canvas.parentNode.removeChild(canvas)
         }
-    }, [])
+    }, [forceFallback])
 
     const moveFallbackTo = (index) => {
         const container = fallbackRef.current
@@ -1316,22 +1319,22 @@ const FlexCarousel = forwardRef(function FlexCarousel({
         ref,
         () => ({
             next: () => {
-                if (webglSupported) engineRef.current?.step(1)
+                if (!useFallback) engineRef.current?.step(1)
                 else moveFallbackTo(activeRef.current + 1)
             },
             previous: () => {
-                if (webglSupported) engineRef.current?.step(-1)
+                if (!useFallback) engineRef.current?.step(-1)
                 else moveFallbackTo(activeRef.current - 1)
             },
             goTo: (index) => {
-                if (webglSupported) engineRef.current?.goTo(index)
+                if (!useFallback) engineRef.current?.goTo(index)
                 else moveFallbackTo(index)
             }
         }),
-        [webglSupported]
+        [useFallback]
     )
 
-    if (!webglSupported) {
+    if (useFallback) {
         return (
             <div
                 ref={fallbackRef}
@@ -1340,6 +1343,7 @@ const FlexCarousel = forwardRef(function FlexCarousel({
                 aria-roledescription="carousel"
                 aria-label={ariaLabel}
                 style={style}
+                tabIndex={0}
                 onScroll={updateFallbackActive}
             >
                 <div className="flex-carousel-fallback__track">
@@ -1348,16 +1352,24 @@ const FlexCarousel = forwardRef(function FlexCarousel({
                             className="flex-carousel-fallback__card"
                             data-carousel-index={index}
                             key={item.src || `${item.title}-${index}`}
+                            role="group"
+                            aria-roledescription="slide"
+                            aria-label={`${index + 1} of ${list.length}`}
                         >
                             <div className="flex-carousel-fallback__stars" aria-label={`${item.rating || 5} out of 5 stars`}>
                                 {'★'.repeat(item.rating || 5)}
                             </div>
+                            {item.title && (
+                                <p className="flex-carousel-fallback__title">{item.title}</p>
+                            )}
                             <p className="flex-carousel-fallback__quote">
                                 {item.quote || item.title || item.alt}
                             </p>
                             <div className="flex-carousel-fallback__meta">
                                 <span>{item.author || item.title}</span>
-                                {item.service && <span>{item.service}</span>}
+                                {(item.subtitle || item.service) && (
+                                    <span>{item.subtitle || item.service}</span>
+                                )}
                             </div>
                         </article>
                     ))}

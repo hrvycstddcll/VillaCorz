@@ -14,6 +14,7 @@ import Reports from './assets/components/pages/Reports'
 import HomePage from './assets/components/pages/HomePage'
 import AboutUs from './assets/components/pages/AboutUs'
 import Testimonials from './assets/components/pages/Testimonials'
+import Gallery from './assets/components/pages/Gallery'
 import Services from './assets/components/pages/Services'
 import MyBookings from './assets/components/pages/MyBookings'
 import Payment from './assets/components/pages/Payment'
@@ -24,6 +25,7 @@ import ManageOffers from './assets/components/pages/Offers'
 import Contact from './assets/components/pages/Contact'
 import Navbar from './assets/components/ui/InteractiveComponents/Navbar'
 import AdminAssistantPanel from './assets/components/admin/AdminAssistantPanel'
+import CustomerAssistantPanel from './assets/components/customer/CustomerAssistantPanel'
 import Auth from './assets/components/auth/Auth'
 import { AuthProvider } from './services/AuthContext'
 import { useAuth } from './services/useAuth'
@@ -161,7 +163,7 @@ function HashScroll() {
 }
 
 function SiteLayout() {
-    const { loading } = useAuth()
+    const { loading, user } = useAuth()
     const { pathname } = useLocation()
 
     useEffect(() => {
@@ -182,6 +184,9 @@ function SiteLayout() {
             {!hideNavbar && <Navbar />}
             <HashScroll />
             {loading ? <LoadingPanel /> : <Outlet />}
+            {!loading && user?.role === 'customer' && (
+                <CustomerAssistantPanel />
+            )}
         </>
     )
 }
@@ -268,6 +273,7 @@ function AppRoutes() {
                             <HomePage />
                             <Services bookingOnly />
                             <AboutUs />
+                            <Gallery />
                             <Testimonials />
                             <Contact />
                         </>

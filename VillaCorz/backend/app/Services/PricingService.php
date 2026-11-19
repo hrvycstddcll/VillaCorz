@@ -15,15 +15,34 @@ class PricingService
      * and Sunday use the weekend price. Every other night uses the weekday
      * price. Discounts are applied before the nightly totals are added.
      *
+     * Guests above an offer's pax are treated as additional heads and are
+     * charged the offer's per-night additional-head rate. That fee is never
+     * discounted.
+     *
      * @param  Collection<int, Service>  $services
+     * @param  array<int, int>  $guestsByServiceId
      * @return array{
      *     nights: int,
-     *     rooms: array<int, array{service: Service, weekday_price: float, weekend_price: float, line_total: float}>,
+     *     rooms: array<int, array{
+     *         service: Service,
+     *         weekday_price: float,
+     *         weekend_price: float,
+     *         additional_heads: int,
+     *         additional_head_weekday_price: float,
+     *         additional_head_weekend_price: float,
+     *         additional_head_total: float,
+     *         line_total: float
+     *     }>,
      *     subtotal: float,
      *     total: float
      * }
      */
-    public function quote(Collection $services, string $checkIn, string $checkOut): array
+    public function quote(
+        Collection $services,
+        string $checkIn,
+        string $checkOut,
+        array $guestsByServiceId = [],
+    ): array
     {
         $start = CarbonImmutable::parse($checkIn, 'UTC')->startOfDay();
         $end = CarbonImmutable::parse($checkOut, 'UTC')->startOfDay();
@@ -45,21 +64,48 @@ class PricingService
                 $service->weekend_discount_value,
             );
 
+            $guests = (int) ($guestsByServiceId[$service->id] ?? 0);
+            $pax = $service->pax !== null ? (int) $service->pax : null;
+            $additionalHeads = $pax !== null ? max(0, $guests - $pax) : 0;
+
+            $additionalHeadWeekdayPrice = max(
+                0,
+                (float) ($service->additional_head_weekday_price ?? 0),
+            );
+
+            $additionalHeadWeekendPrice = max(
+                0,
+                (float) ($service->additional_head_weekend_price ?? 0),
+            );
+
             $lineTotal = 0.0;
+            $additionalHeadTotal = 0.0;
 
             for ($date = $start; $date->lt($end); $date = $date->addDay()) {
                 $dayOfWeek = (int) $date->format('w');
                 $isWeekend = in_array($dayOfWeek, [0, 5, 6], true);
-                $lineTotal += $isWeekend ? $weekendPrice : $weekdayPrice;
+                $nightlyPrice = $isWeekend ? $weekendPrice : $weekdayPrice;
+                $nightlyAdditionalHeadPrice = $isWeekend
+                    ? $additionalHeadWeekendPrice
+                    : $additionalHeadWeekdayPrice;
+                $nightlyAdditionalHeadTotal = $additionalHeads * $nightlyAdditionalHeadPrice;
+
+                $lineTotal += $nightlyPrice + $nightlyAdditionalHeadTotal;
+                $additionalHeadTotal += $nightlyAdditionalHeadTotal;
             }
 
             $lineTotal = round($lineTotal, 2);
+            $additionalHeadTotal = round($additionalHeadTotal, 2);
             $subtotal += $lineTotal;
 
             $rooms[] = [
                 'service' => $service,
                 'weekday_price' => $weekdayPrice,
                 'weekend_price' => $weekendPrice,
+                'additional_heads' => $additionalHeads,
+                'additional_head_weekday_price' => round($additionalHeadWeekdayPrice, 2),
+                'additional_head_weekend_price' => round($additionalHeadWeekendPrice, 2),
+                'additional_head_total' => $additionalHeadTotal,
                 'line_total' => $lineTotal,
             ];
         }

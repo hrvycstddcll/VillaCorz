@@ -123,8 +123,32 @@ const toCarouselItem = (testimonial: FeaturedTestimonial): FlexCarouselItem => (
     rating: testimonial.rating,
 })
 
+const MOBILE_CAROUSEL_QUERY = '(max-width: 639px)'
+
+const getIsMobileCarousel = () =>
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia(MOBILE_CAROUSEL_QUERY).matches
+
+const useIsMobileCarousel = () => {
+    const [isMobile, setIsMobile] = useState(getIsMobileCarousel)
+
+    useEffect(() => {
+        const media = window.matchMedia?.(MOBILE_CAROUSEL_QUERY)
+        if (!media) return undefined
+
+        const update = () => setIsMobile(media.matches)
+        update()
+        media.addEventListener?.('change', update)
+        return () => media.removeEventListener?.('change', update)
+    }, [])
+
+    return isMobile
+}
+
 const Testimonials = () => {
     const carouselRef = useRef<FlexCarouselHandle>(null)
+    const isMobile = useIsMobileCarousel()
     const [testimonials, setTestimonials] = useState<FeaturedTestimonial[]>([])
     const [activeIndex, setActiveIndex] = useState(0)
     const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -231,7 +255,7 @@ const Testimonials = () => {
 
             {status === 'ready' && items.length > 0 && (
                 <div className="relative mt-8 sm:mt-10">
-                    <div className="h-[18rem] sm:h-[22rem] lg:h-[26rem]">
+                    <div className={isMobile ? 'h-auto' : 'h-[18rem] sm:h-[22rem] lg:h-[26rem]'}>
                         <FlexCarousel
                             ref={carouselRef}
                             items={items}
@@ -244,53 +268,113 @@ const Testimonials = () => {
                             focusOnClick
                             captions={false}
                             captureWheel={false}
+                            forceFallback={isMobile}
                             ariaLabel="Guest testimonials"
-                            className="h-full"
+                            className={isMobile ? 'h-auto' : 'h-full'}
                             onChange={(index) => setActiveIndex(index)}
                         />
                     </div>
 
-                    <button
-                        type="button"
-                        aria-label="Previous testimonial"
-                        onClick={() => carouselRef.current?.previous()}
-                        className="absolute left-2 top-1/2 z-20 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-[#cfe1f7] bg-white/95 text-[#006dfc] shadow-lg backdrop-blur transition-colors hover:border-[#006dfc] hover:bg-[#006dfc] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:left-6 sm:size-12 lg:left-10"
-                    >
-                        <ChevronLeft className="size-5" aria-hidden="true" />
-                    </button>
-                    <button
-                        type="button"
-                        aria-label="Next testimonial"
-                        onClick={() => carouselRef.current?.next()}
-                        className="absolute right-2 top-1/2 z-20 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-[#cfe1f7] bg-white/95 text-[#006dfc] shadow-lg backdrop-blur transition-colors hover:border-[#006dfc] hover:bg-[#006dfc] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:right-6 sm:size-12 lg:right-10"
-                    >
-                        <ChevronRight className="size-5" aria-hidden="true" />
-                    </button>
-
-                    <div
-                        className="mt-5 flex items-center justify-center gap-2 px-4 sm:gap-3"
-                        role="group"
-                        aria-label="Choose a testimonial"
-                    >
-                        {items.map((item, index) => (
+                    {!isMobile && (
+                        <>
                             <button
-                                key={`${item.src}-${index}`}
                                 type="button"
-                                aria-label={`Show testimonial ${index + 1}`}
-                                aria-current={index === activeIndex ? 'true' : undefined}
-                                onClick={() => carouselRef.current?.goTo(index)}
-                                className={`h-2 rounded-full transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] ${
-                                    index === activeIndex
-                                        ? 'w-8 bg-[#006dfc]'
-                                        : 'w-2 bg-[#bfd7f5] hover:bg-[#006dfc]'
-                                }`}
-                            />
-                        ))}
+                                aria-label="Previous testimonial"
+                                onClick={() => carouselRef.current?.previous()}
+                                className="absolute left-2 top-1/2 z-20 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-[#cfe1f7] bg-white/95 text-[#006dfc] shadow-lg backdrop-blur transition-colors hover:border-[#006dfc] hover:bg-[#006dfc] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:left-6 sm:size-12 lg:left-10"
+                            >
+                                <ChevronLeft className="size-5" aria-hidden="true" />
+                            </button>
+                            <button
+                                type="button"
+                                aria-label="Next testimonial"
+                                onClick={() => carouselRef.current?.next()}
+                                className="absolute right-2 top-1/2 z-20 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-[#cfe1f7] bg-white/95 text-[#006dfc] shadow-lg backdrop-blur transition-colors hover:border-[#006dfc] hover:bg-[#006dfc] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:right-6 sm:size-12 lg:right-10"
+                            >
+                                <ChevronRight className="size-5" aria-hidden="true" />
+                            </button>
+                        </>
+                    )}
+
+                    <div className="mt-5 flex items-center justify-center gap-3 px-4">
+                        {isMobile && (
+                            <button
+                                type="button"
+                                aria-label="Previous testimonial"
+                                onClick={() => carouselRef.current?.previous()}
+                                className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-[#cfe1f7] bg-white/95 text-[#006dfc] shadow-sm transition-colors hover:border-[#006dfc] hover:bg-[#006dfc] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                            >
+                                <ChevronLeft className="size-5" aria-hidden="true" />
+                            </button>
+                        )}
+
+                        {isMobile ? (
+                            <div
+                                className="min-w-0 flex-1"
+                                role="status"
+                                aria-live="polite"
+                                aria-label={`Testimonial ${activeIndex + 1} of ${items.length}`}
+                            >
+                                <div
+                                    className="h-1.5 overflow-hidden rounded-full bg-[#dbeafe]"
+                                    aria-hidden="true"
+                                >
+                                    <div
+                                        className="h-full rounded-full bg-[#006dfc] transition-[width] duration-300"
+                                        style={{
+                                            width: `${((activeIndex + 1) / items.length) * 100}%`,
+                                        }}
+                                    />
+                                </div>
+                                <p
+                                    className="mt-2 text-center font-poppins text-[11px] font-semibold tracking-[0.14em] text-slate-500 tabular-nums"
+                                    aria-hidden="true"
+                                >
+                                    {activeIndex + 1} / {items.length}
+                                </p>
+                            </div>
+                        ) : (
+                            <div
+                                className="flex items-center gap-3"
+                                role="group"
+                                aria-label="Choose a testimonial"
+                            >
+                                {items.map((item, index) => (
+                                    <button
+                                        key={`${item.src}-${index}`}
+                                        type="button"
+                                        aria-label={`Show testimonial ${index + 1}`}
+                                        aria-current={index === activeIndex ? 'true' : undefined}
+                                        onClick={() => carouselRef.current?.goTo(index)}
+                                        className="inline-flex h-11 min-w-8 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                    >
+                                        <span
+                                            className={`h-2 rounded-full transition-all duration-300 ${
+                                                index === activeIndex
+                                                    ? 'w-8 bg-[#006dfc]'
+                                                    : 'w-2 bg-[#bfd7f5] hover:bg-[#006dfc]'
+                                            }`}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {isMobile && (
+                            <button
+                                type="button"
+                                aria-label="Next testimonial"
+                                onClick={() => carouselRef.current?.next()}
+                                className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-[#cfe1f7] bg-white/95 text-[#006dfc] shadow-sm transition-colors hover:border-[#006dfc] hover:bg-[#006dfc] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                            >
+                                <ChevronRight className="size-5" aria-hidden="true" />
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
 
-            {status === 'ready' && testimonials.length > 0 && (
+            {status === 'ready' && testimonials.length > 0 && !isMobile && (
                 <ol className="sr-only">
                     {testimonials.map((testimonial) => (
                         <li key={testimonial.id}>

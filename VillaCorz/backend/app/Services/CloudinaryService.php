@@ -26,13 +26,19 @@ class CloudinaryService
      *
      * @return array{url: string, public_id: string}
      */
-    public function upload(UploadedFile $file): array
+    public function upload(UploadedFile $file, ?string $folder = null, ?string $publicId = null): array
     {
+        $options = [
+            'folder' => $folder ?? config('services.cloudinary.folder', 'villacorz/services'),
+            'resource_type' => 'image',
+        ];
+
+        if ($publicId !== null) {
+            $options['public_id'] = $publicId;
+        }
+
         try {
-            $result = $this->client()->uploadApi()->upload($file->getRealPath(), [
-                'folder' => config('services.cloudinary.folder', 'villacorz/services'),
-                'resource_type' => 'image',
-            ]);
+            $result = $this->client()->uploadApi()->upload($file->getRealPath(), $options);
         } catch (Throwable $exception) {
             report($exception);
 

@@ -49,13 +49,21 @@ type AccordionGalleryProps = {
     trigger?: 'click' | 'hover'
 }
 
+const MOBILE_QUERY = '(max-width: 767px)'
+const DESKTOP_COLLAPSED = 56
+const MOBILE_COLLAPSED = 64
+
+const initialMobileState = () =>
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia(MOBILE_QUERY).matches
+
 const AccordionGallery = ({
     height = '100vh',
     gap = 0,
     radius = 0,
     tilt = 0,
     grayscale = false,
-    expandRatio = 0.82,
     trigger = 'click',
 }: AccordionGalleryProps) => {
     const sectionRef = useRef<HTMLElement>(null)
@@ -65,30 +73,89 @@ const AccordionGallery = ({
     const contentRefs = useRef<(HTMLDivElement | null)[]>([])
     const scrollTriggerRef = useRef<ScrollTrigger | null>(null)
     const [active, setActive] = useState(0)
+    const [isMobile, setIsMobile] = useState(initialMobileState)
 
-    const COLLAPSED = 56
+    useEffect(() => {
+        if (typeof window.matchMedia !== 'function') return
+
+        const query = window.matchMedia(MOBILE_QUERY)
+        const handleChange = (event: MediaQueryListEvent) =>
+            setIsMobile(event.matches)
+
+        query.addEventListener('change', handleChange)
+
+        return () => query.removeEventListener('change', handleChange)
+    }, [])
 
     useEffect(() => {
         const container = containerRef.current
         if (!container) return
-        const n = panels.length
-        const total = container.offsetWidth
-        const totalGap = gap * (n - 1)
-        const available = total - totalGap
-        const collapsedTotal = (n - 1) * COLLAPSED
-        const expanded = available - collapsedTotal
 
-        panelRefs.current.forEach((panel, i) => {
-            if (!panel) return
-            gsap.to(panel, {
-                width: i === active ? expanded : COLLAPSED,
-                duration: 0.65,
-                ease: 'power3.out',
+        const updateSizes = () => {
+            const count = panels.length
+            const totalGap = gap * (count - 1)
+
+            if (isMobile) {
+                const total = container.clientHeight
+                const collapsedTotal = (count - 1) * MOBILE_COLLAPSED
+                const expanded = Math.max(
+                    MOBILE_COLLAPSED,
+                    total - totalGap - collapsedTotal,
+                )
+
+                panelRefs.current.forEach((panel, index) => {
+                    if (!panel) return
+                    gsap.killTweensOf(panel)
+                    gsap.set(panel, { width: '100%' })
+                    gsap.to(panel, {
+                        height:
+                            index === active ? expanded : MOBILE_COLLAPSED,
+                        duration: 0.55,
+                        ease: 'power3.out',
+                    })
+                })
+                return
+            }
+
+            const total = container.clientWidth
+            const collapsedTotal = (count - 1) * DESKTOP_COLLAPSED
+            const expanded = Math.max(
+                DESKTOP_COLLAPSED,
+                total - totalGap - collapsedTotal,
+            )
+
+            panelRefs.current.forEach((panel, index) => {
+                if (!panel) return
+                gsap.killTweensOf(panel)
+                gsap.set(panel, { height: '100%' })
+                gsap.to(panel, {
+                    width:
+                        index === active ? expanded : DESKTOP_COLLAPSED,
+                    duration: 0.65,
+                    ease: 'power3.out',
+                })
             })
-        })
-    }, [active, gap, expandRatio])
+        }
 
-    // fade/slide text in via GSAP when active changes
+        updateSizes()
+        window.addEventListener('resize', updateSizes)
+
+        const observer =
+            typeof ResizeObserver === 'function'
+                ? new ResizeObserver(updateSizes)
+                : null
+        observer?.observe(container)
+        const panelElements = panelRefs.current
+
+        return () => {
+            observer?.disconnect()
+            window.removeEventListener('resize', updateSizes)
+            panelElements.forEach((panel) => {
+                if (panel) gsap.killTweensOf(panel)
+            })
+        }
+    }, [active, gap, isMobile])
+
     useEffect(() => {
         contentRefs.current.forEach((el, i) => {
             if (!el) return
@@ -104,7 +171,6 @@ const AccordionGallery = ({
         })
     }, [active])
 
-    // subtle parallax drift on the active image
     useEffect(() => {
         imgRefs.current.forEach((img, i) => {
             if (!img) return
@@ -127,19 +193,19 @@ const AccordionGallery = ({
         })
     }, [active])
 
-    // scroll-driven pin + scrub sequence
     useEffect(() => {
         const section = sectionRef.current
         if (!section) return
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
-        const distance = window.innerHeight * 2.5
         const st = ScrollTrigger.create({
             trigger: section,
             start: 'top top',
-            end: () => '+=' + distance,
+            end: () => '+=' + window.innerHeight * 2.5,
             pin: true,
             scrub: 0.6,
+            anticipatePin: 1,
+            invalidateOnRefresh: true,
             onUpdate: (self) => {
                 const idx = Math.min(
                     panels.length - 1,
@@ -154,7 +220,7 @@ const AccordionGallery = ({
             st.kill()
             scrollTriggerRef.current = null
         }
-    }, [])
+    }, [isMobile])
 
     const handleActivate = (i: number) => {
         const st = scrollTriggerRef.current
@@ -167,120 +233,153 @@ const AccordionGallery = ({
         setActive(i)
     }
 
+    const sectionHeight = isMobile ? '100svh' : height
+    const sectionMinHeight = isMobile ? '100svh' : '100vh'
+
     return (
         <section
             ref={sectionRef}
             className="w-full"
-            style={{ height, minHeight: '100vh', marginBottom: 0, paddingBottom: 0 }}
+            style={{
+                height: sectionHeight,
+                minHeight: sectionMinHeight,
+                marginBottom: 0,
+                paddingBottom: 0,
+            }}
         >
             <div
                 ref={containerRef}
-                className="ag-container flex w-full overflow-hidden"
-                style={{ height: '100%', minHeight: '100vh', gap, borderRadius: radius, marginBottom: 0, paddingBottom: 0 }}
+                className="ag-container flex w-full flex-col overflow-hidden md:flex-row"
+                style={{
+                    height: '100%',
+                    minHeight: sectionMinHeight,
+                    gap,
+                    borderRadius: radius,
+                    marginBottom: 0,
+                    paddingBottom: 0,
+                }}
             >
-            {panels.map((p, i) => {
-                const isOpen = i === active
-                return (
-                    <div
-                        key={p.label}
-                        ref={(el) => {
-                            panelRefs.current[i] = el
-                        }}
-                        className="ag-panel relative shrink-0 overflow-hidden cursor-pointer"
-                        style={{
-                            width: 0,
-                            height: '100%',
-                            borderRadius: radius,
-                            background: p.bg,
-                            transform: tilt ? `perspective(1000px) rotateY(${tilt}deg)` : undefined,
-                        }}
-                        onClick={trigger === 'click' ? () => handleActivate(i) : undefined}
-                        onMouseEnter={trigger === 'hover' ? () => handleActivate(i) : undefined}
-                    >
-                        {/* vertical side rail (always visible) */}
+                {panels.map((p, i) => {
+                    const isOpen = i === active
+                    return (
                         <div
-                            className="absolute left-0 top-0 z-20 h-full w-14"
-                            style={{ background: p.bg }}
+                            key={p.label}
+                            ref={(el) => {
+                                panelRefs.current[i] = el
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={isOpen}
+                            aria-label={p.label}
+                            className="ag-panel relative w-full shrink-0 cursor-pointer overflow-hidden outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white md:w-auto"
+                            style={{
+                                width: isMobile ? '100%' : 0,
+                                height: isMobile ? MOBILE_COLLAPSED : '100%',
+                                borderRadius: radius,
+                                background: p.bg,
+                                transform: tilt
+                                    ? `perspective(1000px) rotateY(${tilt}deg)`
+                                    : undefined,
+                            }}
+                            onClick={
+                                trigger === 'click'
+                                    ? () => handleActivate(i)
+                                    : undefined
+                            }
+                            onMouseEnter={
+                                trigger === 'hover'
+                                    ? () => handleActivate(i)
+                                    : undefined
+                            }
+                            onKeyDown={(event) => {
+                                if (
+                                    event.key !== 'Enter' &&
+                                    event.key !== ' '
+                                ) {
+                                    return
+                                }
+                                event.preventDefault()
+                                handleActivate(i)
+                            }}
                         >
-                            <span
-                                className="absolute text-white text-sm font-semibold tracking-wide"
-                                style={{
-                                    top: '28px',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    writingMode: 'vertical-rl',
-                                    textOrientation: 'mixed',
-                                    fontFamily: '"Helvetica World", Helvetica, Arial, sans-serif',
-                                }}
+                            <div
+                                aria-hidden="true"
+                                className="absolute left-0 top-0 z-20 flex h-14 w-full items-center justify-center md:h-full md:w-14 md:items-start md:justify-center md:pt-7"
+                                style={{ background: p.bg }}
                             >
-                                {p.label}
-                            </span>
-                        </div>
+                                <span
+                                    className="text-xs font-semibold tracking-wide text-white [text-orientation:mixed] [writing-mode:horizontal-tb] md:text-sm md:[writing-mode:vertical-rl]"
+                                    style={{
+                                        fontFamily:
+                                            '"Helvetica World", Helvetica, Arial, sans-serif',
+                                    }}
+                                >
+                                    {p.label}
+                                </span>
+                            </div>
 
-                        {/* expanded split content */}
-                        <div
-                            className={`absolute inset-0 flex flex-row items-stretch transition-opacity duration-300 ${
-                                isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                            }`}
-                        >
                             <div
-                                ref={(el) => {
-                                    contentRefs.current[i] = el
-                                }}
-                                className="flex flex-col justify-center py-10 pl-20 pr-12 transition-all duration-500 ease-out overflow-visible"
-                                style={{ width: '50%', height: '100%', background: p.bg }}
+                                aria-hidden={!isOpen}
+                                className={`absolute inset-0 flex flex-col pt-14 transition-opacity duration-300 md:flex-row md:items-stretch md:pt-0 ${
+                                    isOpen
+                                        ? 'opacity-100'
+                                        : 'pointer-events-none opacity-0'
+                                }`}
                             >
-                                <h3
-                                    className="text-white mb-4"
-                                    style={{
-                                        fontFamily: '"Instrument Serif", serif',
-                                        fontSize: 'clamp(1.75rem, 2.5vw, 2.5rem)',
-                                        letterSpacing: '-0.03em',
-                                        lineHeight: 1.1,
-                                    }}
-                                >
-                                    {p.headline}
-                                </h3>
-                                <p
-                                    className="text-white text-sm md:text-base leading-relaxed"
-                                    style={{ fontFamily: '"Helvetica World", Helvetica, Arial, sans-serif' }}
-                                >
-                                    {p.body}
-                                </p>
-                            </div>
-                            <div
-                                className="relative overflow-hidden transition-all duration-500 ease-out"
-                                style={{
-                                    width: '50%',
-                                    height: '100%',
-                                    marginTop: 0,
-                                    paddingTop: 0,
-                                    top: 0,
-                                    alignSelf: 'stretch',
-                                }}
-                            >
-                                <img
+                                <div
                                     ref={(el) => {
-                                        imgRefs.current[i] = el
+                                        contentRefs.current[i] = el
                                     }}
-                                    src={p.image}
-                                    alt={p.label}
-                                    className="h-full w-full object-cover transition-transform duration-700 ease-out"
-                                    style={{
-                                        marginTop: 0,
-                                        paddingTop: 0,
-                                        top: 0,
-                                        height: '100%',
-                                        objectFit: 'cover',
-                                        transform: isOpen ? 'scale(1)' : 'scale(1.05)',
-                                        filter: !isOpen && grayscale ? 'grayscale(100%)' : 'none',
-                                    }}
-                                />
+                                    className="flex w-full flex-none flex-col justify-center px-5 py-5 transition-all duration-500 ease-out md:w-1/2 md:py-10 md:pl-20 md:pr-12"
+                                    style={{ background: p.bg }}
+                                >
+                                    <h3
+                                        className="mb-4 text-white"
+                                        style={{
+                                            fontFamily:
+                                                '"Instrument Serif", serif',
+                                            fontSize:
+                                                'clamp(1.5rem, 6vw, 2.5rem)',
+                                            letterSpacing: '-0.03em',
+                                            lineHeight: 1.1,
+                                        }}
+                                    >
+                                        {p.headline}
+                                    </h3>
+                                    <p
+                                        className="text-sm leading-relaxed text-white md:text-base"
+                                        style={{
+                                            fontFamily:
+                                                '"Helvetica World", Helvetica, Arial, sans-serif',
+                                        }}
+                                    >
+                                        {p.body}
+                                    </p>
+                                </div>
+                                <div className="relative min-h-0 flex-1 overflow-hidden md:h-full md:w-1/2 md:flex-none">
+                                    <img
+                                        ref={(el) => {
+                                            imgRefs.current[i] = el
+                                        }}
+                                        src={p.image}
+                                        alt={p.label}
+                                        className="h-full w-full object-cover transition-transform duration-700 ease-out"
+                                        style={{
+                                            objectFit: 'cover',
+                                            transform: isOpen
+                                                ? 'scale(1)'
+                                                : 'scale(1.05)',
+                                            filter:
+                                                !isOpen && grayscale
+                                                    ? 'grayscale(100%)'
+                                                    : 'none',
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )
-            })}
+                    )
+                })}
             </div>
         </section>
     )

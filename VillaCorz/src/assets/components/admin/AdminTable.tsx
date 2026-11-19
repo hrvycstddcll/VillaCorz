@@ -16,6 +16,7 @@ type AdminTableProps<Row> = {
     empty?: ReactNode
     rowProps?: (row: Row) => HTMLAttributes<HTMLTableRowElement>
     rowClassName?: (row: Row) => string
+    cellClassName?: string
     tableProps?: TableHTMLAttributes<HTMLTableElement>
 }
 
@@ -27,66 +28,71 @@ const AdminTable = <Row,>({
     empty,
     rowProps,
     rowClassName,
+    cellClassName,
     tableProps,
-}: AdminTableProps<Row>) => (
-    <div className="overflow-x-auto">
-        <table
-            {...tableProps}
-            aria-label={label}
-            className="w-full border-collapse text-left text-sm"
-        >
-            <thead>
-                <tr className="border-b border-[rgba(0,0,0,0.06)] text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    {columns.map((column) => (
-                        <th
-                            key={column.key}
-                            scope="col"
-                            className={`px-3 py-2 font-semibold first:pl-0 last:pr-0 ${
-                                column.align === 'right' ? 'text-right' : ''
-                            } ${column.className ?? ''}`}
-                        >
-                            {column.label}
-                        </th>
-                    ))}
-                </tr>
-            </thead>
-            <tbody className="divide-y divide-[rgba(0,0,0,0.06)]">
-                {rows.length ? (
-                    rows.map((row) => {
-                        const attributes = rowProps?.(row)
-                        return (
-                            <tr
-                                key={rowKey(row)}
-                                {...attributes}
-                                className={`group transition-colors hover:bg-slate-50 ${
-                                    attributes?.className ?? ''
-                                } ${rowClassName?.(row) ?? ''}`}
+}: AdminTableProps<Row>) => {
+    const cellPadding = cellClassName ?? 'px-3 py-2 first:pl-0 last:pr-0'
+
+    return (
+        <div className="overflow-x-auto">
+            <table
+                {...tableProps}
+                aria-label={label}
+                className="w-full border-collapse text-left text-sm"
+            >
+                <thead>
+                    <tr className="border-b border-[rgba(0,0,0,0.06)] text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        {columns.map((column) => (
+                            <th
+                                key={column.key}
+                                scope="col"
+                                className={`${cellPadding} font-semibold ${
+                                    column.align === 'right' ? 'text-right' : ''
+                                } ${column.className ?? ''}`}
                             >
-                                {columns.map((column) => (
-                                    <td
-                                        key={column.key}
-                                        className={`px-3 py-2 align-middle first:pl-0 last:pr-0 ${
-                                            column.align === 'right'
-                                                ? 'text-right'
-                                                : ''
-                                        } ${column.className ?? ''}`}
-                                    >
-                                        {column.render(row)}
-                                    </td>
-                                ))}
-                            </tr>
-                        )
-                    })
-                ) : (
-                    <tr>
-                        <td colSpan={columns.length} className="py-2">
-                            {empty}
-                        </td>
+                                {column.label}
+                            </th>
+                        ))}
                     </tr>
-                )}
-            </tbody>
-        </table>
-    </div>
-)
+                </thead>
+                <tbody className="divide-y divide-[rgba(0,0,0,0.06)]">
+                    {rows.length ? (
+                        rows.map((row) => {
+                            const attributes = rowProps?.(row)
+                            return (
+                                <tr
+                                    key={rowKey(row)}
+                                    {...attributes}
+                                    className={`group transition-colors hover:bg-slate-50 ${
+                                        attributes?.className ?? ''
+                                    } ${rowClassName?.(row) ?? ''}`}
+                                >
+                                    {columns.map((column) => (
+                                        <td
+                                            key={column.key}
+                                            className={`${cellPadding} align-middle ${
+                                                column.align === 'right'
+                                                    ? 'text-right'
+                                                    : ''
+                                            } ${column.className ?? ''}`}
+                                        >
+                                            {column.render(row)}
+                                        </td>
+                                    ))}
+                                </tr>
+                            )
+                        })
+                    ) : (
+                        <tr>
+                            <td colSpan={columns.length} className={cellPadding}>
+                                {empty}
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+    )
+}
 
 export default AdminTable

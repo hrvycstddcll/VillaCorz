@@ -136,6 +136,18 @@ const OfferFormModal = ({
     const [pax, setPax] = useState(
         service?.pax != null ? String(service.pax) : '',
     )
+    const [additionalHeadWeekdayPrice, setAdditionalHeadWeekdayPrice] =
+        useState(
+            service?.additional_head_weekday_price != null
+                ? String(Number(service.additional_head_weekday_price))
+                : '50',
+        )
+    const [additionalHeadWeekendPrice, setAdditionalHeadWeekendPrice] =
+        useState(
+            service?.additional_head_weekend_price != null
+                ? String(Number(service.additional_head_weekend_price))
+                : '100',
+        )
     const [amenities, setAmenities] = useState<string[]>(
         service?.amenities ?? [],
     )
@@ -275,6 +287,29 @@ const OfferFormModal = ({
             }
         }
 
+        const headPrices = [
+            {
+                field: 'additional_head_weekday_price',
+                value: additionalHeadWeekdayPrice,
+                label: 'weekday additional-head price',
+            },
+            {
+                field: 'additional_head_weekend_price',
+                value: additionalHeadWeekendPrice,
+                label: 'weekend additional-head price',
+            },
+        ] as const
+
+        headPrices.forEach(({ field, value, label }) => {
+            const amount = Number(value)
+
+            if (value.trim() === '' || Number.isNaN(amount)) {
+                errors[field] = `Enter a valid ${label}.`
+            } else if (amount < 0) {
+                errors[field] = 'Additional-head price cannot be negative.'
+            }
+        })
+
         if (images.length > 10) {
             errors.images = 'You can add up to 10 images.'
         }
@@ -306,6 +341,14 @@ const OfferFormModal = ({
         payload.append('weekend_discount_type', '')
         payload.append('weekend_discount_value', '')
         payload.append('pax', pax.trim())
+        payload.append(
+            'additional_head_weekday_price',
+            additionalHeadWeekdayPrice,
+        )
+        payload.append(
+            'additional_head_weekend_price',
+            additionalHeadWeekendPrice,
+        )
         payload.append('amenities_present', '1')
         amenities.forEach((amenity) => payload.append('amenities[]', amenity))
         payload.append('status', status)
@@ -398,6 +441,8 @@ const OfferFormModal = ({
                                 'weekend_discount_value',
                                 'status',
                                 'pax',
+                                'additional_head_weekday_price',
+                                'additional_head_weekend_price',
                                 'amenities',
                             ].includes(rootField)
                         ) {
@@ -689,13 +734,7 @@ const OfferFormModal = ({
                             )}
                         </div>
 
-                        <div
-                            className={`grid gap-5 ${
-                                isEditing
-                                    ? 'sm:grid-cols-3'
-                                    : 'sm:grid-cols-2'
-                            }`}
-                        >
+                        <div className="grid gap-5 sm:grid-cols-2">
                         {!isEditing && (
                             <div>
                                 <label
@@ -729,14 +768,6 @@ const OfferFormModal = ({
                                 </p>
                             </div>
                         )}
-
-                                {fieldErrors.price && (
-                                    <p className="mt-1.5 text-xs text-rose-600">
-                                        {fieldErrors.price}
-                                    </p>
-                                )}
-                            </div>
-
 
                             <div>
                                 <label
@@ -809,7 +840,7 @@ const OfferFormModal = ({
                                     htmlFor="offer-pax"
                                     className="text-xs font-semibold text-slate-600"
                                 >
-                                    Pax
+                                    Included guests (pax)
                                 </label>
                                 <input
                                     id="offer-pax"
@@ -832,11 +863,117 @@ const OfferFormModal = ({
                                         {fieldErrors.pax}
                                     </p>
                                 )}
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Guests above this count pay the additional-head fee.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label
+                                    htmlFor="offer-additional-head-weekday"
+                                    className="text-xs font-semibold text-slate-600"
+                                >
+                                    Additional head &mdash; weekday
+                                </label>
+                                <div className="relative">
+                                    <span
+                                        aria-hidden="true"
+                                        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400"
+                                    >
+                                        &#8369;
+                                    </span>
+                                    <input
+                                        id="offer-additional-head-weekday"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        inputMode="decimal"
+                                        value={additionalHeadWeekdayPrice}
+                                        onChange={(event) => {
+                                            setAdditionalHeadWeekdayPrice(
+                                                event.target.value,
+                                            )
+                                            clearFieldError(
+                                                'additional_head_weekday_price',
+                                            )
+                                        }}
+                                        placeholder="50.00"
+                                        aria-invalid={Boolean(
+                                            fieldErrors.additional_head_weekday_price,
+                                        )}
+                                        className={`${inputClass(
+                                            Boolean(
+                                                fieldErrors.additional_head_weekday_price,
+                                            ),
+                                        )} pl-8`}
+                                    />
+                                </div>
+                                {fieldErrors.additional_head_weekday_price && (
+                                    <p className="mt-1.5 text-xs text-rose-600">
+                                        {
+                                            fieldErrors.additional_head_weekday_price
+                                        }
+                                    </p>
+                                )}
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Per extra guest, per Mon&ndash;Thu night.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label
+                                    htmlFor="offer-additional-head-weekend"
+                                    className="text-xs font-semibold text-slate-600"
+                                >
+                                    Additional head &mdash; weekend
+                                </label>
+                                <div className="relative">
+                                    <span
+                                        aria-hidden="true"
+                                        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400"
+                                    >
+                                        &#8369;
+                                    </span>
+                                    <input
+                                        id="offer-additional-head-weekend"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        inputMode="decimal"
+                                        value={additionalHeadWeekendPrice}
+                                        onChange={(event) => {
+                                            setAdditionalHeadWeekendPrice(
+                                                event.target.value,
+                                            )
+                                            clearFieldError(
+                                                'additional_head_weekend_price',
+                                            )
+                                        }}
+                                        placeholder="100.00"
+                                        aria-invalid={Boolean(
+                                            fieldErrors.additional_head_weekend_price,
+                                        )}
+                                        className={`${inputClass(
+                                            Boolean(
+                                                fieldErrors.additional_head_weekend_price,
+                                            ),
+                                        )} pl-8`}
+                                    />
+                                </div>
+                                {fieldErrors.additional_head_weekend_price && (
+                                    <p className="mt-1.5 text-xs text-rose-600">
+                                        {
+                                            fieldErrors.additional_head_weekend_price
+                                        }
+                                    </p>
+                                )}
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Per extra guest, per Fri&ndash;Sun night.
+                                </p>
                             </div>
                         </div>
 
 
-                        <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
                         <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
                             <legend className="px-1 text-xs font-semibold text-slate-600">
                                 Sale / discount
@@ -856,6 +993,7 @@ const OfferFormModal = ({
                             </div>
                         </fieldset>
 
+                        <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
                             <legend className="text-xs font-semibold text-slate-600">
                                 Room Features
                             </legend>
@@ -944,6 +1082,7 @@ const OfferFormModal = ({
                                 disabled={submitting}
                                 error={fieldErrors.images}
                             />
+                        </div>
                     </div>
 
                     <footer className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6">
