@@ -467,6 +467,32 @@ export type AssistantStatus = {
     model: string
 }
 
+export type CustomerAssistantPage =
+    | 'home'
+    | 'services'
+    | 'bookings'
+    | 'settings'
+    | 'payment'
+    | 'other'
+
+export type CustomerAssistantChatContext = {
+    page: CustomerAssistantPage
+}
+
+export type CustomerAssistantChatRequest = {
+    message: string
+    context: CustomerAssistantChatContext
+    history: AssistantChatMessage[]
+}
+
+export type CustomerAssistantChatResponse = {
+    answer: string
+    sources: {
+        page: CustomerAssistantPage
+        generated_at: string
+    }
+}
+
 export type FeaturedTestimonial = {
     id: number
     rating: number

@@ -25,6 +25,7 @@ import ManageOffers from './assets/components/pages/Offers'
 import Contact from './assets/components/pages/Contact'
 import Navbar from './assets/components/ui/InteractiveComponents/Navbar'
 import AdminAssistantPanel from './assets/components/admin/AdminAssistantPanel'
+import CustomerAssistantPanel from './assets/components/customer/CustomerAssistantPanel'
 import Auth from './assets/components/auth/Auth'
 import { AuthProvider } from './services/AuthContext'
 import { useAuth } from './services/useAuth'
@@ -162,7 +163,7 @@ function HashScroll() {
 }
 
 function SiteLayout() {
-    const { loading } = useAuth()
+    const { loading, user } = useAuth()
     const { pathname } = useLocation()
 
     useEffect(() => {
@@ -183,6 +184,9 @@ function SiteLayout() {
             {!hideNavbar && <Navbar />}
             <HashScroll />
             {loading ? <LoadingPanel /> : <Outlet />}
+            {!loading && user?.role === 'customer' && (
+                <CustomerAssistantPanel />
+            )}
         </>
     )
 }

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\CustomerAssistantController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PhoneNumberController;
@@ -73,6 +74,9 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('throttle:10,1');
     Route::post('/bookings/{reference}/cancel-request', [BookingController::class, 'requestCancellation'])
         ->middleware('throttle:5,1');
+
+    Route::post('/customer-assistant/chat', [CustomerAssistantController::class, 'chat'])
+        ->middleware('throttle:10,1');
 
     Route::get('/payments/{reference}/status', [PaymentController::class, 'status']);
 });

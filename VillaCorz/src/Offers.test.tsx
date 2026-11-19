@@ -61,40 +61,42 @@ const renderOffers = async () => {
             <Offers />
         </MemoryRouter>,
     )
-    await screen.findByRole('grid')
+    return screen.findByRole('table', { name: /offer catalogue performance/i })
 }
 
 beforeEach(() => {
     vi.clearAllMocks()
 })
 
-it('supports plain, shift, and ctrl selection without checkboxes', async () => {
-    await renderOffers()
-    const grid = screen.getByRole('grid')
-    const rows = within(grid).getAllByRole('row').slice(1)
+it('opens the edit form when an offer row is clicked', async () => {
+    const table = await renderOffers()
+    const villaRow = within(table).getByText('Villa A').closest('tr')
 
-    expect(document.querySelector('input[type="checkbox"]')).toBeNull()
+    expect(villaRow).not.toBeNull()
+    fireEvent.click(villaRow as HTMLTableRowElement)
 
-    fireEvent.click(rows[0])
-    expect(rows[0]).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByText('1 selected')).toBeInTheDocument()
+    const dialog = await screen.findByRole('dialog', { name: /edit offer/i })
+    expect(within(dialog).getByLabelText(/offer name/i)).toHaveValue('Villa A')
+})
 
-    fireEvent.click(rows[2], { shiftKey: true })
-    expect(rows[1]).toHaveAttribute('aria-selected', 'true')
-    expect(rows[2]).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByText('3 selected')).toBeInTheDocument()
+it('does not open the edit form when opening the action menu', async () => {
+    const table = await renderOffers()
+    const actionButton = within(table).getByRole('button', {
+        name: /Actions for Room B/i,
+    })
 
-    fireEvent.click(rows[1], { ctrlKey: true })
-    expect(rows[1]).toHaveAttribute('aria-selected', 'false')
-    expect(screen.getByText('2 selected')).toBeInTheDocument()
+    fireEvent.click(actionButton)
+
+    const menu = screen.getByRole('menu')
+    expect(within(menu).queryByRole('menuitem', { name: /edit offer/i })).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
 })
 
 it('keeps the action menu open when the page scrolls', async () => {
-    await renderOffers()
-    const grid = screen.getByRole('grid')
-    const actionButton = within(grid).getAllByRole('button', {
+    const table = await renderOffers()
+    const actionButton = within(table).getByRole('button', {
         name: /Actions for Room B/i,
-    })[0]
+    })
 
     fireEvent.click(actionButton)
     const menu = screen.getByRole('menu')
@@ -104,19 +106,4 @@ it('keeps the action menu open when the page scrolls', async () => {
     fireEvent.scroll(window)
 
     expect(screen.getByRole('menu')).toBeInTheDocument()
-})
-
-it('does not select offers when opening the edit form or action menu', async () => {
-    await renderOffers()
-    const grid = screen.getByRole('grid')
-    const offerButton = within(grid).getAllByRole('button', { name: /Villa A/i })[0]
-
-    fireEvent.click(offerButton)
-    expect(screen.queryByText('1 selected')).not.toBeInTheDocument()
-
-    const actionButton = within(grid).getAllByRole('button', {
-        name: /Actions for Villa A/i,
-    })[0]
-    fireEvent.click(actionButton)
-    expect(screen.queryByText('1 selected')).not.toBeInTheDocument()
 })
