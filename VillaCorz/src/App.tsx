@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import ErrorBoundary from './components/ErrorBoundary'
+import ModalFocusManager from './components/ModalFocusManager'
 import {
     Routes,
     Route,
@@ -294,6 +295,7 @@ function App() {
     return (
         <AuthProvider>
             <ErrorBoundary>
+                <ModalFocusManager />
                 <AppRoutes />
             </ErrorBoundary>
         </AuthProvider>

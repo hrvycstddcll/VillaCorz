@@ -588,6 +588,9 @@ const Navbar = () => {
                 <div
                     ref={panelRef}
                     id="primary-navigation"
+                    role="dialog"
+                    aria-modal={isOpen}
+                    aria-label="Navigation menu"
                     inert={!isOpen}
                     aria-hidden={!isOpen}
                     className={`absolute inset-x-0 top-full origin-top overflow-hidden rounded-b-[18px] bg-white shadow-[0_24px_48px_-24px_rgba(0,0,0,0.45)] transition duration-200 ease-out motion-reduce:transition-none lg:hidden ${
