@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Testimonials from './assets/components/pages/Testimonials'
 import { loadFeaturedTestimonials } from './services/testimonialsService'
@@ -24,16 +24,18 @@ vi.mock('./assets/components/ui/CssComponents/FlexCarousel', () => ({
         items,
         onChange,
         ref,
+        forceFallback,
     }: {
         items: unknown[]
         onChange?: (index: number) => void
         ref?: MockCarouselRef
+        forceFallback?: boolean
     }) => {
         if (typeof ref === 'function') ref(carouselControls)
         else if (ref) ref.current = carouselControls
 
         return (
-            <div data-testid="carousel">
+            <div data-testid="carousel" data-force-fallback={String(Boolean(forceFallback))}>
                 {items.length}
                 <button
                     type="button"
@@ -58,9 +60,24 @@ const makeTestimonial = (id: number): FeaturedTestimonial => ({
     verified: true,
 })
 
+const createMediaQueryList = (query: string, matches: boolean): MediaQueryList => ({
+    matches,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+})
+
 describe('Testimonials', () => {
     beforeEach(() => {
         vi.clearAllMocks()
+    })
+
+    afterEach(() => {
+        vi.restoreAllMocks()
     })
 
     it('renders the carousel and a screen-reader list with real reviews', async () => {
@@ -75,6 +92,7 @@ describe('Testimonials', () => {
             screen.getByRole('heading', { name: /words from our guests/i }),
         ).toBeInTheDocument()
         expect(await screen.findByTestId('carousel')).toHaveTextContent('2')
+        expect(screen.getByTestId('carousel')).toHaveAttribute('data-force-fallback', 'false')
         expect(screen.getByText(/Guest review number 1/)).toBeInTheDocument()
     })
 
@@ -108,6 +126,40 @@ describe('Testimonials', () => {
             'aria-current',
             'true',
         )
+    })
+
+    it('uses the readable fallback carousel and bottom controls on mobile', async () => {
+        vi.spyOn(window, 'matchMedia').mockImplementation((query) =>
+            createMediaQueryList(query, query === '(max-width: 639px)'),
+        )
+        vi.mocked(loadFeaturedTestimonials).mockResolvedValue([
+            makeTestimonial(1),
+            makeTestimonial(2),
+        ])
+
+        render(<Testimonials />)
+
+        expect(await screen.findByTestId('carousel')).toHaveAttribute(
+            'data-force-fallback',
+            'true',
+        )
+        fireEvent.click(screen.getByRole('button', { name: 'Previous testimonial' }))
+        expect(carouselControls.previous).toHaveBeenCalledTimes(1)
+
+        fireEvent.click(screen.getByRole('button', { name: 'Next testimonial' }))
+        expect(carouselControls.next).toHaveBeenCalledTimes(1)
+
+        expect(
+            screen.getByRole('status', { name: 'Testimonial 1 of 2' }),
+        ).toHaveTextContent('1 / 2')
+        expect(
+            screen.queryByRole('button', { name: /Show testimonial/ }),
+        ).not.toBeInTheDocument()
+
+        fireEvent.click(screen.getByTestId('select-second'))
+        expect(
+            screen.getByRole('status', { name: 'Testimonial 2 of 2' }),
+        ).toHaveTextContent('2 / 2')
     })
 
     it('renders the empty state when there are no qualifying reviews', async () => {

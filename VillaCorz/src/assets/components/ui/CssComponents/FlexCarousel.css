@@ -152,11 +152,20 @@
     letter-spacing: 0.22em;
 }
 
+.flex-carousel-fallback__title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
 .flex-carousel-fallback__quote {
     margin: 0;
     color: #0f172a;
     font-size: 15px;
     line-height: 1.7;
+    overflow-wrap: anywhere;
 }
 
 .flex-carousel-fallback__meta {
@@ -189,6 +198,30 @@
     }
     to {
         opacity: 1;
+    }
+}
+
+@media (max-width: 639px) {
+    .flex-carousel-fallback {
+        height: auto;
+        scrollbar-width: none;
+    }
+
+    .flex-carousel-fallback::-webkit-scrollbar {
+        display: none;
+    }
+
+    .flex-carousel-fallback__track {
+        gap: 14px;
+        min-height: 0;
+        padding: 4px 16px 8px;
+        scroll-padding-inline: 16px;
+    }
+
+    .flex-carousel-fallback__card {
+        flex-basis: min(84vw, 420px);
+        border-radius: 24px;
+        padding: 22px;
     }
 }
 
