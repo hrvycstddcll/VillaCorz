@@ -6,12 +6,20 @@ use App\Models\Booking;
 use App\Models\BookingRoom;
 use App\Models\Service;
 use App\Models\ServiceReview;
+use App\Models\ServiceReviewImage;
 use App\Models\User;
+use App\Services\CloudinaryService;
 use Illuminate\Database\Seeder;
+use Illuminate\Http\UploadedFile;
+use Throwable;
 
 class DemoReviewSeeder extends Seeder
 {
     private const REVIEWS_PER_ROOM = 8;
+
+    private const IMAGE_DIRECTORY = 'C:\\Users\\Acer\\Downloads\\Reviews';
+
+    private const REVIEW_IMAGE_FOLDER = 'villacorz/reviews';
 
     private const COMMENTS = [
         ['A quiet escape by the sea', 'The room was spotless and the sound of the waves made every night feel peaceful. We would happily stay again.'],
@@ -41,6 +49,8 @@ class DemoReviewSeeder extends Seeder
         if ($rooms->isEmpty() || $customers->isEmpty()) {
             return;
         }
+
+        $images = app()->runningUnitTests() ? [] : $this->localImages();
 
         foreach ($rooms as $roomIndex => $room) {
             for ($slot = 0; $slot < self::REVIEWS_PER_ROOM; $slot++) {
@@ -112,7 +122,84 @@ class DemoReviewSeeder extends Seeder
                     'created_at' => $createdAt,
                     'updated_at' => $createdAt,
                 ]);
+
+                if ($slot < 2) {
+                    $this->attachReviewImage($review, $images[($roomIndex * 2) + $slot] ?? null);
+                }
             }
+        }
+    }
+
+    private function localImages(): array
+    {
+        $paths = glob(self::IMAGE_DIRECTORY.DIRECTORY_SEPARATOR.'*') ?: [];
+        $images = [];
+
+        foreach ($paths as $path) {
+            if (! is_file($path)) {
+                continue;
+            }
+
+            $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                $images[] = $path;
+            }
+        }
+
+        sort($images);
+
+        return $images;
+    }
+
+    private function attachReviewImage(ServiceReview $review, ?string $path): void
+    {
+        if ($path === null || ! is_file($path)) {
+            return;
+        }
+
+        $cloudinary = app(CloudinaryService::class);
+        if (! $cloudinary->isConfigured()) {
+            $this->command?->warn('Cloudinary is not configured; review images were skipped.');
+
+            return;
+        }
+
+        $fileName = pathinfo($path, PATHINFO_FILENAME);
+        $publicId = self::REVIEW_IMAGE_FOLDER.'/'.$fileName;
+
+        try {
+            $existing = ServiceReviewImage::where('public_id', $publicId)->first();
+
+            if ($existing === null) {
+                $file = new UploadedFile(
+                    $path,
+                    basename($path),
+                    mime_content_type($path) ?: 'image/jpeg',
+                    null,
+                    true,
+                );
+                $uploaded = $cloudinary->upload($file, self::REVIEW_IMAGE_FOLDER, $fileName);
+                $publicId = $uploaded['public_id'];
+                $existing = ServiceReviewImage::create([
+                    'service_review_id' => $review->id,
+                    'image_url' => $uploaded['url'],
+                    'public_id' => $uploaded['public_id'],
+                    'sort_order' => 0,
+                ]);
+            }
+
+            ServiceReviewImage::updateOrCreate(
+                [
+                    'service_review_id' => $review->id,
+                    'public_id' => $publicId,
+                ],
+                [
+                    'image_url' => $existing->image_url,
+                    'sort_order' => 0,
+                ],
+            );
+        } catch (Throwable) {
+            $this->command?->warn('A review image could not be uploaded; seeding continued.');
         }
     }
 }

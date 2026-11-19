@@ -471,3 +471,14 @@ export type FeaturedTestimonial = {
     createdAt: string
     verified: boolean
 }
+
+export type GalleryItem = {
+    id: string
+    image: string
+    title: string
+    quote: string
+    author: string
+    serviceName: string
+    rating: number
+    createdAt: string
+}
