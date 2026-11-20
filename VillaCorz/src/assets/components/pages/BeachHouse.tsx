@@ -56,7 +56,7 @@ const BeachHouse = () => {
                     <h2 className="font-instrument text-4xl italic leading-tight tracking-tight text-black sm:text-5xl lg:text-6xl">
                         The Beach <span className="text-[#006dfc]">House</span>
                     </h2>
-                    <p className="mt-4 font-poppins text-sm leading-relaxed text-slate-500 sm:text-base">
+                    <p className="mt-4 font-helvetica-world text-sm leading-relaxed text-slate-500 sm:text-base">
                         Villa Corz is a private beach house in Lian, Batangas, with 5 rooms.
                         Colorful, calm, and made for slow mornings on the veranda. Hover over
                         the map to take a look around.
@@ -141,7 +141,7 @@ const BeachHouse = () => {
                                         <span className="font-helvetica-world text-[11px] text-[#006dfc]">
                                             with aircon
                                         </span>
-                                        <span className="font-poppins text-[9px] text-slate-500">
+                                        <span className="font-helvetica-world text-[9px] text-slate-500">
                                             Inclusions: TV &amp; Private CR
                                         </span>
                                     </div>
