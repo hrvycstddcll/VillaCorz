@@ -37,7 +37,7 @@ export function ExclusiveAccommodationSection({
                     </p>
                 </div>
                 <div role="status" aria-label="Loading whole villa">
-                    <span className="sr-only">Loading whole villa…</span>
+                    <span className="sr-only">Loading whole villa.</span>
                     <div aria-hidden="true">
                         <div className="relative overflow-hidden rounded-xl shadow-md ring-1 ring-slate-100">
                             <div className="relative h-48 w-full overflow-hidden bg-slate-100 sm:h-64 lg:h-72">

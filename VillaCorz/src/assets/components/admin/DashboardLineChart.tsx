@@ -202,7 +202,7 @@ const DashboardLineChart = ({
                                             aria-describedby={
                                                 active ? tooltipId : undefined
                                             }
-                                            className="cursor-crosshair focus:outline-none"
+                                            className="cursor-crosshair focus:outline-none focus-visible:stroke-[#006dfc] focus-visible:stroke-[2.5]"
                                             onMouseEnter={() =>
                                                 setActivePoint({ index, x, y })
                                             }
