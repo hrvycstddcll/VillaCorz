@@ -177,7 +177,6 @@ function SiteLayout() {
         pathname === '/auth' ||
         pathname === '/account/settings' ||
         pathname === '/settings' ||
-        pathname === '/bookings' ||
         pathname === '/reservation' ||
         hidePaymentChrome
 

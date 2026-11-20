@@ -7,7 +7,6 @@ import {
     getBookings,
 } from '../../../services/bookingService'
 import type { Booking, BookingRoom, CancellationRequest } from '../../../services/types'
-import BackButton from '../ui/InteractiveComponents/BackButton'
 import BookingRoomsModal from '../ui/ModalComponents/BookingRoomsModal'
 import CancelRequestModal from '../ui/ModalComponents/CancelRequestModal'
 
@@ -150,12 +149,13 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
         booking.payment_method || booking.payment?.method || 'Not specified'
 
     return (
-        <main className="min-h-svh bg-slate-50 px-4 pb-10 pt-8 font-poppins sm:px-6">
+        <main className="min-h-svh bg-slate-50 px-4 pb-28 pt-24 font-poppins sm:px-7 sm:pb-20 sm:pt-28">
             <div className="mx-auto max-w-4xl">
-                <BackButton fallback="/services" className="mb-5" />
-                <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-800">My bookings</h1>
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0">
+                        <h1 className="text-2xl font-bold text-slate-800 sm:text-3xl">
+                            My bookings
+                        </h1>
                         <p className="mt-1 text-sm text-slate-500">
                             Track, review, or cancel your VillaCorz reservations.
                         </p>
@@ -163,7 +163,7 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                     <button
                         type="button"
                         onClick={() => navigate('/services')}
-                        className="inline-flex min-h-11 items-center rounded-lg bg-[#0875f9] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700"
+                        className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[#006dfc] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(0,109,252,0.24)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                     >
                         New booking
                     </button>
@@ -194,15 +194,15 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                             role="tab"
                             aria-selected={activeTab === key}
                             onClick={() => setActiveTab(key)}
-                            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                            className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] ${
                                 activeTab === key
-                                    ? 'bg-[#006dfc] text-white'
+                                    ? 'bg-[#006dfc] text-white shadow-[0_4px_12px_rgba(0,109,252,0.2)]'
                                     : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:text-[#006dfc]'
                             }`}
                         >
                             {label}
                             <span
-                                className={`rounded-full px-1.5 text-[10px] ${
+                                className={`min-w-5 rounded-full px-1.5 text-center text-[10px] font-semibold ${
                                     activeTab === key
                                         ? 'bg-white/20 text-white'
                                         : 'bg-slate-100 text-slate-500'
@@ -224,7 +224,26 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                 )}
 
                 {loading ? (
-                    <p className="text-sm text-slate-500">Loading your bookings…</p>
+                    <div role="status" aria-label="Loading your bookings" className="space-y-4">
+                        <span className="sr-only">Loading your bookings…</span>
+                        {[0, 1].map((item) => (
+                            <div
+                                key={item}
+                                className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                            >
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="h-4 w-28 rounded bg-slate-200" />
+                                    <div className="h-6 w-20 rounded-full bg-slate-200" />
+                                </div>
+                                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                    {[0, 1, 2, 3].map((row) => (
+                                        <div key={row} className="h-10 rounded-lg bg-slate-100" />
+                                    ))}
+                                </div>
+                                <div className="mt-5 h-10 rounded-lg bg-slate-100" />
+                            </div>
+                        ))}
+                    </div>
                 ) : visibleBookings.length === 0 ? (
                     <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
                         <p className="text-base font-semibold text-slate-700">
@@ -237,25 +256,48 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                                 ? 'Your confirmed reservations will appear here.'
                                 : 'Try another tab to see your other reservations.'}
                         </p>
+                        {activeTab === 'all' && (
+                            <button
+                                type="button"
+                                onClick={() => navigate('/services')}
+                                className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-[#006dfc] px-5 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(0,109,252,0.24)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                            >
+                                Browse rooms
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <ul className="space-y-4">
-                        {visibleBookings.map((booking) => (
+                        {visibleBookings.map((booking) => {
+                            const canReview =
+                                booking.lifecycle === 'completed' &&
+                                reviewWindowOpen(booking) &&
+                                booking.rooms.some(
+                                    (room) => room.service_id != null,
+                                )
+                            const canRequestCancellation =
+                                booking.lifecycle === 'booked' &&
+                                cancellationClosed(booking) &&
+                                !booking.cancellation_request
+                            const hasActions =
+                                canReview || canCancel(booking) || canRequestCancellation
+
+                            return (
                             <li
                                 key={booking.reference}
-                                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
                             >
                                 <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="text-xs uppercase tracking-wide text-slate-500">
                                             Reference
                                         </p>
-                                        <p className="text-lg font-bold text-[#0875f9]">
+                                        <p className="text-lg font-bold text-[#006dfc]">
                                             {booking.reference}
                                         </p>
                                     </div>
                                     <span
-                                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
                                             booking.lifecycle === 'completed'
                                                 ? 'bg-emerald-100 text-emerald-700'
                                                 : booking.lifecycle === 'cancelled'
@@ -275,12 +317,6 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                                                   ? 'Expired'
                                                   : 'Pending'}
                                     </span>
-                                    {booking.cancellation_request?.status ===
-                                        'pending' && (
-                                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-                                            Cancellation request pending
-                                        </span>
-                                    )}
                                 </div>
 
                                 <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -325,22 +361,32 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                                             onClick={() =>
                                                 setRoomsModal(booking.rooms)
                                             }
-                                            className="inline-flex min-h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 transition hover:border-[#0875f9]/40 hover:text-[#0875f9]"
+                                            className="inline-flex min-h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 transition hover:border-[#006dfc]/40 hover:text-[#006dfc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                                         >
                                             View rooms ({booking.rooms.length})
                                         </button>
                                     </div>
                                 </div>
 
-                                {booking.payment?.reference && (
-                                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                                        <span>
-                                            Payment ref:{' '}
-                                            <span className="font-medium text-slate-700">
-                                                {booking.payment.reference}
+                                {(booking.payment?.reference ||
+                                    booking.cancellation_request?.status ===
+                                        'pending') && (
+                                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+                                        {booking.cancellation_request?.status ===
+                                            'pending' && (
+                                            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                                                Cancellation request pending
                                             </span>
-                                        </span>
-                                        {booking.payment.paid_at && (
+                                        )}
+                                        {booking.payment?.reference && (
+                                            <span>
+                                                Payment ref:{' '}
+                                                <span className="font-medium text-slate-700">
+                                                    {booking.payment.reference}
+                                                </span>
+                                            </span>
+                                        )}
+                                        {booking.payment?.paid_at && (
                                             <span>
                                                 Paid:{' '}
                                                 <span className="font-medium text-slate-700">
@@ -361,39 +407,34 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                                     </div>
                                 )}
 
-                                <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
-                                    {booking.lifecycle === 'completed' &&
-                                        reviewWindowOpen(booking) &&
-                                        booking.rooms.some(
-                                            (room) => room.service_id != null,
-                                        ) && (
+                                {hasActions && (
+                                    <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                                        {canReview && (
                                             <button
                                                 type="button"
                                                 onClick={() =>
                                                     goToReview(booking)
                                                 }
-                                                className="inline-flex min-h-10 items-center rounded-lg bg-[#0875f9] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0875f9]"
+                                                className="inline-flex min-h-11 items-center rounded-lg bg-[#006dfc] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(0,109,252,0.24)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                                             >
                                                 Leave a review
                                             </button>
                                         )}
-                                    {canCancel(booking) && (
-                                        <button
-                                            type="button"
-                                            disabled={cancelling === booking.reference}
-                                            onClick={() =>
-                                                void handleCancel(booking.reference)
-                                            }
-                                            className="inline-flex min-h-10 items-center rounded-lg border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-                                        >
-                                            {cancelling === booking.reference
-                                                ? 'Cancelling…'
-                                                : 'Cancel booking'}
-                                        </button>
-                                    )}
-                                    {booking.lifecycle === 'booked' &&
-                                        cancellationClosed(booking) &&
-                                        !booking.cancellation_request && (
+                                        {canCancel(booking) && (
+                                            <button
+                                                type="button"
+                                                disabled={cancelling === booking.reference}
+                                                onClick={() =>
+                                                    void handleCancel(booking.reference)
+                                                }
+                                                className="inline-flex min-h-11 items-center rounded-lg border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                {cancelling === booking.reference
+                                                    ? 'Cancelling…'
+                                                    : 'Cancel booking'}
+                                            </button>
+                                        )}
+                                        {canRequestCancellation && (
                                             <button
                                                 type="button"
                                                 onClick={() =>
@@ -401,14 +442,16 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                                                         booking.reference,
                                                     )
                                                 }
-                                                className="inline-flex min-h-10 items-center rounded-lg border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+                                                className="inline-flex min-h-11 items-center rounded-lg border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                                             >
                                                 Request emergency cancellation
                                             </button>
                                         )}
-                                </div>
+                                    </div>
+                                )}
                             </li>
-                        ))}
+                            )
+                        })}
                     </ul>
                 )}
 

@@ -261,6 +261,7 @@ function PublicAccommodationSection({
 }) {
     const [showAllRooms, setShowAllRooms] = useState(false)
     const visibleRooms = showAllRooms ? rooms : rooms.slice(0, 4)
+    const roomGridClass = 'grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3'
 
     return (
         <section aria-labelledby="public-title" className="mb-8 sm:mb-11">
@@ -279,11 +280,11 @@ function PublicAccommodationSection({
             </div>
 
             {loading ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div className={roomGridClass}>
                     {Array.from({ length: 4 }).map((_, index) => (
                         <div
                             key={index}
-                            className="h-56 animate-pulse rounded-xl bg-slate-100 sm:h-64 lg:h-72"
+                            className="aspect-[5/4] w-full animate-pulse rounded-xl bg-slate-100"
                         />
                     ))}
                 </div>
@@ -305,7 +306,7 @@ function PublicAccommodationSection({
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div className={roomGridClass}>
                     {visibleRooms.map((stay) => (
                         <ServiceTile
                             key={stay.id}
@@ -1612,7 +1613,7 @@ function Services({
             />
         )}
         {!bookingOnly && !reservationOnly && (
-        <main className="min-h-svh bg-white px-4 pb-12 pt-24 font-poppins sm:px-7 sm:pt-28">
+        <main className="min-h-svh bg-white px-4 pb-32 pt-24 font-poppins sm:px-7 sm:pt-28 lg:pb-12">
             <div className="mx-auto grid max-w-7xl items-start gap-7 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-9">
                 <div className="min-w-0 space-y-4 lg:sticky lg:top-24" inert={isBookingPanelOpen}>
                     <BookingCalendarPanel

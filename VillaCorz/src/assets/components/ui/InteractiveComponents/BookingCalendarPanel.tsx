@@ -240,24 +240,33 @@ const BookingCalendarPanel = ({
                 aria-label="Booking summary"
                 aria-hidden={isOpen}
                 inert={isOpen}
-                className="h-fit w-full rounded-2xl border border-[#d7e6ff] bg-[#f5f9ff] p-4 shadow-[0_10px_30px_rgba(8,117,249,0.08)] sm:p-5"
+                className={`h-fit w-full rounded-2xl border border-[#d7e6ff] bg-[#f5f9ff] p-4 shadow-[0_10px_30px_rgba(8,117,249,0.08)] sm:p-5 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-20 max-lg:rounded-none max-lg:border-x-0 max-lg:border-b-0 max-lg:bg-[#f5f9ff]/95 max-lg:p-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom))] max-lg:shadow-[0_-10px_30px_rgba(15,23,42,0.12)] max-lg:backdrop-blur-sm max-lg:transition-transform max-lg:duration-200 motion-reduce:transition-none ${
+                    isOpen ? 'max-lg:translate-y-full' : ''
+                }`}
             >
-                <div className="flex items-start justify-between gap-3">
+                <div className="max-lg:flex max-lg:items-center max-lg:justify-between max-lg:gap-3">
                     <div className="min-w-0">
                         <h2 className="text-sm font-semibold text-[#006dfc]">
                             Your booking
                         </h2>
-                        <p className="mt-1 text-xs leading-5 text-slate-600">
+                        <p className="mt-1 text-xs leading-5 text-slate-600 max-lg:truncate">
                             {bookingSummary}
                         </p>
+
+                        {!isOpen && notice && (
+                            <p role="status" className="mt-3 truncate text-xs leading-5 text-rose-600 max-lg:mt-1">
+                                {notice}
+                            </p>
+                        )}
                     </div>
+
                     <button
                         ref={triggerRef}
                         type="button"
                         onClick={() => onOpenChange(true)}
                         aria-expanded={isOpen}
                         aria-controls="booking-drawer"
-                        className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-white px-3 text-xs font-semibold text-[#006dfc] shadow-sm ring-1 ring-[#d7e6ff] transition hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] motion-reduce:transition-none"
+                        className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#006dfc] px-4 py-3 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] motion-reduce:transition-none max-lg:mt-0 max-lg:min-h-11 max-lg:w-auto max-lg:shrink-0 max-lg:px-4 max-lg:py-2.5"
                     >
                         Edit booking
                         <ChevronDown
@@ -268,20 +277,6 @@ const BookingCalendarPanel = ({
                         />
                     </button>
                 </div>
-
-                {!isOpen && notice && (
-                    <p role="status" className="mt-3 text-xs leading-5 text-rose-600">
-                        {notice}
-                    </p>
-                )}
-
-                <button
-                    type="button"
-                    onClick={onCheckAvailability}
-                    className="mt-5 min-h-12 w-full rounded-lg bg-[#006dfc] px-4 py-3 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
-                >
-                    Continue
-                </button>
             </aside>
 
             {!isOpen && <span id="booking-drawer" hidden />}
@@ -306,13 +301,13 @@ const BookingCalendarPanel = ({
                             aria-labelledby="booking-drawer-title"
                             data-lenis-prevent=""
                             tabIndex={-1}
-                            className={`fixed left-0 top-24 z-40 max-h-[calc(100dvh-6rem)] w-[min(72rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-r-2xl border border-l-0 border-[#d7e6ff] bg-[#f5f9ff] shadow-[0_28px_90px_-24px_rgba(15,23,42,0.45)] outline-none ${
+                            className={`fixed left-0 top-[4.5rem] z-40 max-h-[calc(100dvh-4.5rem)] w-full overflow-y-auto overscroll-contain rounded-r-2xl border border-l-0 border-[#d7e6ff] bg-[#f5f9ff] shadow-[0_28px_90px_-24px_rgba(15,23,42,0.45)] outline-none sm:w-[calc(100vw-2rem)] lg:top-24 lg:max-h-[calc(100dvh-6rem)] lg:w-[min(72rem,calc(100vw-2rem))] ${
                                 isClosing
                                     ? 'booking-drawer-exit'
                                     : 'booking-drawer-enter'
                             }`}
                         >
-                            <div className="sticky top-0 z-10 flex items-start justify-between gap-3 rounded-tr-2xl border-b border-[#d7e6ff] bg-[#f5f9ff]/95 px-5 py-4 backdrop-blur-sm sm:px-6">
+                            <div className="sticky top-0 z-10 flex items-start justify-between gap-3 rounded-tr-2xl border-b border-[#d7e6ff] bg-[#f5f9ff]/95 px-4 py-3 backdrop-blur-sm sm:px-6 sm:py-4">
                                 <div className="min-w-0">
                                     <h2
                                         id="booking-drawer-title"
@@ -337,7 +332,7 @@ const BookingCalendarPanel = ({
                             {notice && (
                                 <p
                                     role="status"
-                                    className="mx-5 mt-4 text-xs leading-5 text-rose-600 sm:mx-6"
+                                    className="mx-4 mt-4 text-xs leading-5 text-rose-600 sm:mx-6"
                                 >
                                     {notice}
                                 </p>
@@ -345,7 +340,7 @@ const BookingCalendarPanel = ({
 
                             <div
                                 id="booking-panel-content"
-                                className="grid gap-5 px-5 py-5 sm:px-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] lg:items-start lg:gap-8"
+                                className="grid gap-5 px-4 py-4 sm:px-6 sm:py-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] lg:items-start lg:gap-8"
                             >
                                 <section
                                     aria-labelledby="booking-dates-heading"
@@ -442,7 +437,7 @@ const BookingCalendarPanel = ({
                                                         { dateStyle: 'full' },
                                                     ).format(day)}
                                                     aria-pressed={selected}
-                                                    className={`mx-auto flex size-9 items-center justify-center rounded-md text-[13px] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:text-slate-300 ${
+                                                    className={`mx-auto flex size-10 items-center justify-center rounded-md text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:text-slate-300 sm:size-9 sm:text-[13px] ${
                                                         selected
                                                             ? 'bg-[#006dfc] font-semibold text-white'
                                                             : inRange
@@ -716,7 +711,7 @@ const BookingCalendarPanel = ({
                                 </section>
                             </div>
 
-                            <div className="px-5 pb-5 sm:px-6">
+                            <div className="sticky bottom-0 z-10 border-t border-[#d7e6ff] bg-[#f5f9ff]/95 px-4 pb-4 pt-3 backdrop-blur-sm sm:px-6 sm:pb-5">
                                 <button
                                     type="button"
                                     onClick={onCheckAvailability}

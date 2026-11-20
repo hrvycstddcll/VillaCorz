@@ -49,13 +49,16 @@ describe('BookingCalendarPanel', () => {
 
         const editButton = screen.getByRole('button', { name: 'Edit booking' })
 
+        expect(
+            screen.getAllByRole('button', { name: 'Edit booking' }),
+        ).toHaveLength(1)
         expect(editButton).toHaveAttribute('aria-expanded', 'false')
         expect(editButton).toHaveAttribute('aria-controls', 'booking-drawer')
         expect(
             screen.getByText('20 Fri Nov – 22 Sun Nov · 2 nights · 2 guests · 1 room'),
         ).toBeInTheDocument()
         expect(screen.queryByRole('dialog')).toBeNull()
-        expect(screen.getAllByRole('button', { name: 'Continue' })).toHaveLength(1)
+        expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull()
         expect(
             screen.queryByRole('heading', { name: 'November 2026' }),
         ).toBeNull()

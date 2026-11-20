@@ -99,7 +99,8 @@ const CustomerAssistantPanel = () => {
     }, [location.pathname])
 
     const suggestions = suggestionsByPage[page]
-    const avoidsBookingBar = location.pathname === '/'
+    const avoidsBookingBar =
+        location.pathname === '/' || location.pathname.startsWith('/services')
     const triggerPosition = avoidsBookingBar
         ? 'bottom-24 sm:bottom-28 lg:bottom-32'
         : 'bottom-6'
@@ -176,7 +177,7 @@ const CustomerAssistantPanel = () => {
                     type="button"
                     onClick={() => setOpen(true)}
                     aria-label="Ask VillaCorz assistant"
-                    className={`fixed ${triggerPosition} right-6 z-50 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#006dfc] px-5 text-sm font-semibold text-white shadow-[0_12px_32px_rgba(0,109,252,0.28)] transition-colors duration-150 hover:bg-[#0057c9] ${focusRing}`}
+                    className={`customer-assistant-floating fixed ${triggerPosition} right-6 z-50 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#006dfc] px-5 text-sm font-semibold text-white shadow-[0_12px_32px_rgba(0,109,252,0.28)] transition-colors duration-150 hover:bg-[#0057c9] ${focusRing}`}
                 >
                     <Sparkles className="size-4" aria-hidden="true" />
                     Ask VillaCorz
@@ -186,7 +187,7 @@ const CustomerAssistantPanel = () => {
             {open && (
                 <section
                     aria-label="VillaCorz customer assistant"
-                    className={`fixed ${panelPosition} z-50 flex ${panelHeight} w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white shadow-[0_18px_60px_rgba(15,23,42,0.18)] max-sm:w-auto`}
+                    className={`customer-assistant-floating fixed ${panelPosition} z-50 flex ${panelHeight} w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white shadow-[0_18px_60px_rgba(15,23,42,0.18)] max-sm:w-auto`}
                 >
                     <div className="flex items-start justify-between gap-3 border-b border-[rgba(0,0,0,0.06)] px-5 py-4">
                         <div>

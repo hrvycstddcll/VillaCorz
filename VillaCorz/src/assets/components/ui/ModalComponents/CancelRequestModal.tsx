@@ -90,8 +90,9 @@ const CancelRequestModal = ({
                 aria-modal="true"
                 aria-labelledby="cancel-request-title"
                 aria-describedby="cancel-request-description"
-                className="w-full max-w-md rounded-2xl bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.22)]"
+                className="flex max-h-[min(90dvh,42rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-[0_24px_80px_rgba(0,0,0,0.22)]"
             >
+                <div className="overflow-y-auto overscroll-contain p-6">
                 <h2
                     id="cancel-request-title"
                     className="text-xl font-bold tracking-tight text-slate-900"
@@ -130,7 +131,7 @@ const CancelRequestModal = ({
                                 rows={4}
                                 maxLength={2000}
                                 placeholder="Describe the emergency and why you need to cancel."
-                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-[#0875f9] focus:outline-none focus:ring-2 focus:ring-[#0875f9]/20"
+                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-[#006dfc] focus:outline-none focus:ring-2 focus:ring-[#006dfc]/20"
                             />
                         </div>
 
@@ -214,6 +215,7 @@ const CancelRequestModal = ({
                         </button>
                     </div>
                 )}
+                </div>
             </section>
         </div>
     )
