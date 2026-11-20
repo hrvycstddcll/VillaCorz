@@ -192,7 +192,7 @@ const Testimonials = () => {
                     <h2 className="mt-5 font-instrument text-4xl leading-tight tracking-[-0.04em] text-black sm:text-5xl lg:text-6xl">
                         Words from our <span className="italic text-[#006dfc]">guests</span>
                     </h2>
-                    <p className="mt-4 max-w-2xl font-poppins text-sm leading-relaxed text-slate-500 sm:text-base">
+                    <p className="mt-4 max-w-2xl font-helvetica-world text-sm leading-relaxed text-slate-500 sm:text-base">
                         Real stays, shared in their own words. These are our highest-rated, verified
                         guest experiences from the past year.
                     </p>
@@ -219,7 +219,7 @@ const Testimonials = () => {
                     {status === 'error' && (
                         <div className="flex min-h-64 flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 px-6 text-center">
                             <p className="font-instrument text-2xl text-black">Stories are unavailable</p>
-                            <p className="max-w-md font-poppins text-sm leading-relaxed text-slate-500">
+                            <p className="max-w-md font-helvetica-world text-sm leading-relaxed text-slate-500">
                                 Guest testimonials could not be loaded right now. Please try again.
                             </p>
                             <button
@@ -238,7 +238,7 @@ const Testimonials = () => {
                     {status === 'ready' && items.length === 0 && (
                         <div className="flex min-h-64 flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 px-6 text-center">
                             <p className="font-instrument text-2xl text-black">Guest stories will appear here</p>
-                            <p className="max-w-lg font-poppins text-sm leading-relaxed text-slate-500">
+                            <p className="max-w-lg font-helvetica-world text-sm leading-relaxed text-slate-500">
                                 Once verified guests leave a five-star review, their words will be
                                 featured here.
                             </p>

@@ -14,7 +14,7 @@
     margin-top: -5rem;
     padding: 5rem 0 4rem;
     color: #fff;
-    font-family: var(--font-poppins, 'Poppins', sans-serif);
+    font-family: var(--font-helvetica-world, 'Helvetica World', 'Helvetica Neue', Helvetica, Arial, sans-serif);
 }
 
 .contact-section::before {

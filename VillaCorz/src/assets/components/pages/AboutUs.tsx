@@ -11,6 +11,8 @@ import logoUrl from '../../VillaCorz-SVGLogo.svg'
 
 import CountUp from '../ui/CountUp'
 import AccordionGallery from '../ui/AccordionGallery'
+import GradientASCII from '../ui/GradientASCII'
+import ReflectiveCard from '../ui/ReflectiveCard'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -401,35 +403,61 @@ const AboutUs = () => {
                             Why{' '}
                             <span className="italic text-[#006dfc]">Choose Us</span>?
                         </h2>
-                        <p className="mt-5 max-w-md font-poppins text-sm leading-relaxed text-gray-600 sm:text-base">
+                        <p className="mt-5 max-w-md font-helvetica-world text-sm leading-relaxed text-gray-600 sm:text-base">
                             Step into an exclusive villa designed for effortless gatherings,
                             peaceful group retreats, and unforgettable coastal stays.
                         </p>
                     </div>
 
                     <div className="flex flex-col gap-6">
-                        <div className="flex items-start gap-4 rounded-2xl bg-white p-8 shadow-sm">
-                            <span className="text-3xl font-serif leading-none text-[#006dfc]">
-                                &ldquo;
-                            </span>
-                            <p className="font-poppins text-sm leading-relaxed text-gray-600 sm:text-base">
-                                Shared dining and lounge areas provide room for meals,
-                                conversation, and celebrations. With exclusive booking, the
-                                entire property is yours, which makes it well suited to
-                                birthdays, reunions, and group events.
-                            </p>
-                        </div>
+                        <ReflectiveCard
+                            theme="light"
+                            width={320}
+                            height={220}
+                            radius={16}
+                            tint="#ffffff"
+                            metalness={0.6}
+                            roughness={0.2}
+                            intro={false}
+                            className="w-full"
+                            style={{ width: '100%', '--rc-pad': '0px' }}
+                        >
+                            <div className="relative z-50 h-full isolation-isolate">
+                                <GradientASCII
+                                    className="absolute inset-0 z-0 pointer-events-none"
+                                    style={{}}
+                                    dpr={2}
+                                    colors={['#4f8ff7', '#e8f0ff', '#b4d0ff', '#7cb4fb']}
+                                    shape="horizon"
+                                    characters=" =+xX0S8#@"
+                                    cellSize={16}
+                                    density={0.8}
+                                    lightMode
+                                />
+                                <div className="relative z-50 flex h-full items-start gap-4 p-4">
+                                    <span className="text-4xl font-serif leading-none text-white drop-shadow">
+                                        “
+                                    </span>
+                                    <p className="font-helvetica-world text-sm leading-relaxed text-white drop-shadow sm:text-base">
+                                        Shared dining and lounge areas provide room for meals,
+                                        conversation, and celebrations. With exclusive booking, the
+                                        entire property is yours, which makes it well suited to
+                                        birthdays, reunions, and group events.
+                                    </p>
+                                </div>
+                            </div>
+                        </ReflectiveCard>
 
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-4">
                             {reasons.map(({ icon: Icon, title }) => (
                                 <div
                                     key={title}
-                                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-sm"
+                                    className="group inline-flex items-center gap-3 rounded-2xl bg-white px-5 py-3 shadow-sm transition hover:bg-[#006dfc] hover:shadow-md"
                                 >
-                                    <span className="flex size-8 items-center justify-center rounded-lg bg-[#006dfc]/10 text-[#006dfc]">
-                                        <Icon className="size-4" aria-hidden="true" />
+                                    <span className="flex size-10 items-center justify-center rounded-xl bg-[#006dfc]/10 text-[#006dfc] transition-colors group-hover:bg-white/20 group-hover:text-white">
+                                        <Icon className="size-5" aria-hidden="true" />
                                     </span>
-                                    <span className="font-instrument text-sm font-medium text-black">
+                                    <span className="font-instrument text-base font-medium text-black transition-colors group-hover:text-white">
                                         {title}
                                     </span>
                                 </div>
