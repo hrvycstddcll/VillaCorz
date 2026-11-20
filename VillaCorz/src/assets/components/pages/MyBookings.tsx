@@ -30,7 +30,8 @@ const MyBookings = () => {
     const [cancelling, setCancelling] = useState<string | null>(null)
     const [roomsModal, setRoomsModal] = useState<BookingRoom[] | null>(null)
     const [requestModalRef, setRequestModalRef] = useState<string | null>(null)
-const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'completed'>('all')
+    const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'completed'>('all')
+    const [visibleCount, setVisibleCount] = useState(8)
 
     useEffect(() => {
         let active = true
@@ -72,6 +73,11 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
         if (activeTab === 'cancelled') return bookings.filter((b) => b.lifecycle === 'cancelled')
         return bookings.filter((b) => b.lifecycle === 'completed')
     }, [bookings, activeTab])
+
+    const pagedBookings = useMemo(
+        () => visibleBookings.slice(0, visibleCount),
+        [visibleBookings, visibleCount],
+    )
 
     const handleCancel = async (reference: string) => {
         if (!window.confirm('Cancel this booking? This cannot be undone.')) return
@@ -193,7 +199,10 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                             type="button"
                             role="tab"
                             aria-selected={activeTab === key}
-                            onClick={() => setActiveTab(key)}
+                            onClick={() => {
+                                setActiveTab(key)
+                                setVisibleCount(8)
+                            }}
                             className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] ${
                                 activeTab === key
                                     ? 'bg-[#006dfc] text-white shadow-[0_4px_12px_rgba(0,109,252,0.2)]'
@@ -226,21 +235,30 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                 {loading ? (
                     <div role="status" aria-label="Loading your bookings" className="space-y-4">
                         <span className="sr-only">Loading your bookings…</span>
-                        {[0, 1].map((item) => (
+                        {[0, 1, 2].map((item) => (
                             <div
                                 key={item}
-                                className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                                className="animate-pulse rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
                             >
-                                <div className="flex items-center justify-between gap-4">
-                                    <div className="h-4 w-28 rounded bg-slate-200" />
-                                    <div className="h-6 w-20 rounded-full bg-slate-200" />
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="h-3 w-20 rounded bg-slate-200" />
+                                        <div className="mt-2 h-6 w-40 rounded bg-slate-200" />
+                                        <div className="mt-2 h-3 w-full max-w-xs rounded bg-slate-100" />
+                                    </div>
+                                    <div className="h-6 w-24 shrink-0 rounded-full bg-slate-200" />
                                 </div>
-                                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                    {[0, 1, 2, 3].map((row) => (
-                                        <div key={row} className="h-10 rounded-lg bg-slate-100" />
+                                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                    {[0, 1, 2, 3, 4, 5].map((row) => (
+                                        <div key={row} className="space-y-2">
+                                            <div className="h-3 w-16 rounded bg-slate-100" />
+                                            <div className="h-5 w-28 rounded bg-slate-200" />
+                                        </div>
                                     ))}
                                 </div>
-                                <div className="mt-5 h-10 rounded-lg bg-slate-100" />
+                                <div className="mt-4 flex justify-end border-t border-slate-100 pt-3">
+                                    <div className="h-11 w-36 rounded-lg bg-slate-100" />
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -268,7 +286,7 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                     </div>
                 ) : (
                     <ul className="space-y-4">
-                        {visibleBookings.map((booking) => {
+                        {pagedBookings.map((booking) => {
                             const canReview =
                                 booking.lifecycle === 'completed' &&
                                 reviewWindowOpen(booking) &&
@@ -281,6 +299,42 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                                 !booking.cancellation_request
                             const hasActions =
                                 canReview || canCancel(booking) || canRequestCancellation
+                            const lifecycleMeta =
+                                booking.lifecycle === 'booked'
+                                    ? {
+                                          label: 'Booked',
+                                          className: 'bg-blue-100 text-blue-700',
+                                          detail: 'Your stay is confirmed. Review details below or manage it before check-in.',
+                                      }
+                                    : booking.lifecycle === 'completed'
+                                      ? {
+                                            label: 'Completed',
+                                            className: 'bg-emerald-100 text-emerald-700',
+                                            detail: 'This stay is complete.',
+                                        }
+                                      : booking.lifecycle === 'cancelled'
+                                        ? {
+                                              label: 'Cancelled',
+                                              className: 'bg-rose-100 text-rose-700',
+                                              detail: 'This reservation has been cancelled.',
+                                          }
+                                        : booking.lifecycle === 'expired'
+                                          ? {
+                                                label: 'Expired',
+                                                className: 'bg-slate-100 text-slate-600',
+                                                detail: 'This reservation expired and is no longer active.',
+                                            }
+                                          : {
+                                                label:
+                                                    booking.status === 'pending_payment'
+                                                        ? 'Pending payment'
+                                                        : 'Pending',
+                                                className: 'bg-amber-100 text-amber-700',
+                                                detail:
+                                                    booking.status === 'pending_payment'
+                                                        ? 'Payment is still required to confirm this reservation.'
+                                                        : 'This reservation is still being processed.',
+                                            }
 
                             return (
                             <li
@@ -295,27 +349,14 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                                         <p className="text-lg font-bold text-[#006dfc]">
                                             {booking.reference}
                                         </p>
+                                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                                            {lifecycleMeta.detail}
+                                        </p>
                                     </div>
                                     <span
-                                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                                            booking.lifecycle === 'completed'
-                                                ? 'bg-emerald-100 text-emerald-700'
-                                                : booking.lifecycle === 'cancelled'
-                                                  ? 'bg-rose-100 text-rose-700'
-                                                  : booking.lifecycle === 'booked'
-                                                    ? 'bg-blue-100 text-blue-700'
-                                                    : 'bg-amber-100 text-amber-700'
-                                        }`}
+                                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${lifecycleMeta.className}`}
                                     >
-                                        {booking.lifecycle === 'booked'
-                                            ? 'Booked'
-                                            : booking.lifecycle === 'completed'
-                                              ? 'Completed'
-                                              : booking.lifecycle === 'cancelled'
-                                                ? 'Cancelled'
-                                                : booking.lifecycle === 'expired'
-                                                  ? 'Expired'
-                                                  : 'Pending'}
+                                        {lifecycleMeta.label}
                                     </span>
                                 </div>
 
@@ -453,6 +494,17 @@ const [activeTab, setActiveTab] = useState<'all' | 'booked' | 'cancelled' | 'com
                             )
                         })}
                     </ul>
+                )}
+                {!loading && visibleBookings.length > visibleCount && (
+                    <div className="mt-6 flex justify-center">
+                        <button
+                            type="button"
+                            onClick={() => setVisibleCount((count) => count + 8)}
+                            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[#006dfc]/40 hover:text-[#006dfc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                        >
+                            Show more bookings ({visibleBookings.length - visibleCount} remaining)
+                        </button>
+                    </div>
                 )}
 
                 {roomsModal && (
