@@ -46,6 +46,9 @@ class CustomerAssistantController extends Controller
             'message' => ['required', 'string', 'max:600'],
             'context' => ['nullable', 'array'],
             'context.page' => ['nullable', 'string', 'max:40'],
+            'context.user_location' => ['nullable', 'array'],
+            'context.user_location.lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'context.user_location.lng' => ['nullable', 'numeric', 'between:-180,180'],
             'history' => ['nullable', 'array', 'max:6'],
             'history.*.role' => ['required_with:history', 'in:user,assistant'],
             'history.*.content' => ['required_with:history', 'string', 'max:1200'],
@@ -54,6 +57,19 @@ class CustomerAssistantController extends Controller
         $page = in_array($validated['context']['page'] ?? null, self::ALLOWED_PAGES, true)
             ? (string) $validated['context']['page']
             : 'other';
+
+        $location = $validated['context']['user_location'] ?? null;
+        $userLocation = null;
+
+        if (is_array($location)
+            && is_numeric($location['lat'] ?? null)
+            && is_numeric($location['lng'] ?? null)
+        ) {
+            $userLocation = [
+                'lat' => (float) $location['lat'],
+                'lng' => (float) $location['lng'],
+            ];
+        }
 
         $messages = collect($validated['history'] ?? [])
             ->map(function (array $item): array {
@@ -71,11 +87,12 @@ class CustomerAssistantController extends Controller
             ->values()
             ->all();
 
-        $question = "<user_question>\n".strip_tags((string) $validated['message'])."\n</user_question>";
+        $rawMessage = strip_tags((string) $validated['message']);
+        $question = "<user_question>\n{$rawMessage}\n</user_question>";
         $messages[] = ['role' => 'user', 'content' => $question];
 
         try {
-            $snapshot = $contextBuilder->build($user, $page);
+            $snapshot = $contextBuilder->build($user, $page, $rawMessage, $userLocation);
             $answer = $ollama->chat(CustomerAssistantPrompt::system($snapshot), $messages);
         } catch (RuntimeException $exception) {
             return response()->json([

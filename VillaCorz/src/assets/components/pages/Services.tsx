@@ -1614,8 +1614,16 @@ function Services({
         )}
         {!bookingOnly && !reservationOnly && (
         <main className="min-h-svh bg-white px-4 pb-32 pt-24 font-poppins sm:px-7 sm:pt-28 lg:pb-12">
-            <div className="mx-auto grid max-w-7xl items-start gap-7 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-9">
-                <div className="min-w-0 space-y-4 lg:sticky lg:top-24" inert={isBookingPanelOpen}>
+            <div className="mx-auto grid max-w-7xl items-start gap-7 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch lg:gap-9">
+                <div
+                    className="relative min-w-0 lg:self-stretch"
+                    inert={isBookingPanelOpen}
+                >
+                    <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -top-28 -bottom-12 -left-[100vw] right-0 hidden bg-[#006dfc] lg:block"
+                    />
+                    <div className="relative space-y-4 lg:sticky lg:top-24 lg:py-6 lg:pr-6 lg:pl-4">
                     <BookingCalendarPanel
                         checkIn={checkIn}
                         checkOut={checkOut}
@@ -1772,8 +1780,9 @@ function Services({
                             })}
                         </ol>
                     </section>
+                    </div>
                 </div>
-                <div className="min-w-0" inert={isBookingPanelOpen}>
+                <div className="min-w-0 lg:py-6" inert={isBookingPanelOpen}>
                 {isRoomDetailOpen && selectedStay ? (
                     <>
                         <RoomDetailView
