@@ -276,7 +276,6 @@ function AppRoutes() {
                             <AboutUs />
                             <Gallery />
                             <Testimonials />
-                            <BeachHouse />
                             <Contact />
                         </>
                     }

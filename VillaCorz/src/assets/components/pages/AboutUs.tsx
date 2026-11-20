@@ -13,6 +13,8 @@ import CountUp from '../ui/CountUp'
 import AccordionGallery from '../ui/AccordionGallery'
 import GradientASCII from '../ui/GradientASCII'
 import ReflectiveCard from '../ui/ReflectiveCard'
+import BeachHouse from './BeachHouse'
+import AnimatedContent from '../ui/AnimatedContent'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -411,30 +413,33 @@ const AboutUs = () => {
 
                     <div className="flex flex-col gap-6">
                         <ReflectiveCard
-                            theme="light"
+                            theme="dark"
                             width={320}
                             height={220}
                             radius={16}
-                            tint="#ffffff"
+                            tint="#1e3a8a"
                             metalness={0.6}
                             roughness={0.2}
                             intro={false}
                             className="w-full"
-                            style={{ width: '100%', '--rc-pad': '0px' }}
+                            style={{ width: '100%', '--rc-pad': '0px', '--rc-base': '#1e3a8a' }}
                         >
-                            <div className="relative z-50 h-full isolation-isolate">
+                            <div className="relative h-full w-full overflow-hidden">
                                 <GradientASCII
                                     className="absolute inset-0 z-0 pointer-events-none"
                                     style={{}}
                                     dpr={2}
-                                    colors={['#4f8ff7', '#e8f0ff', '#b4d0ff', '#7cb4fb']}
+                                    colors={['#0a2a6b', '#1e3a8a', '#1d4ed8', '#2563eb']}
                                     shape="horizon"
                                     characters=" =+xX0S8#@"
                                     cellSize={16}
-                                    density={0.8}
+                                    density={1}
+                                    softness={1}
+                                    scale={0.5}
+                                    gradientOpacity={1}
                                     lightMode
                                 />
-                                <div className="relative z-50 flex h-full items-start gap-4 p-4">
+                                <div className="absolute inset-0 z-10 flex items-start gap-4 p-4">
                                     <span className="text-4xl font-serif leading-none text-white drop-shadow">
                                         “
                                     </span>
@@ -466,6 +471,18 @@ const AboutUs = () => {
                     </div>
                 </div>
             </div>
+
+            <AnimatedContent
+                distance={100}
+                direction="vertical"
+                duration={0.8}
+                ease="power3.out"
+                stagger={0.08}
+                threshold={0.1}
+                trigger="mount"
+            >
+                <BeachHouse />
+            </AnimatedContent>
 
             <div className="relative z-10 w-full" style={{ marginBottom: 0, paddingBottom: 0 }}>
                 <AccordionGallery
