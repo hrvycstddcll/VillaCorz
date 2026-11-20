@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CustomerAssistantContextBuilder
@@ -18,11 +19,26 @@ class CustomerAssistantContextBuilder
 
     private const DESCRIPTION_LIMIT = 240;
 
+    private const VILLA = [
+        'name' => 'VillaCorz',
+        'area' => 'Matabungkay, Lian, Batangas',
+        'coordinates' => [
+            'lat' => 13.95007,
+            'lng' => 120.618683,
+        ],
+        'map_note' => 'See the Contact page for the map and directions.',
+    ];
+
     /**
+     * @param  array{lat?: mixed, lng?: mixed}|null  $userLocation
      * @return array<string, mixed>
      */
-    public function build(User $user, string $page): array
-    {
+    public function build(
+        User $user,
+        string $page,
+        string $message = '',
+        ?array $userLocation = null,
+    ): array {
         $today = now()->startOfDay();
 
         $upcoming = Booking::query()
@@ -52,9 +68,10 @@ class CustomerAssistantContextBuilder
             ->limit(self::MAX_SERVICES)
             ->get();
 
-        return [
+        $snapshot = [
             'today' => $today->toDateString(),
             'page' => $page,
+            'villa' => self::VILLA,
             'customer' => [
                 'first_name' => $user->firstname,
             ],
@@ -78,6 +95,22 @@ class CustomerAssistantContextBuilder
                 'support' => 'Customers can contact the VillaCorz team through the Contact page for human assistance.',
             ],
         ];
+
+        $distance = $this->distanceFromUser($userLocation);
+        if ($distance !== null) {
+            $snapshot['user_location'] = [
+                'shared' => true,
+                'straight_line_distance_km_to_villa' => $distance,
+                'distance_type' => 'straight-line (approximate)',
+            ];
+        }
+
+        $availability = $this->availabilityCheck($message, $today, $services);
+        if ($availability !== null) {
+            $snapshot['availability_check'] = $availability;
+        }
+
+        return $snapshot;
     }
 
     /**
@@ -169,6 +202,142 @@ class CustomerAssistantContextBuilder
             'rating' => $rating !== null ? round((float) $rating, 1) : null,
             'review_count' => (int) $service->getAttribute('reviews_count'),
         ];
+    }
+
+    /**
+     * @param  array{lat?: mixed, lng?: mixed}|null  $userLocation
+     */
+    private function distanceFromUser(?array $userLocation): ?float
+    {
+        if (! is_array($userLocation)) {
+            return null;
+        }
+
+        $lat = $userLocation['lat'] ?? null;
+        $lng = $userLocation['lng'] ?? null;
+
+        if (! is_numeric($lat) || ! is_numeric($lng)) {
+            return null;
+        }
+
+        $lat = (float) $lat;
+        $lng = (float) $lng;
+
+        if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+            return null;
+        }
+
+        $villaLat = self::VILLA['coordinates']['lat'];
+        $villaLng = self::VILLA['coordinates']['lng'];
+        $earthRadiusKm = 6371.0;
+
+        $dLat = deg2rad($villaLat - $lat);
+        $dLng = deg2rad($villaLng - $lng);
+        $a = sin($dLat / 2) ** 2
+            + cos(deg2rad($lat)) * cos(deg2rad($villaLat)) * sin($dLng / 2) ** 2;
+
+        $km = $earthRadiusKm * 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return round($km, 1);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Service>  $services
+     * @return array<string, mixed>|null
+     */
+    private function availabilityCheck(
+        string $message,
+        Carbon $today,
+        $services,
+    ): ?array {
+        $range = $this->requestedRange($message, $today);
+
+        if ($range === null) {
+            return null;
+        }
+
+        [$checkIn, $checkOut, $label] = $range;
+        $checkInDate = $checkIn->toDateString();
+        $checkOutDate = $checkOut->toDateString();
+
+        $exclusiveServiceId = $services->firstWhere('kind', 'exclusive')?->id;
+        $exclusiveServiceId = $exclusiveServiceId !== null ? (int) $exclusiveServiceId : null;
+
+        $overlaps = DB::table('booking_rooms')
+            ->join('bookings', 'bookings.id', '=', 'booking_rooms.booking_id')
+            ->where('bookings.status', 'confirmed')
+            ->where('bookings.check_in', '<', $checkOutDate)
+            ->where('bookings.check_out', '>', $checkInDate)
+            ->whereNotNull('booking_rooms.service_id')
+            ->pluck('booking_rooms.service_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $hasAnyOverlap = $overlaps !== [];
+        $blockedExclusive = $exclusiveServiceId !== null && in_array($exclusiveServiceId, $overlaps, true);
+
+        $results = $services->map(function (Service $service) use (
+            $overlaps,
+            $hasAnyOverlap,
+            $blockedExclusive,
+            $exclusiveServiceId,
+        ): array {
+            $id = (int) $service->id;
+            $available = $service->kind === 'exclusive'
+                ? ! $hasAnyOverlap
+                : (! in_array($id, $overlaps, true) && ! $blockedExclusive);
+
+            return [
+                'name' => $service->name,
+                'kind' => $service->kind,
+                'available' => $available,
+                'pax' => $service->pax,
+                'weekday_price' => (float) $service->price,
+                'weekend_price' => $service->weekend_price !== null
+                    ? (float) $service->weekend_price
+                    : null,
+            ];
+        })->values()->all();
+
+        return [
+            'requested_label' => $label,
+            'check_in' => $checkInDate,
+            'check_out' => $checkOutDate,
+            'nights' => max(1, (int) $checkIn->diffInDays($checkOut)),
+            'as_of' => $today->toDateString(),
+            'basis' => 'current confirmed bookings',
+            'results' => $results,
+        ];
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon, 2: string}|null
+     */
+    private function requestedRange(string $message, Carbon $today): ?array
+    {
+        $text = Str::lower($message);
+
+        if (preg_match('/\btomorrow\b/u', $text) === 1) {
+            $checkIn = $today->copy()->addDay();
+
+            return [$checkIn, $checkIn->copy()->addDay(), 'tomorrow night'];
+        }
+
+        if (preg_match('/\btonight\b/u', $text) === 1) {
+            $checkIn = $today->copy();
+
+            return [$checkIn, $checkIn->copy()->addDay(), 'tonight'];
+        }
+
+        if (preg_match('/\btoday\b/u', $text) === 1) {
+            $checkIn = $today->copy();
+
+            return [$checkIn, $checkIn->copy()->addDay(), 'today'];
+        }
+
+        return null;
     }
 
     /**

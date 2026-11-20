@@ -310,7 +310,7 @@ html.modal-open {
   overscroll-behavior: contain;
 }
 
-html.modal-open .customer-assistant-floating {
+html.modal-open .customer-assistant-floating:not([data-customer-assistant-dialog='true']) {
   visibility: hidden;
   opacity: 0;
   pointer-events: none;

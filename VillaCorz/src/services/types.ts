@@ -477,6 +477,10 @@ export type CustomerAssistantPage =
 
 export type CustomerAssistantChatContext = {
     page: CustomerAssistantPage
+    user_location?: {
+        lat: number
+        lng: number
+    }
 }
 
 export type CustomerAssistantChatRequest = {

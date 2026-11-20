@@ -110,6 +110,8 @@ const ServiceTile = (props: ServiceTileProps) => {
                             <img
                                 src={isSelected ? activePhoto : stay.image}
                                 alt="Blue-roofed Villa Corz beach house"
+                                loading="lazy"
+                                decoding="async"
                                 className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.01] sm:h-64 lg:h-72"
                             />
                         ) : (
@@ -193,7 +195,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                                     : 'ring-transparent'
                             }`}
                         >
-                            <img src={image} alt="" className="h-14 w-20 object-cover sm:h-16 sm:w-24" />
+                            <img src={image} alt="" loading="lazy" decoding="async" className="h-14 w-20 object-cover sm:h-16 sm:w-24" />
                         </button>
                     ))}
                 </div>
@@ -222,6 +224,8 @@ const ServiceTile = (props: ServiceTileProps) => {
                         <img
                             src={stay.image}
                             alt={`${stay.title} interior`}
+                            loading="lazy"
+                            decoding="async"
                             className="h-full w-full scale-[1.02] object-cover transition duration-500 group-hover:scale-[1.06] motion-reduce:transition-none"
                         />
                     ) : (

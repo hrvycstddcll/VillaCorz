@@ -86,7 +86,7 @@ test('keeps the assistant above the fixed booking bar on the home page', () => {
 
     fireEvent.click(launcher)
 
-    const panel = screen.getByRole('region', {
+    const panel = screen.getByRole('dialog', {
         name: 'VillaCorz customer assistant',
     })
     expect(panel).toHaveClass('bottom-24')
@@ -105,7 +105,7 @@ test('keeps the assistant above the fixed booking bar on the services page', () 
 
     fireEvent.click(launcher)
 
-    const panel = screen.getByRole('region', {
+    const panel = screen.getByRole('dialog', {
         name: 'VillaCorz customer assistant',
     })
     expect(panel).toHaveClass('max-sm:bottom-24')

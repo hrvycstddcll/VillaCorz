@@ -1,6 +1,7 @@
 import axios from 'axios'
 import {
     Loader2,
+    MapPin,
     RotateCcw,
     Send,
     Sparkles,
@@ -16,23 +17,25 @@ import type {
 
 type DisplayMessage = AssistantChatMessage & { id: string }
 
+type UserLocation = { lat: number; lng: number }
+
 const focusRing =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
 
 const suggestionsByPage: Record<CustomerAssistantPage, string[]> = {
     home: [
         'What can you help me with?',
-        'Show me the available rooms.',
-        'How do payments work?',
+        'What rooms are available tomorrow?',
+        'How far is the villa from me?',
     ],
     services: [
+        'What rooms are available tomorrow?',
         'Which room fits 6 guests?',
-        'What is included in the whole villa?',
-        'How are weekday and weekend rates different?',
+        'How far is the villa from me?',
     ],
     bookings: [
         'When is my next stay?',
-        'Can I cancel my booking?',
+        'What rooms are available tomorrow?',
         'What is my payment status?',
     ],
     settings: [
@@ -47,10 +50,15 @@ const suggestionsByPage: Record<CustomerAssistantPage, string[]> = {
     ],
     other: [
         'When is my next stay?',
-        'What rooms are available?',
-        'How do I contact VillaCorz?',
+        'What rooms are available tomorrow?',
+        'How far is the villa from me?',
     ],
 }
+
+const needsLocation = (text: string) =>
+    /how far|distance|far am i|far from|how close|near\b|where(?:'s| is)? (?:the )?villa|villa.*where|directions? to (?:the )?villa/i.test(
+        text,
+    )
 
 const getErrorMessage = (error: unknown) => {
     if (axios.isAxiosError(error)) {
@@ -74,9 +82,13 @@ const CustomerAssistantPanel = () => {
     const [input, setInput] = useState('')
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
+    const [locating, setLocating] = useState(false)
+    const [locationNote, setLocationNote] = useState<string | null>(null)
     const nextId = useRef(0)
     const inputRef = useRef<HTMLInputElement>(null)
     const logRef = useRef<HTMLDivElement>(null)
+    const triggerRef = useRef<HTMLButtonElement>(null)
 
     const page = useMemo<CustomerAssistantPage>(() => {
         if (location.pathname === '/') return 'home'
@@ -112,16 +124,10 @@ const CustomerAssistantPanel = () => {
         : 'max-h-[min(640px,calc(100vh-8rem))] max-sm:max-h-[calc(100vh-5rem)]'
 
     useEffect(() => {
-        if (!open) return
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') setOpen(false)
+        if (open) return
+        if (triggerRef.current && document.contains(triggerRef.current)) {
+            triggerRef.current.focus({ preventScroll: true })
         }
-
-        window.addEventListener('keydown', handleKeyDown)
-        inputRef.current?.focus()
-
-        return () => window.removeEventListener('keydown', handleKeyDown)
     }, [open])
 
     useEffect(() => {
@@ -130,9 +136,53 @@ const CustomerAssistantPanel = () => {
         if (log) log.scrollTop = log.scrollHeight
     }, [messages, busy, open])
 
+    const requestLocation = (): Promise<UserLocation | null> =>
+        new Promise((resolve) => {
+            if (userLocation) {
+                resolve(userLocation)
+                return
+            }
+
+            if (typeof navigator === 'undefined' || !navigator.geolocation) {
+                setLocationNote(
+                    'Location is unavailable in this browser. Use the Contact page for directions.',
+                )
+                resolve(null)
+                return
+            }
+
+            setLocating(true)
+            setLocationNote(null)
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const nextLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                    }
+                    setUserLocation(nextLocation)
+                    setLocationNote('Location shared for this chat.')
+                    setLocating(false)
+                    resolve(nextLocation)
+                },
+                () => {
+                    setLocationNote(
+                        'Location was not shared. Use the Contact page for directions.',
+                    )
+                    setLocating(false)
+                    resolve(null)
+                },
+                { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+            )
+        })
+
     const send = async (text: string) => {
         const question = text.trim()
-        if (!question || busy) return
+        if (!question || busy || locating) return
+
+        let resolvedLocation = userLocation
+        if (!resolvedLocation && needsLocation(question)) {
+            resolvedLocation = await requestLocation()
+        }
 
         const history = messages
             .slice(-6)
@@ -151,7 +201,9 @@ const CustomerAssistantPanel = () => {
         try {
             const response = await sendCustomerAssistantMessage({
                 message: question,
-                context: { page },
+                context: resolvedLocation
+                    ? { page, user_location: resolvedLocation }
+                    : { page },
                 history,
             })
 
@@ -174,6 +226,7 @@ const CustomerAssistantPanel = () => {
         <>
             {!open && (
                 <button
+                    ref={triggerRef}
                     type="button"
                     onClick={() => setOpen(true)}
                     aria-label="Ask VillaCorz assistant"
@@ -186,7 +239,11 @@ const CustomerAssistantPanel = () => {
 
             {open && (
                 <section
+                    role="dialog"
+                    aria-modal="true"
                     aria-label="VillaCorz customer assistant"
+                    data-customer-assistant-dialog="true"
+                    data-lenis-prevent
                     className={`customer-assistant-floating fixed ${panelPosition} z-50 flex ${panelHeight} w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white shadow-[0_18px_60px_rgba(15,23,42,0.18)] max-sm:w-auto`}
                 >
                     <div className="flex items-start justify-between gap-3 border-b border-[rgba(0,0,0,0.06)] px-5 py-4">
@@ -242,8 +299,9 @@ const CustomerAssistantPanel = () => {
                                     Ask about your stay
                                 </p>
                                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                                    I can check your bookings, payments, and
-                                    listed offers. I cannot change anything.
+                                    I can check your bookings, payments, listed
+                                    offers, and room availability for dates you
+                                    ask about. I cannot change anything.
                                 </p>
                                 <div className="mt-3 space-y-2">
                                     {suggestions.map((suggestion) => (
@@ -257,6 +315,26 @@ const CustomerAssistantPanel = () => {
                                         </button>
                                     ))}
                                 </div>
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => void requestLocation()}
+                                        disabled={locating}
+                                        className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[rgba(0,0,0,0.08)] bg-white px-3 text-xs font-medium text-slate-700 transition-colors hover:border-[#006dfc] hover:text-[#006dfc] disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
+                                    >
+                                        <MapPin className="size-3.5" aria-hidden="true" />
+                                        {locating
+                                            ? 'Getting location…'
+                                            : userLocation
+                                              ? 'Location shared'
+                                              : 'Share location for distance'}
+                                    </button>
+                                </div>
+                                {locationNote && (
+                                    <p className="mt-2 text-[11px] leading-4 text-slate-500">
+                                        {locationNote}
+                                    </p>
+                                )}
                             </div>
                         ) : (
                             messages.map((message) => (
@@ -286,7 +364,7 @@ const CustomerAssistantPanel = () => {
                             ))
                         )}
 
-                        {busy && (
+                        {(busy || locating) && (
                             <div
                                 className="flex items-center gap-2 text-xs text-slate-500"
                                 role="status"
@@ -295,7 +373,9 @@ const CustomerAssistantPanel = () => {
                                     className="size-4 animate-spin motion-reduce:animate-none"
                                     aria-hidden="true"
                                 />
-                                Checking your account details...
+                                {locating && !busy
+                                    ? 'Getting your location...'
+                                    : 'Checking your account details...'}
                             </div>
                         )}
 
@@ -328,11 +408,11 @@ const CustomerAssistantPanel = () => {
                             />
                             <button
                                 type="submit"
-                                disabled={!input.trim() || busy}
+                                disabled={!input.trim() || busy || locating}
                                 aria-label="Send question"
                                 className={`grid size-11 shrink-0 place-items-center rounded-xl bg-[#006dfc] text-white transition-colors hover:bg-[#0057c9] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 ${focusRing}`}
                             >
-                                {busy ? (
+                                {busy || locating ? (
                                     <Loader2
                                         className="size-4 animate-spin motion-reduce:animate-none"
                                         aria-hidden="true"
@@ -342,10 +422,28 @@ const CustomerAssistantPanel = () => {
                                 )}
                             </button>
                         </div>
-                        <p className="mt-2 px-1 text-[10px] leading-4 text-slate-400">
-                            AI can make mistakes. Check My bookings for final
-                            details.
-                        </p>
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1">
+                            <p className="text-[10px] leading-4 text-slate-400">
+                                AI can make mistakes. Check My bookings or Services
+                                for final details.
+                            </p>
+                            {messages.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => void requestLocation()}
+                                    disabled={locating}
+                                    className={`inline-flex min-h-8 items-center gap-1 rounded-md px-1.5 text-[10px] font-medium text-slate-500 transition-colors hover:text-[#006dfc] disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
+                                >
+                                    <MapPin className="size-3" aria-hidden="true" />
+                                    {userLocation ? 'Location shared' : 'Share location'}
+                                </button>
+                            )}
+                        </div>
+                        {locationNote && messages.length > 0 && (
+                            <p className="mt-1 px-1 text-[10px] leading-4 text-slate-400">
+                                {locationNote}
+                            </p>
+                        )}
                     </form>
                 </section>
             )}
