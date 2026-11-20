@@ -14,7 +14,7 @@
     margin-top: -5rem;
     padding: 5rem 0 4rem;
     color: #fff;
-    font-family: var(--font-helvetica-world, 'Helvetica World', 'Helvetica Neue', Helvetica, Arial, sans-serif);
+    font-family: var(--font-jakarta, "Plus Jakarta Sans", sans-serif);
 }
 
 .contact-section::before {
@@ -32,18 +32,22 @@
     pointer-events: none;
 }
 
-.contact-section :is(.contact-heading__title,
-    .contact-metric__value,
-    .contact-block__title,
-    .contact-row__index,
-    .contact-row__value,
-    .contact-note__title,
-    .contact-form-card__title) {
+.contact-section :is(.contact-metric__value) {
     font-family: "Instrument Serif", serif;
 }
 
-.contact-section .contact-heading__title {
-    font-family: var(--font-instrument, "Instrument Serif", serif);
+.contact-section :is(.contact-row__index,
+    .contact-row__value) {
+    font-family: var(--font-jakarta, "Plus Jakarta Sans", sans-serif);
+}
+
+.contact-section :is(.contact-heading__title,
+    .contact-block__title,
+    .contact-note__title,
+    .contact-form-card__title) {
+    font-family: var(--font-jakarta, "Plus Jakarta Sans", sans-serif);
+    font-size: 50px;
+    font-weight: 700;
 }
 
 /* ------------------------------------------------------------------ */
@@ -195,9 +199,9 @@
 .contact-location__title {
     margin-top: 1rem;
     color: #f6efe2;
-    font-family: var(--font-instrument, "Instrument Serif", serif);
-    font-size: clamp(3rem, 9vw, 90px);
-    font-weight: 400;
+    font-family: var(--font-jakarta, "Plus Jakarta Sans", sans-serif);
+    font-size: 50px;
+    font-weight: 700;
     line-height: 1.05;
     letter-spacing: -0.02em;
 }
@@ -558,9 +562,8 @@
 .contact-row__index {
     padding-top: 0.1rem;
     color: var(--contact-sand);
-    font-family: var(--font-serif, 'Playfair Display', serif);
+    font-family: var(--font-jakarta, "Plus Jakarta Sans", sans-serif);
     font-size: 0.9rem;
-    font-style: italic;
 }
 
 .contact-row__label {
@@ -574,7 +577,7 @@
 .contact-row__value {
     margin-top: 0.45rem;
     color: #f6efe2;
-    font-family: var(--font-serif, 'Playfair Display', serif);
+    font-family: var(--font-jakarta, "Plus Jakarta Sans", sans-serif);
     font-size: clamp(1.25rem, 2vw, 1.6rem);
     font-weight: 400;
     line-height: 1.25;

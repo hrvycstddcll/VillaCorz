@@ -275,11 +275,11 @@ const AboutUs = () => {
             <div className="relative z-10 mx-auto w-full max-w-7xl px-5 pb-8 sm:px-8 sm:pb-12">
                 <div className="grid items-start gap-10 pt-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-14">
                     <div className="max-w-md pl-[3.8rem] sm:pl-[7.0rem]">
-                        <h3 className="font-instrument text-2xl tracking-[-0.05em] text-black sm:text-3xl">
+                        <h3 className="font-jakarta text-[50px] font-bold tracking-[-0.05em] text-black">
                             About Us
                         </h3>
 
-                        <p className="font-helvetica-world mt-4 text-justify text-[0.8rem] leading-relaxed text-gray-600 sm:text-sm">
+                        <p className="font-jakarta mt-4 text-justify text-[0.8rem] leading-relaxed text-gray-600 sm:text-sm">
                             Welcome to Villa Corz. Here we blend coastal comfort, flexible
                             group stays, and genuine Batangueño warmth to create effortless
                             seaside getaways just two hours from Manila.
@@ -287,7 +287,7 @@ const AboutUs = () => {
                     </div>
 
                     <div className="mt-10 max-w-md lg:max-w-none">
-                        <p className="font-helvetica-world max-w-[calc(100%-4rem)] text-justify text-[0.8rem] leading-relaxed text-gray-600 sm:max-w-[calc(100%-7rem)] sm:text-sm">
+                        <p className="font-jakarta max-w-[calc(100%-4rem)] text-justify text-[0.8rem] leading-relaxed text-gray-600 sm:max-w-[calc(100%-7rem)] sm:text-sm">
                             Located in Lian, Batangas near the iconic shores of Matabungkay
                             and the hidden coves of Ligtasin and Kaynipa our private beach
                             house offers the sweet spot between crowded commercial resorts
@@ -374,9 +374,9 @@ const AboutUs = () => {
                             className="flex min-h-[160px] flex-col items-center justify-center bg-white px-4 py-16 text-center"
                         >
                             <span
-                                className="font-instrument font-semibold text-black"
+                                className="font-jakarta font-bold text-black"
                                 style={{
-                                    fontSize: 'clamp(3.5rem, 5vw, 5rem)',
+                                    fontSize: '52px',
                                     letterSpacing: '-0.04em',
                                     lineHeight: 1,
                                 }}
@@ -401,11 +401,11 @@ const AboutUs = () => {
             <div className="relative z-10 w-full bg-white py-32">
                 <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-16 px-12 lg:grid-cols-2">
                     <div className="flex flex-col justify-center">
-                        <h2 className="font-instrument text-[clamp(2.5rem,5vw,4rem)] leading-tight tracking-[-0.04em] text-black">
+                        <h2 className="font-jakarta text-[50px] font-bold leading-tight tracking-[-0.04em] text-black">
                             Why{' '}
                             <span className="italic text-[#006dfc]">Choose Us</span>?
                         </h2>
-                        <p className="mt-5 max-w-md font-helvetica-world text-sm leading-relaxed text-gray-600 sm:text-base">
+                        <p className="mt-5 max-w-md font-jakarta text-sm leading-relaxed text-gray-600 sm:text-base">
                             Step into an exclusive villa designed for effortless gatherings,
                             peaceful group retreats, and unforgettable coastal stays.
                         </p>
@@ -443,7 +443,7 @@ const AboutUs = () => {
                                     <span className="text-4xl font-serif leading-none text-white drop-shadow">
                                         “
                                     </span>
-                                    <p className="font-helvetica-world text-sm leading-relaxed text-white drop-shadow sm:text-base">
+                                    <p className="font-jakarta text-sm leading-relaxed text-white drop-shadow sm:text-base">
                                         Shared dining and lounge areas provide room for meals,
                                         conversation, and celebrations. With exclusive booking, the
                                         entire property is yours, which makes it well suited to

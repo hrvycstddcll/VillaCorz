@@ -234,7 +234,7 @@ const Gallery = () => {
                                 <p className="font-poppins text-[10px] font-semibold uppercase tracking-[0.24em] text-[#93c5fd]">
                                     Guest photo {activeIndex !== null ? activeIndex + 1 : 1} of {items.length}
                                 </p>
-                                <h3 id="gallery-lightbox-title" className="mt-1 font-instrument text-2xl text-white">
+                                <h3 id="gallery-lightbox-title" className="mt-1 font-jakarta text-[50px] font-bold text-white">
                                     {activeItem.title}
                                 </h3>
                             </div>

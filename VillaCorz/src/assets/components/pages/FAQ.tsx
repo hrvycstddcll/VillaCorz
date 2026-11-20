@@ -1,4 +1,13 @@
 import { useState } from 'react'
+import {
+  CircleCheck,
+  CookingPot,
+  Music2,
+  PawPrint,
+  SquareParking,
+  UtensilsCrossed,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 const categories = [
   'All Questions',
@@ -8,7 +17,43 @@ const categories = [
   'Policies & Security',
 ]
 
-const faqs = [
+type BadgeTone = 'blue' | 'outline' | 'purple'
+
+type FaqBadge = {
+  label: string
+  tone: BadgeTone
+}
+
+type FaqChecklistItem = {
+  title: string
+  description: string
+}
+
+type FaqCallout = {
+  icon: LucideIcon
+  title: string
+  body: string
+}
+
+type FaqItem = {
+  category: string
+  question: string
+  answer?: string
+  answerIntro?: string
+  badges?: FaqBadge[]
+  checklist?: FaqChecklistItem[]
+  callouts?: FaqCallout[]
+  feature?: { icon: LucideIcon; title: string }
+  footerNote?: string
+}
+
+const badgeToneClasses: Record<BadgeTone, string> = {
+  blue: 'bg-[#EFF6FF] text-[#006dfc]',
+  outline: 'bg-white text-[#006dfc] ring-1 ring-[#cfe1f7]',
+  purple: 'bg-purple-50 text-purple-700',
+}
+
+const faqs: FaqItem[] = [
   {
     category: 'Booking & Rates',
     question: 'How do I book Villa Lacorz exclusively?',
@@ -46,10 +91,48 @@ const faqs = [
       'Shared dining and lounge areas provide room for meals, conversation, and celebrations, making the villa perfect for group stays.',
   },
   {
+    category: 'Amenities & Stay',
+    badges: [
+      { label: 'Amenities & Stay', tone: 'blue' },
+      { label: 'Family Favorite', tone: 'purple' },
+    ],
+    question: 'What dining, kitchen, and lounge facilities are included?',
+    answerIntro:
+      'We provide a spacious dining area and functional kitchen setup designed for group meals and gatherings:',
+    feature: {
+      icon: CookingPot,
+      title: 'Heavy-duty Gas Range & Stove',
+    },
+    footerNote:
+      '*Guests are requested to bring their own dining utensils, disposable plates, cups, and cooking supplies.',
+  },
+  {
     category: 'Events & Gatherings',
     question: 'Can we host birthdays, reunions, or corporate gatherings?',
     answer:
       'Absolutely. With exclusive booking the entire property is yours, making it well suited to birthdays, reunions, and group events. Shared spaces support meals and celebrations.',
+  },
+  {
+    category: 'Events & Gatherings',
+    badges: [{ label: 'Events & Gatherings', tone: 'blue' }],
+    question: 'Are pets, videoke, and outside catering allowed for events?',
+    callouts: [
+      {
+        icon: Music2,
+        title: 'Videoke & Music Curfew',
+        body: 'High-definition videoke is provided by guest! Per Nasugbu local municipal ordinance, loud sound systems and videoke must be lowered by 10:00 PM to respect community peace. (Low indoor volume background music may continue inside).',
+      },
+      {
+        icon: PawPrint,
+        title: 'Pet-Friendly Rules',
+        body: 'Well-behaved small to medium pets are welcome with prior notification to concierge. Guests are responsible for pet hygiene and leash supervision around pool areas.',
+      },
+      {
+        icon: UtensilsCrossed,
+        title: 'Catering & Vendors',
+        body: 'You are free to bring outside food, drinks, and hired event caterers with ZERO corkage fees!',
+      },
+    ],
   },
   {
     category: 'Policies & Security',
@@ -69,6 +152,17 @@ const faqs = [
     answer:
       'Yes. Villa Lacorz provides a safe and secure environment so families and groups can relax with confidence.',
   },
+  {
+    category: 'Policies & Security',
+    question: 'Is parking available on the property?',
+    callouts: [
+      {
+        icon: SquareParking,
+        title: 'Villa Gateway',
+        body: 'Secure parking inside the property gate for up to 6–8 vehicles (including 1 passenger van).',
+      },
+    ],
+  },
 ]
 
 const FAQ = () => {
@@ -81,13 +175,16 @@ const FAQ = () => {
       : faqs.filter((f) => f.category === activeCategory)
 
   return (
-    <section className="min-h-screen w-full overflow-visible bg-[#F8FAFC] px-4 py-16 pb-24 sm:px-6 sm:py-20">
+    <section
+      id="faq"
+      className="min-h-screen w-full overflow-visible bg-[#F8FAFC] px-4 pt-16 pb-32 sm:px-6 sm:pt-20 sm:pb-36"
+    >
       <div className="mx-auto w-full max-w-3xl">
         <header className="mb-8 text-center sm:mb-10">
-          <h2 className="font-instrument text-3xl tracking-tight text-[#0F172A] sm:text-4xl">
+          <h2 className="font-jakarta text-[50px] font-bold leading-tight tracking-tight text-[#0F172A]">
             Frequently Asked Questions
           </h2>
-          <p className="mt-3 font-helvetica-world text-sm leading-relaxed text-slate-500 sm:text-base">
+          <p className="mt-3 font-jakarta text-sm leading-relaxed text-slate-500 sm:text-base">
             Everything you need to know about booking, amenities, and hosting your private
             gathering at Villa Lacorz.
           </p>
@@ -133,11 +230,20 @@ const FAQ = () => {
                   onClick={() => setOpenIndex(isOpen ? null : idx)}
                   className="flex w-full items-start justify-between gap-4 px-5 py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                 >
-                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                    <span className="w-fit rounded-full bg-[#EFF6FF] px-2.5 py-1 text-xs font-semibold text-[#006dfc]">
-                      {faq.category}
-                    </span>
-                    <span className="font-helvetica-world text-sm font-semibold text-[#0F172A] sm:text-base">
+                  <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                      {(faq.badges ?? [
+                        { label: faq.category, tone: 'blue' as const },
+                      ]).map((badge) => (
+                        <span
+                          key={badge.label}
+                          className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${badgeToneClasses[badge.tone]}`}
+                        >
+                          {badge.label}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="min-w-0 break-words font-jakarta text-sm font-semibold text-[#0F172A] sm:text-base">
                       {faq.question}
                     </span>
                   </div>
@@ -162,13 +268,79 @@ const FAQ = () => {
                   id={panelId}
                   role="region"
                   aria-labelledby={buttonId}
-                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                    isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                  className={`grid transition-all duration-300 ease-in-out ${
+                    isOpen
+                      ? 'grid-rows-[1fr] opacity-100'
+                      : 'grid-rows-[0fr] opacity-0'
                   }`}
                 >
-                  <p className="px-5 pb-4 font-helvetica-world text-sm leading-relaxed text-slate-600">
-                    {faq.answer}
-                  </p>
+                  <div className="overflow-hidden">
+                    <div className="space-y-3 px-5 pb-4 font-jakarta text-sm leading-relaxed text-slate-600">
+                      {faq.answerIntro && <p>{faq.answerIntro}</p>}
+                      {faq.checklist && (
+                        <ul className="space-y-2.5">
+                          {faq.checklist.map((item) => (
+                            <li
+                              key={item.title}
+                              className="flex items-start gap-2.5"
+                            >
+                              <CircleCheck
+                                className="mt-0.5 size-4 shrink-0 text-[#006dfc]"
+                                aria-hidden="true"
+                              />
+                              <p>
+                                <span className="font-semibold text-[#0F172A]">
+                                  {item.title}:
+                                </span>{' '}
+                                {item.description}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {faq.callouts && (
+                        <div className="space-y-2.5">
+                          {faq.callouts.map((callout) => {
+                            const Icon = callout.icon
+                            return (
+                              <div
+                                key={callout.title}
+                                className="rounded-xl bg-white px-4 py-3.5 ring-1 ring-slate-200"
+                              >
+                                <div className="flex items-start gap-2.5">
+                                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#EFF6FF] text-[#006dfc]">
+                                    <Icon className="size-4" aria-hidden="true" />
+                                  </span>
+                                  <div className="min-w-0 space-y-1">
+                                    <p className="font-semibold text-[#0F172A]">
+                                      {callout.title}
+                                    </p>
+                                    <p className="text-slate-600">{callout.body}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                      {faq.feature && (
+                        <div className="rounded-xl bg-white px-4 py-3.5 ring-1 ring-slate-200">
+                          <div className="flex items-center gap-3">
+                            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#EFF6FF] text-[#006dfc]">
+                              <faq.feature.icon className="size-4" aria-hidden="true" />
+                            </span>
+                            <p className="font-semibold text-[#0F172A]">
+                              {faq.feature.title}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {faq.footerNote && (
+                        <p className="text-xs text-slate-500">{faq.footerNote}</p>
+                      )}
+                      {faq.answer && <p>{faq.answer}</p>}
+                    </div>
+                  </div>
                 </div>
               </article>
             )
