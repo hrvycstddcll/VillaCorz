@@ -51,7 +51,7 @@ export function PublicAccommodationSection({
                     role="status"
                     aria-label="Loading private rooms"
                 >
-                    <span className="sr-only">Loading rooms…</span>
+                    <span className="sr-only">Loading rooms.</span>
                     {Array.from({ length: 4 }).map((_, index) => (
                         <div
                             key={index}
@@ -79,7 +79,7 @@ export function PublicAccommodationSection({
                     ))}
                 </div>
             ) : error ? (
-                <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-8 text-center">
+                <div role="alert" className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-8 text-center">
                     <p className="text-sm font-medium text-rose-700">{error}</p>
                     <button
                         type="button"
