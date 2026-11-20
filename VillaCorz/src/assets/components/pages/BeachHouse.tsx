@@ -41,7 +41,7 @@ const BeachHouse = () => {
     return (
         <section
             id="beach-house"
-            className="relative scroll-mt-24 overflow-hidden bg-white py-14 sm:py-18 lg:py-20"
+            className="relative scroll-mt-24 overflow-hidden bg-white pt-4 pb-14 sm:pt-6 sm:pb-18 lg:pt-8 lg:pb-20"
         >
             <style>{`
                 .vc-guest { animation: vc-bob 2.2s ease-in-out infinite; transform-origin: center bottom; }
