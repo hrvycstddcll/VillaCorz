@@ -462,7 +462,7 @@ const AboutUs = () => {
                                     <span className="flex size-10 items-center justify-center rounded-xl bg-[#006dfc]/10 text-[#006dfc] transition-colors group-hover:bg-white/20 group-hover:text-white">
                                         <Icon className="size-5" aria-hidden="true" />
                                     </span>
-                                    <span className="font-instrument text-base font-medium text-black transition-colors group-hover:text-white">
+                                    <span className="font-jakarta text-base font-medium text-black transition-colors group-hover:text-white">
                                         {title}
                                     </span>
                                 </div>
