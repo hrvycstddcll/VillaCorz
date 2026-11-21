@@ -786,7 +786,7 @@ const Dashboard = () => {
                                 >
                                     <Link
                                         to={reportHref('revenue')}
-                                        className={`mt-2 inline-block rounded-sm font-serif text-5xl font-bold leading-none tracking-tight text-slate-950 tabular-nums hover:text-[#006dfc] sm:text-6xl ${focusRing}`}
+                                        className={`mt-2 inline-block rounded-sm font-jakarta-serif text-5xl font-bold leading-none tracking-tight text-slate-950 tabular-nums hover:text-[#006dfc] sm:text-6xl ${focusRing}`}
                                     >
                                         {money(metrics?.revenue ?? 0)}
                                     </Link>
@@ -796,7 +796,7 @@ const Dashboard = () => {
                             ) : (
 
 
-                                <p className="mt-2 font-serif text-5xl font-bold leading-none tracking-tight text-slate-950 tabular-nums sm:text-6xl">
+                                <p className="mt-2 font-jakarta-serif text-5xl font-bold leading-none tracking-tight text-slate-950 tabular-nums sm:text-6xl">
 
 
                                     —
@@ -1011,7 +1011,7 @@ const Dashboard = () => {
                                 </span>
                             </WarmTooltip>
                         </div>
-                        <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                        <h2 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
                             Action center
                         </h2>
                         {loading ? (
@@ -1125,7 +1125,7 @@ const Dashboard = () => {
                             </div>
                             <h2
                                 id="pricing-title"
-                                className="mt-1 font-serif text-2xl font-bold tracking-tight"
+                                className="mt-1 font-jakarta-serif text-2xl font-bold tracking-tight"
                             >
                                 Seasonal pricing
                             </h2>
@@ -1218,7 +1218,7 @@ const Dashboard = () => {
                                         ? 'Prescriptive guidance'
                                         : 'Predictive outlook'}
                                 </p>
-                                <h3 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                                <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
                                     {isPrescriptive
                                         ? 'Actual vs predicted bookings'
                                         : 'Predicted base price'}
@@ -1440,7 +1440,7 @@ const Dashboard = () => {
                                 <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                     Suggested actions
                                 </p>
-                                <h3 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                                <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
                                     Price recommendations
                                 </h3>
                                 <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -1573,7 +1573,7 @@ const Dashboard = () => {
                                 </span>
                             </WarmTooltip>
                         </div>
-                        <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                        <h2 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
                             By service
                         </h2>
                         {loading ? (
@@ -1625,7 +1625,7 @@ const Dashboard = () => {
                         <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                             Conversion
                         </p>
-                        <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                        <h2 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
                             Booking funnel
                         </h2>
                         <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -1735,7 +1735,7 @@ const Dashboard = () => {
                         <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                             Stay performance
                         </p>
-                        <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                        <h2 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
                             Occupancy and yield
                         </h2>
                         {loading ? (
@@ -1823,7 +1823,7 @@ const Dashboard = () => {
                                 </span>
                             </WarmTooltip>
                         </div>
-                        <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                        <h2 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
                             Revenue by day of week
                         </h2>
                         <div className="mt-4 space-y-3">
@@ -1893,7 +1893,7 @@ const Dashboard = () => {
                                     </span>
                                 </WarmTooltip>
                             </div>
-                            <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                            <h2 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
                                 Recent bookings
                             </h2>
                             <WarmTooltip

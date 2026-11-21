@@ -414,10 +414,16 @@ const AboutUs = () => {
                 useWindowScroll
                 smoothScroll={false}
                 className="scroll-stack--fullbleed"
+                stackPosition={88}
+                itemDistance={280}
+                itemStackDistance={24}
+                itemScale={0}
+                dimAmount={0}
+                holdDistance={320}
             >
                 <ScrollStackItem>
-                    <div className="relative z-10 w-full bg-white py-32">
-                        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-16 px-12 lg:grid-cols-2">
+                    <div className="relative z-10 w-full bg-white py-16 sm:py-24">
+                        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-12 sm:gap-16 lg:grid-cols-2">
                             <div className="flex flex-col justify-center">
                                 <h2 className="font-jakarta text-[50px] font-bold leading-tight tracking-[-0.04em] text-black">
                                     Why{' '}

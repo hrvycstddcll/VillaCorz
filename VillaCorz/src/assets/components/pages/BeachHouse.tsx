@@ -106,7 +106,7 @@ const BeachHouse = () => {
                         className="relative w-full overflow-hidden rounded-3xl bg-[#ECECEC] p-4 lg:w-[70%]"
                     >
                         <div
-                            className="relative mx-auto flex min-h-[640px] w-full items-center justify-center"
+                            className="relative mx-auto flex min-h-[420px] w-full items-center justify-center sm:min-h-[520px] lg:min-h-[640px]"
                             style={{
                                 transformStyle: 'preserve-3d',
                             }}

@@ -173,7 +173,7 @@ const AdminAssistantPanel = () => {
                             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#006dfc]">
                                 VillaCorz intelligence
                             </p>
-                            <h2 className="mt-1 font-serif text-xl font-semibold text-slate-900">
+                            <h2 className="mt-1 font-jakarta-serif text-xl font-semibold text-slate-900">
                                 Ask about your reports
                             </h2>
                             <p className="mt-0.5 text-xs text-slate-500">
@@ -211,7 +211,7 @@ const AdminAssistantPanel = () => {
                                 <span className="grid size-10 place-items-center rounded-full bg-white text-[#006dfc] shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                                     <Sparkles className="size-5" aria-hidden="true" />
                                 </span>
-                                <p className="mt-3 font-serif text-base font-semibold text-slate-900">
+                                <p className="mt-3 font-jakarta-serif text-base font-semibold text-slate-900">
                                     What would you like to understand?
                                 </p>
                                 <p className="mt-1 text-xs leading-5 text-slate-500">

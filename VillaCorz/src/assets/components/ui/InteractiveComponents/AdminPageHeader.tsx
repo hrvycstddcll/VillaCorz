@@ -24,7 +24,7 @@ const deltaText = (delta: { delta: number; percent: number | null }) => {
 }
 
 const heroValueClass =
-    'font-serif text-5xl font-bold leading-none tracking-tight text-slate-950 tabular-nums sm:text-6xl'
+    'font-jakarta-serif text-5xl font-bold leading-none tracking-tight text-slate-950 tabular-nums sm:text-6xl'
 
 const AdminPageHeader = ({
     eyebrow,
@@ -38,7 +38,7 @@ const AdminPageHeader = ({
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 {eyebrow}
             </p>
-            <h1 className="mt-2 text-balance font-serif text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+            <h1 className="mt-2 text-balance font-jakarta-serif text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
                 {title}
             </h1>
             {subtitle && (

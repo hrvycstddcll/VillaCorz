@@ -697,7 +697,7 @@ const Reports = () => {
                             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 {report === 'activity' ? 'Audit trail' : 'Filtered ledger'}
                             </p>
-                            <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                            <h2 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
                                 {reportOptions.find((option) => option.value === report)?.label} ledger
                             </h2>
                         </div>
@@ -822,7 +822,7 @@ const Reports = () => {
                             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 Saved views
                             </p>
-                            <h2 className="mt-1 font-serif text-lg font-bold">
+                            <h2 className="mt-1 font-jakarta-serif text-lg font-bold">
                                 Reuse a filter set
                             </h2>
                         </div>
@@ -903,7 +903,7 @@ const Reports = () => {
                                 <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                     Scheduled export
                                 </p>
-                                <h2 id="schedule-report-title" className="mt-1 font-serif text-xl font-bold">
+                                <h2 id="schedule-report-title" className="mt-1 font-jakarta-serif text-xl font-bold">
                                     Email {humanize(report)} report
                                 </h2>
                             </div>

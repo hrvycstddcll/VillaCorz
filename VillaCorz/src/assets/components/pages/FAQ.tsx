@@ -56,7 +56,7 @@ const badgeToneClasses: Record<BadgeTone, string> = {
 const faqs: FaqItem[] = [
   {
     category: 'Booking & Rates',
-    question: 'How do I book Villa Lacorz exclusively?',
+    question: 'How do I book VillaCorz exclusively?',
     answer:
       'Book directly through our website or contact our reservations team. With exclusive booking, the entire property is yours for the duration of your stay.',
   },
@@ -150,7 +150,7 @@ const faqs: FaqItem[] = [
     category: 'Policies & Security',
     question: 'Is the property secure for families and groups?',
     answer:
-      'Yes. Villa Lacorz provides a safe and secure environment so families and groups can relax with confidence.',
+      'Yes. VillaCorz provides a safe and secure environment so families and groups can relax with confidence.',
   },
   {
     category: 'Policies & Security',
@@ -186,7 +186,7 @@ const FAQ = () => {
           </h2>
           <p className="mt-3 font-jakarta text-sm leading-relaxed text-slate-500 sm:text-base">
             Everything you need to know about booking, amenities, and hosting your private
-            gathering at Villa Lacorz.
+            gathering at VillaCorz.
           </p>
         </header>
 

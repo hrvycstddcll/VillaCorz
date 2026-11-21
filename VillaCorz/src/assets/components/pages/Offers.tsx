@@ -595,7 +595,7 @@ const Offers = () => {
                                 <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                     Offer catalogue
                                 </p>
-                                <h2 className="mt-1 font-serif text-xl font-bold tracking-tight">
+                                <h2 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
                                     Performance by offer
                                 </h2>
                             </div>
@@ -832,7 +832,7 @@ const Offers = () => {
                                 <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                     Next 30 days
                                 </p>
-                                <h2 id="availability-title" className="mt-1 font-serif text-xl font-bold">
+                                <h2 id="availability-title" className="mt-1 font-jakarta-serif text-xl font-bold">
                                     {selectedCalendar.name} availability
                                 </h2>
                             </div>

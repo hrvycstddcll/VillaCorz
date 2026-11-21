@@ -30,7 +30,7 @@ const AdminEmptyState = ({
         >
             <Icon className="size-5" />
         </span>
-        <p className="mt-4 font-serif text-xl font-semibold text-slate-900">
+        <p className="mt-4 font-jakarta-serif text-xl font-semibold text-slate-900">
             {heading}
         </p>
         <p className="mx-auto mt-1.5 max-w-sm text-pretty text-sm leading-6 text-slate-500">
