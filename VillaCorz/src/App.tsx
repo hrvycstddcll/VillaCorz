@@ -26,6 +26,10 @@ import SettingsHub from './assets/components/pages/SettingsHub'
 import PasswordRecovery from './assets/components/pages/PasswordRecovery'
 import ManageOffers from './assets/components/pages/Offers'
 import Contact from './assets/components/pages/Contact'
+import ScrollStack, {
+    ScrollStackItem,
+} from './assets/components/ui/ScrollStack'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Navbar from './assets/components/ui/InteractiveComponents/Navbar'
 import AdminAssistantPanel from './assets/components/admin/AdminAssistantPanel'
 import CustomerAssistantPanel from './assets/components/customer/CustomerAssistantPanel'
@@ -238,6 +242,34 @@ function AuthRoute() {
     return <Auth />
 }
 
+function FaqContactStack() {
+    useEffect(() => {
+        let secondFrame = 0
+        const firstFrame = requestAnimationFrame(() => {
+            secondFrame = requestAnimationFrame(() => ScrollTrigger.refresh())
+        })
+        return () => {
+            cancelAnimationFrame(firstFrame)
+            cancelAnimationFrame(secondFrame)
+        }
+    }, [])
+
+    return (
+        <ScrollStack
+            useWindowScroll
+            smoothScroll={false}
+            className="scroll-stack--fullbleed"
+        >
+            <ScrollStackItem>
+                <FAQ />
+            </ScrollStackItem>
+            <ScrollStackItem>
+                <Contact />
+            </ScrollStackItem>
+        </ScrollStack>
+    )
+}
+
 function AppRoutes() {
     return (
         <Routes>
@@ -277,8 +309,7 @@ function AppRoutes() {
                             <AboutUs />
                             <Gallery />
                             <Testimonials />
-                            <FAQ />
-                            <Contact />
+                            <FaqContactStack />
                         </>
                     }
                 />

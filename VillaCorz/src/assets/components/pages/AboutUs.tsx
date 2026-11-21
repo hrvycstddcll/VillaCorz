@@ -15,6 +15,7 @@ import GradientASCII from '../ui/GradientASCII'
 import ReflectiveCard from '../ui/ReflectiveCard'
 import BeachHouse from './BeachHouse'
 import AnimatedContent from '../ui/AnimatedContent'
+import ScrollStack, { ScrollStackItem } from '../ui/ScrollStack'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -198,6 +199,17 @@ const AboutUs = () => {
         motionPreference.addEventListener('change', updateMotionPreference)
         return () =>
             motionPreference.removeEventListener('change', updateMotionPreference)
+    }, [])
+
+    useEffect(() => {
+        let secondFrame = 0
+        const firstFrame = requestAnimationFrame(() => {
+            secondFrame = requestAnimationFrame(() => ScrollTrigger.refresh())
+        })
+        return () => {
+            cancelAnimationFrame(firstFrame)
+            cancelAnimationFrame(secondFrame)
+        }
     }, [])
 
     return (
@@ -398,91 +410,102 @@ const AboutUs = () => {
                 </div>
             </div>
 
-            <div className="relative z-10 w-full bg-white py-32">
-                <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-16 px-12 lg:grid-cols-2">
-                    <div className="flex flex-col justify-center">
-                        <h2 className="font-jakarta text-[50px] font-bold leading-tight tracking-[-0.04em] text-black">
-                            Why{' '}
-                            <span className="italic text-[#006dfc]">Choose Us</span>?
-                        </h2>
-                        <p className="mt-5 max-w-md font-jakarta text-sm leading-relaxed text-gray-600 sm:text-base">
-                            Step into an exclusive villa designed for effortless gatherings,
-                            peaceful group retreats, and unforgettable coastal stays.
-                        </p>
-                    </div>
+            <ScrollStack
+                useWindowScroll
+                smoothScroll={false}
+                className="scroll-stack--fullbleed"
+            >
+                <ScrollStackItem>
+                    <div className="relative z-10 w-full bg-white py-32">
+                        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-16 px-12 lg:grid-cols-2">
+                            <div className="flex flex-col justify-center">
+                                <h2 className="font-jakarta text-[50px] font-bold leading-tight tracking-[-0.04em] text-black">
+                                    Why{' '}
+                                    <span className="italic text-[#006dfc]">Choose Us</span>?
+                                </h2>
+                                <p className="mt-5 max-w-md font-jakarta text-sm leading-relaxed text-gray-600 sm:text-base">
+                                    Step into an exclusive villa designed for effortless gatherings,
+                                    peaceful group retreats, and unforgettable coastal stays.
+                                </p>
+                            </div>
 
-                    <div className="flex flex-col gap-6">
-                        <ReflectiveCard
-                            theme="dark"
-                            width={320}
-                            height={220}
-                            radius={16}
-                            tint="#1e3a8a"
-                            metalness={0.6}
-                            roughness={0.2}
-                            intro={false}
-                            className="w-full"
-                            style={{ width: '100%', '--rc-pad': '0px', '--rc-base': '#1e3a8a' }}
-                        >
-                            <div className="relative h-full w-full overflow-hidden">
-                                <GradientASCII
-                                    className="absolute inset-0 z-0 pointer-events-none"
-                                    style={{}}
-                                    dpr={2}
-                                    colors={['#0a2a6b', '#1e3a8a', '#1d4ed8', '#2563eb']}
-                                    shape="horizon"
-                                    characters=" =+xX0S8#@"
-                                    cellSize={16}
-                                    density={1}
-                                    softness={1}
-                                    scale={0.5}
-                                    gradientOpacity={1}
-                                    lightMode
-                                />
-                                <div className="absolute inset-0 z-10 flex items-start gap-4 p-4">
-                                    <span className="text-4xl font-serif leading-none text-white drop-shadow">
-                                        “
-                                    </span>
-                                    <p className="font-jakarta text-sm leading-relaxed text-white drop-shadow sm:text-base">
-                                        Shared dining and lounge areas provide room for meals,
-                                        conversation, and celebrations. With exclusive booking, the
-                                        entire property is yours, which makes it well suited to
-                                        birthdays, reunions, and group events.
-                                    </p>
+                            <div className="flex flex-col gap-6">
+                                <ReflectiveCard
+                                    theme="dark"
+                                    width={320}
+                                    height={220}
+                                    radius={16}
+                                    tint="#1e3a8a"
+                                    metalness={0.6}
+                                    roughness={0.2}
+                                    intro={false}
+                                    className="w-full"
+                                    style={{ width: '100%', '--rc-pad': '0px', '--rc-base': '#1e3a8a' }}
+                                >
+                                    <div className="relative h-full w-full overflow-hidden">
+                                        <GradientASCII
+                                            className="absolute inset-0 z-0 pointer-events-none"
+                                            style={{}}
+                                            dpr={2}
+                                            colors={['#0a2a6b', '#1e3a8a', '#1d4ed8', '#2563eb']}
+                                            shape="horizon"
+                                            characters=" =+xX0S8#@"
+                                            cellSize={16}
+                                            density={1}
+                                            softness={1}
+                                            scale={0.5}
+                                            gradientOpacity={1}
+                                            lightMode
+                                        />
+                                        <div className="absolute inset-0 z-10 flex items-start gap-4 p-4">
+                                            <span className="text-4xl font-serif leading-none text-white drop-shadow">
+                                                “
+                                            </span>
+                                            <p className="font-jakarta text-sm leading-relaxed text-white drop-shadow sm:text-base">
+                                                Shared dining and lounge areas provide room for meals,
+                                                conversation, and celebrations. With exclusive booking, the
+                                                entire property is yours, which makes it well suited to
+                                                birthdays, reunions, and group events.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </ReflectiveCard>
+
+                                <div data-reason-grid className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    {reasons.map(({ icon: Icon, title }) => (
+                                        <div
+                                            key={title}
+                                            data-reason-card
+                                            className="group flex w-full items-center gap-3 rounded-2xl bg-white px-5 py-3 shadow-sm transition hover:bg-[#006dfc] hover:shadow-md"
+                                        >
+                                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#006dfc]/10 text-[#006dfc] transition-colors group-hover:bg-white/20 group-hover:text-white">
+                                                <Icon className="size-5" aria-hidden="true" />
+                                            </span>
+                                            <span className="font-jakarta text-base font-medium text-black transition-colors group-hover:text-white">
+                                                {title}
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        </ReflectiveCard>
-
-                        <div className="flex flex-wrap gap-4">
-                            {reasons.map(({ icon: Icon, title }) => (
-                                <div
-                                    key={title}
-                                    className="group inline-flex items-center gap-3 rounded-2xl bg-white px-5 py-3 shadow-sm transition hover:bg-[#006dfc] hover:shadow-md"
-                                >
-                                    <span className="flex size-10 items-center justify-center rounded-xl bg-[#006dfc]/10 text-[#006dfc] transition-colors group-hover:bg-white/20 group-hover:text-white">
-                                        <Icon className="size-5" aria-hidden="true" />
-                                    </span>
-                                    <span className="font-jakarta text-base font-medium text-black transition-colors group-hover:text-white">
-                                        {title}
-                                    </span>
-                                </div>
-                            ))}
                         </div>
                     </div>
-                </div>
-            </div>
+                </ScrollStackItem>
 
-            <AnimatedContent
-                distance={100}
-                direction="vertical"
-                duration={0.8}
-                ease="power3.out"
-                stagger={0.08}
-                threshold={0.1}
-                trigger="mount"
-            >
-                <BeachHouse />
-            </AnimatedContent>
+                <ScrollStackItem>
+                    <AnimatedContent
+                        distance={100}
+                        direction="vertical"
+                        duration={0.8}
+                        ease="power3.out"
+                        stagger={0.08}
+                        threshold={0.1}
+                        trigger="mount"
+                    >
+                        <BeachHouse />
+                    </AnimatedContent>
+                </ScrollStackItem>
+            </ScrollStack>
 
             <div className="relative z-10 w-full" style={{ marginBottom: 0, paddingBottom: 0 }}>
                 <AccordionGallery

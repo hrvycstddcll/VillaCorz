@@ -4,11 +4,11 @@ import villaSvg from '../../images/3dvilla.svg?raw'
 import villaIcon from '../../images/villaicon.png'
 
 const rooms = [
-    { id: 1, title: 'Room #1', pax: 'GOOD FOR 2–4 PAX' },
-    { id: 2, title: 'Room #2', pax: 'GOOD FOR 2–4 PAX' },
-    { id: 3, title: 'Room #3', pax: 'GOOD FOR 2–4 PAX' },
-    { id: 4, title: 'Room #4', pax: 'GOOD FOR 6–10 PAX' },
-    { id: 5, title: 'Room #5', pax: 'GOOD FOR 6–10 PAX' },
+    { id: 1, title: 'Room 1', pax: 'GOOD FOR 2–4 PAX' },
+    { id: 2, title: 'Room 2', pax: 'GOOD FOR 2–4 PAX' },
+    { id: 3, title: 'Room 3', pax: 'GOOD FOR 2–4 PAX' },
+    { id: 4, title: 'Room 4', pax: 'GOOD FOR 6–10 PAX' },
+    { id: 5, title: 'Room 5', pax: 'GOOD FOR 6–10 PAX' },
 ]
 
 const tooltipPositions: Record<number, { top: string; left: string }> = {
@@ -86,7 +86,7 @@ const BeachHouse = () => {
                                         <img src={villaIcon} alt="" className="h-10 w-8 shrink-0" />
                                     </span>
                                     <span className="flex flex-col">
-                                        <span className="font-instrument text-[18px] italic text-black">
+                                        <span className="font-jakarta text-[14px] font-bold text-black">
                                             {room.title}
                                         </span>
                                         <span className="font-jakarta text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
@@ -131,7 +131,7 @@ const BeachHouse = () => {
                                     >
                                         <div className="flex items-center gap-2 text-[#006dfc]">
                                             <img src={villaIcon} alt="" className="h-10 w-8 shrink-0" />
-                                            <span className="font-instrument text-[18px] italic text-black">
+                                            <span className="font-jakarta text-[14px] font-bold text-black">
                                                 {room.title}
                                             </span>
                                         </div>
