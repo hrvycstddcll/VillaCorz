@@ -28,3 +28,6 @@ dist-ssr
 *.sqlite3
 *.db
 *.db-journal
+
+# Local-only helper scripts (never commit)
+/start.ps1

@@ -2,6 +2,7 @@ import { ArrowLeft, Check, Clock3, RefreshCw } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { money } from '../../../lib/format'
 import { formatStayDateTime } from '../../../lib/stayDateTime'
+import SlideCommit from '../ui/ReactBits/SlideCommit'
 
 type PaymentViewStatus = 'pending' | 'success' | 'expired' | 'cancelled'
 
@@ -20,6 +21,9 @@ type PaymentSuccessViewProps = {
     error?: string
     onConfirm: () => void
     onRefresh: () => void
+    onConfirmPayment?: () => Promise<void>
+    onPaymentConfirmed?: () => void
+    onPaymentError?: (reason: unknown) => void
 }
 
 function formatReceiptDate(value: string) {
@@ -48,6 +52,9 @@ function PaymentSuccessView({
     error,
     onConfirm,
     onRefresh,
+    onConfirmPayment,
+    onPaymentConfirmed,
+    onPaymentError,
 }: PaymentSuccessViewProps) {
     const guestCount = rooms.reduce(
         (sum, room) => sum + room.adults + room.kids,
@@ -179,6 +186,39 @@ function PaymentSuccessView({
                             >
                                 Open confirmation link
                             </a>
+
+                            {onConfirmPayment && (
+                                <div className="mt-4 w-full border-t border-slate-100 pt-4">
+                                    <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Confirm here
+                                    </p>
+                                    <div className="mt-3 flex justify-center">
+                                        <SlideCommit
+                                            className="max-w-full"
+                                            label="Slide to confirm"
+                                            doneLabel="Confirmed"
+                                            errorLabel="Payment failed"
+                                            onConfirm={onConfirmPayment}
+                                            onDone={onPaymentConfirmed}
+                                            onError={onPaymentError}
+                                            trackColor="#003079"
+                                            handleColor="#F8FAFC"
+                                            successColor="#047857"
+                                            dangerColor="#E11D48"
+                                            width={280}
+                                            height={56}
+                                            radius={28}
+                                            speed={50}
+                                            returnBounce={0.38}
+                                            landingDip={0.026}
+                                            holdMs={1500}
+                                        />
+                                    </div>
+                                    <p className="mt-2 text-center text-xs leading-5 text-slate-500">
+                                        Slide to reserve these dates without scanning the QR code.
+                                    </p>
+                                </div>
+                            )}
 
                             <button
                                 type="button"

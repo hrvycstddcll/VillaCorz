@@ -36,6 +36,13 @@ cd VillaCorz\forecasting-service
 ```
 Keep it running on `127.0.0.1:8001` while using Laravel locally.
 
+### Start all local services
+From `VillaCorz`, launch the frontend, Laravel backend, and forecasting service
+in separate terminal windows:
+```powershell
+npm run start
+```
+
 ## Demo run
 Start both servers for phone demos:
 ```bash

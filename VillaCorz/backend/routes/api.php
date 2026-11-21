@@ -80,6 +80,8 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('throttle:10,1');
 
     Route::get('/payments/{reference}/status', [PaymentController::class, 'status']);
+    Route::post('/payments/{reference}/confirm', [PaymentController::class, 'confirm'])
+        ->middleware('throttle:10,1');
 });
 
 // Public service routes
