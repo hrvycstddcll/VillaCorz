@@ -9,12 +9,15 @@ use App\Models\PaymentEvent;
 use App\Models\Service;
 use App\Rules\PhoneNumberRule;
 use App\Services\ActivityLogger;
+use App\Support\StayTime;
 use App\Services\BookingAvailability;
 use App\Services\PricingService;
 use App\Mail\CancellationRequestMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use App\Support\PhoneNumber;
+use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,10 +39,10 @@ class BookingController extends Controller
         if ($status !== 'all' && $status !== null && $status !== '') {
             if ($status === 'booked') {
                 $query->where('status', 'confirmed')
-                    ->whereDate('check_out', '>=', now()->toDateString());
+                    ->where('check_out', '>=', now());
             } elseif ($status === 'completed') {
                 $query->where('status', 'confirmed')
-                    ->whereDate('check_out', '<', now()->toDateString());
+                    ->where('check_out', '<', now());
             } elseif ($status === 'cancelled') {
                 $query->where('status', 'cancelled');
             } elseif (in_array($status, ['pending_payment', 'expired', 'confirmed'], true)) {
@@ -76,8 +79,22 @@ class BookingController extends Controller
         BookingAvailability $availability,
     ): JsonResponse {
         $validated = $request->validate([
-            'check_in' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'check_out' => ['required', 'date_format:Y-m-d', 'after:check_in'],
+            'check_in' => [
+                'required',
+                function (string $attribute, mixed $value, Closure $fail) {
+                    if (! StayTime::isValidApiValue($value)) {
+                        $fail('The '.$attribute.' must be a valid date and time.');
+                    }
+                },
+            ],
+            'check_out' => [
+                'required',
+                function (string $attribute, mixed $value, Closure $fail) {
+                    if (! StayTime::isValidApiValue($value)) {
+                        $fail('The '.$attribute.' must be a valid date and time.');
+                    }
+                },
+            ],
             'rooms' => ['required', 'array', 'min:1', 'max:10'],
             'rooms.*.service_id' => ['required', 'integer', 'exists:services,id'],
             'rooms.*.adults' => ['required', 'integer', 'min:1', 'max:60'],
@@ -88,8 +105,21 @@ class BookingController extends Controller
             'payment_method' => ['required', 'string', 'max:40'],
         ]);
 
-        // Store the canonical E.164 value so formatting differences do not
-        // create duplicate-looking records or different idempotency hashes.
+        $checkIn = StayTime::parseApi($validated['check_in']);
+        $checkOut = StayTime::parseApi($validated['check_out']);
+
+        if ($checkIn->lessThan(CarbonImmutable::now('UTC'))) {
+            throw ValidationException::withMessages([
+                'check_in' => 'Check-in cannot be in the past.',
+            ]);
+        }
+
+        if ($checkOut->lessThanOrEqualTo($checkIn)) {
+            throw ValidationException::withMessages([
+                'check_out' => 'Check-out must be later than check-in.',
+            ]);
+        }
+
         $contactPhone = PhoneNumber::normalize($validated['contact_phone']);
 
         $roomsInput = collect($validated['rooms'])
@@ -123,8 +153,8 @@ class BookingController extends Controller
         }
 
         $requestHash = hash('sha256', json_encode([
-            'check_in' => $validated['check_in'],
-            'check_out' => $validated['check_out'],
+            'check_in' => $checkIn->toIso8601String(),
+            'check_out' => $checkOut->toIso8601String(),
             'rooms' => $roomsInput,
             'contact_name' => $validated['contact_name'],
             'contact_email' => $validated['contact_email'],
@@ -144,6 +174,8 @@ class BookingController extends Controller
             $booking = DB::transaction(function () use (
                 $request,
                 $validated,
+                $checkIn,
+                $checkOut,
                 $contactPhone,
                 $roomsInput,
                 $serviceIds,
@@ -184,8 +216,8 @@ class BookingController extends Controller
 
                 $availability->assertAvailable(
                     $serviceIds,
-                    $validated['check_in'],
-                    $validated['check_out'],
+                    $checkIn,
+                    $checkOut,
                     $exclusiveServiceId !== null ? (int) $exclusiveServiceId : null,
                 );
 
@@ -197,8 +229,8 @@ class BookingController extends Controller
 
                 $quote = $pricing->quote(
                     $services->values(),
-                    $validated['check_in'],
-                    $validated['check_out'],
+                    $checkIn,
+                    $checkOut,
                     $guestsByServiceId,
                 );
 
@@ -218,8 +250,8 @@ class BookingController extends Controller
                     'contact_name' => $validated['contact_name'],
                     'contact_email' => $validated['contact_email'],
                     'contact_phone' => $contactPhone,
-                    'check_in' => $validated['check_in'],
-                    'check_out' => $validated['check_out'],
+                    'check_in' => $checkIn,
+                    'check_out' => $checkOut,
                     'nights' => $quote['nights'],
                     'adults' => $adults,
                     'kids' => $kids,
@@ -269,8 +301,8 @@ class BookingController extends Controller
                     'qr_url' => $publicUrl.'/pay/'.$rawToken,
                     'qr_expires_at' => Payment::makeQrExpiry(),
                     'metadata' => [
-                        'check_in' => $validated['check_in'],
-                        'check_out' => $validated['check_out'],
+                        'check_in' => $checkIn->toIso8601String(),
+                        'check_out' => $checkOut->toIso8601String(),
                     ],
                 ]);
 
@@ -376,7 +408,7 @@ public function cancel(Request $request, string $reference): JsonResponse
             ], 422);
         }
 
-        if ($booking->check_in !== null && $booking->check_in->lt(now()->startOfDay()->addDays(7))) {
+        if ($booking->check_in !== null && $booking->check_in->lt(now()->addDays(7))) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cancellations are only accepted at least 7 days before check-in. For emergencies, please contact the admin to request a refund.',
@@ -443,7 +475,7 @@ public function cancel(Request $request, string $reference): JsonResponse
             ], 422);
         }
 
-        if ($booking->check_in === null || $booking->check_in->gte(now()->startOfDay()->addDays(7))) {
+        if ($booking->check_in === null || $booking->check_in->gte(now()->addDays(7))) {
             return response()->json([
                 'success' => false,
                 'message' => 'You can still cancel this booking directly. Use the cancel button instead.',
@@ -601,8 +633,8 @@ public function cancel(Request $request, string $reference): JsonResponse
             'status' => $booking->status,
             'lifecycle' => $lifecycle,
             'completed_at' => $booking->completed_at?->toIso8601String(),
-            'check_in' => $booking->check_in->format('Y-m-d'),
-            'check_out' => $booking->check_out->format('Y-m-d'),
+            'check_in' => $booking->check_in?->toIso8601String(),
+            'check_out' => $booking->check_out?->toIso8601String(),
             'nights' => $booking->nights,
             'adults' => $booking->adults,
             'kids' => $booking->kids,

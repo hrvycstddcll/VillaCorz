@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getApiErrorMessage } from '../../../lib/apiError'
 import { money } from '../../../lib/format'
+import { formatStayDateTime } from '../../../lib/stayDateTime'
 import {
     cancelBooking,
     getBookings,
@@ -10,15 +11,14 @@ import type { Booking, BookingRoom, CancellationRequest } from '../../../service
 import BookingRoomsModal from '../ui/ModalComponents/BookingRoomsModal'
 import CancelRequestModal from '../ui/ModalComponents/CancelRequestModal'
 
-const formatDate = (value: string) => {
-    const date = new Date(`${value}T00:00:00`)
-    if (!Number.isFinite(date.getTime())) return value
-    return new Intl.DateTimeFormat('en', {
-        day: '2-digit',
+const formatDate = (value: string) =>
+    formatStayDateTime(value, {
         month: 'short',
+        day: 'numeric',
         year: 'numeric',
-    }).format(date)
-}
+        hour: 'numeric',
+        minute: '2-digit',
+    })
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -103,26 +103,25 @@ const MyBookings = () => {
     const canCancel = (booking: Booking) => {
         // Cancelled, expired and completed stays can never be cancelled again.
         if (!isCancellable(booking)) return false
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const checkIn = new Date(`${booking.check_in}T00:00:00`)
-        return checkIn.getTime() - today.getTime() >= SEVEN_DAYS_MS
+        const checkIn = Date.parse(booking.check_in)
+        return (
+            Number.isFinite(checkIn) &&
+            checkIn - new Date().getTime() >= SEVEN_DAYS_MS
+        )
     }
 
     const cancellationClosed = (booking: Booking) => {
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const checkIn = new Date(`${booking.check_in}T00:00:00`)
-        return checkIn.getTime() - today.getTime() < SEVEN_DAYS_MS
+        const checkIn = Date.parse(booking.check_in)
+        return (
+            !Number.isFinite(checkIn) ||
+            checkIn - new Date().getTime() < SEVEN_DAYS_MS
+        )
     }
 
     const reviewWindowOpen = (booking: Booking) => {
-        const checkOut = new Date(`${booking.check_out}T00:00:00`)
-        if (!Number.isFinite(checkOut.getTime())) return false
-        const cutoff = new Date()
-        cutoff.setHours(0, 0, 0, 0)
-        cutoff.setDate(cutoff.getDate() - 30)
-        return checkOut.getTime() >= cutoff.getTime()
+        const checkOut = Date.parse(booking.check_out)
+        if (!Number.isFinite(checkOut)) return false
+        return checkOut >= new Date().getTime() - 30 * 24 * 60 * 60 * 1000
     }
 
     const goToReview = (booking: Booking) => {
@@ -431,12 +430,9 @@ const MyBookings = () => {
                                             <span>
                                                 Paid:{' '}
                                                 <span className="font-medium text-slate-700">
-                                                    {formatDate(
-                                                        booking.payment.paid_at.slice(
-                                                            0,
-                                                            10,
-                                                        ),
-                                                    )}
+                                                {formatDate(
+                                                    booking.payment.paid_at,
+                                                )}
                                                 </span>
                                             </span>
                                         )}

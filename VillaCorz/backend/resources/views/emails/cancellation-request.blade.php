@@ -11,8 +11,8 @@
     <p><strong>Guest:</strong> {{ $booking->contact_name }}</p>
     <p><strong>Email:</strong> {{ $booking->contact_email }}</p>
     <p><strong>Phone:</strong> {{ $booking->contact_phone ?: 'Not provided' }}</p>
-    <p><strong>Check-in:</strong> {{ $booking->check_in->format('D, M j, Y') }}</p>
-    <p><strong>Check-out:</strong> {{ $booking->check_out->format('D, M j, Y') }}</p>
+    <p><strong>Check-in:</strong> {{ \App\Support\StayTime::formatPht($booking->check_in) }} PHT</p>
+    <p><strong>Check-out:</strong> {{ \App\Support\StayTime::formatPht($booking->check_out) }} PHT</p>
     <p><strong>Payment method:</strong> {{ $booking->payment_method ?: 'Not specified' }}</p>
     <p><strong>Total:</strong> {{ $booking->currency }} {{ number_format((float) $booking->total, 2) }}</p>
     <p><strong>Reason:</strong></p>

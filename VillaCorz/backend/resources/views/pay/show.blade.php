@@ -229,11 +229,11 @@
                     </tr>
                     <tr>
                         <td>Check-in</td>
-                        <td>{{ $booking->check_in->format('D, M j, Y') }}</td>
+                        <td>{{ \App\Support\StayTime::formatPht($booking->check_in) }} PHT</td>
                     </tr>
                     <tr>
                         <td>Check-out</td>
-                        <td>{{ $booking->check_out->format('D, M j, Y') }}</td>
+                        <td>{{ \App\Support\StayTime::formatPht($booking->check_out) }} PHT</td>
                     </tr>
                     <tr>
                         <td>Stay</td>

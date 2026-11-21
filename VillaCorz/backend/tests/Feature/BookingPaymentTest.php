@@ -9,6 +9,7 @@ use App\Models\PaymentEvent;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\PricingService;
+use App\Support\StayTime;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -68,6 +69,23 @@ class BookingPaymentTest extends TestCase
         // Thursday is weekday, then Friday/Saturday/Sunday are weekend.
         $this->assertSame(4, $quote['nights']);
         $this->assertSame(5500.0, $quote['total']);
+    }
+
+    public function test_same_day_stay_charges_one_full_night(): void
+    {
+        $service = $this->makeRoomService([
+            'price' => 1000,
+            'weekend_price' => 1500,
+        ]);
+
+        $quote = app(PricingService::class)->quote(
+            collect([$service]),
+            StayTime::parseLocal('2026-11-16', '08:00'),
+            StayTime::parseLocal('2026-11-16', '22:00'),
+        );
+
+        $this->assertSame(1, $quote['nights']);
+        $this->assertSame(1000.0, $quote['total']);
     }
 
     public function test_discounts_are_applied_before_nightly_totals(): void
@@ -259,6 +277,54 @@ class BookingPaymentTest extends TestCase
         $this->assertSame('100.00', $room->additional_head_total);
         $this->assertSame('2100.00', $room->line_total);
         $this->assertSame($booking->total, $booking->payment?->amount);
+    }
+
+    public function test_pht_date_time_is_stored_as_an_utc_instant(): void
+    {
+        $user = User::factory()->create();
+        $service = $this->makeRoomService();
+        $checkIn = StayTime::parseLocal('2026-12-01', '22:30');
+        $checkOut = StayTime::parseLocal('2026-12-03', '08:00');
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($service, [
+                'check_in' => $checkIn->toIso8601String(),
+                'check_out' => $checkOut->toIso8601String(),
+            ]), ['Idempotency-Key' => 'booking-key-pht-instant'])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('bookings', [
+            'idempotency_key' => 'booking-key-pht-instant',
+            'check_in' => $checkIn->toDateTimeString(),
+            'check_out' => $checkOut->toDateTimeString(),
+        ]);
+    }
+
+    public function test_same_idempotency_key_with_a_different_time_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $service = $this->makeRoomService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDays(12)->toDateString();
+
+        $this->actingAs($user)->postJson(
+            '/api/bookings',
+            $this->bookingPayload($service, [
+                'check_in' => StayTime::parseLocal($date, '08:00')->toIso8601String(),
+                'check_out' => StayTime::parseLocal($date, '12:00')->toIso8601String(),
+            ]),
+            ['Idempotency-Key' => 'time-sensitive-key'],
+        )->assertCreated();
+
+        $this->actingAs($user)->postJson(
+            '/api/bookings',
+            $this->bookingPayload($service, [
+                'check_in' => StayTime::parseLocal($date, '08:00')->toIso8601String(),
+                'check_out' => StayTime::parseLocal($date, '14:00')->toIso8601String(),
+            ]),
+            ['Idempotency-Key' => 'time-sensitive-key'],
+        )->assertStatus(409);
+
+        $this->assertSame(1, Booking::query()->count());
     }
 
     public function test_a_guest_can_create_a_booking_with_a_pending_payment(): void
@@ -491,6 +557,106 @@ class BookingPaymentTest extends TestCase
             ->assertJsonPath('data.status', 'paid')
             ->assertJsonPath('data.booking_status', 'confirmed')
             ->assertJsonPath('data.email_sent', true);
+    }
+
+    public function test_back_to_back_bookings_are_allowed_without_a_buffer(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $service = $this->makeRoomService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDays(10)->toDateString();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($service, [
+                'check_in' => StayTime::parseLocal($date, '08:00')->toIso8601String(),
+                'check_out' => StayTime::parseLocal($date, '14:00')->toIso8601String(),
+            ]), ['Idempotency-Key' => 'adjacent-a'])
+            ->assertCreated();
+
+        $first = Booking::query()->where('idempotency_key', 'adjacent-a')->firstOrFail();
+        $this->confirmOnPhone($first->payment);
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($service, [
+                'check_in' => StayTime::parseLocal($date, '14:00')->toIso8601String(),
+                'check_out' => StayTime::parseLocal($date, '20:00')->toIso8601String(),
+            ]), ['Idempotency-Key' => 'adjacent-b'])
+            ->assertCreated();
+
+        $second = Booking::query()->where('idempotency_key', 'adjacent-b')->firstOrFail();
+        $this->confirmOnPhone($second->payment);
+
+        $this->assertSame('confirmed', $first->fresh()->status);
+        $this->assertSame('confirmed', $second->fresh()->status);
+    }
+
+    public function test_partially_overlapping_booking_is_rejected_at_creation(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $service = $this->makeRoomService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDays(11)->toDateString();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($service, [
+                'check_in' => StayTime::parseLocal($date, '08:00')->toIso8601String(),
+                'check_out' => StayTime::parseLocal($date, '14:00')->toIso8601String(),
+            ]), ['Idempotency-Key' => 'overlap-a'])
+            ->assertCreated();
+
+        $this->confirmOnPhone(
+            Booking::query()->where('idempotency_key', 'overlap-a')->firstOrFail()->payment,
+        );
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($service, [
+                'check_in' => StayTime::parseLocal($date, '12:00')->toIso8601String(),
+                'check_out' => StayTime::parseLocal($date, '18:00')->toIso8601String(),
+            ]), ['Idempotency-Key' => 'overlap-b'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('rooms');
+
+        $this->assertSame(1, Booking::query()->count());
+    }
+
+    public function test_partially_overlapping_booking_is_cancelled_on_confirmation(): void
+    {
+        Mail::fake();
+
+        $firstUser = User::factory()->create();
+        $secondUser = User::factory()->create();
+        $service = $this->makeRoomService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDays(13)->toDateString();
+
+        $this->actingAs($firstUser)
+            ->postJson('/api/bookings', $this->bookingPayload($service, [
+                'check_in' => StayTime::parseLocal($date, '08:00')->toIso8601String(),
+                'check_out' => StayTime::parseLocal($date, '14:00')->toIso8601String(),
+            ]), ['Idempotency-Key' => 'race-overlap-a'])
+            ->assertCreated();
+
+        $this->actingAs($secondUser)
+            ->postJson('/api/bookings', $this->bookingPayload($service, [
+                'check_in' => StayTime::parseLocal($date, '12:00')->toIso8601String(),
+                'check_out' => StayTime::parseLocal($date, '18:00')->toIso8601String(),
+            ]), ['Idempotency-Key' => 'race-overlap-b'])
+            ->assertCreated();
+
+        $first = Booking::query()->where('idempotency_key', 'race-overlap-a')->firstOrFail();
+        $second = Booking::query()->where('idempotency_key', 'race-overlap-b')->firstOrFail();
+
+        $this->confirmOnPhone($first->payment);
+
+        $token = $this->phoneToken($second->payment);
+        $this->post("/pay/{$token}", [
+            'idempotency_key' => $second->payment->idempotency_key,
+        ])->assertRedirect(route('pay.show', ['token' => $token]));
+
+        $this->assertSame('confirmed', $first->fresh()->status);
+        $this->assertSame('cancelled', $second->fresh()->status);
+        $this->assertSame('cancelled', $second->payment->fresh()->status);
     }
 
     public function test_a_pending_payment_does_not_hold_the_dates(): void
@@ -763,11 +929,17 @@ class BookingPaymentTest extends TestCase
      */
     private function bookingPayload(Service $service, array $overrides = []): array
     {
-        $checkIn = now()->addDays(5)->startOfDay();
+        $checkInDate = now()
+            ->setTimezone(StayTime::TIMEZONE)
+            ->addDays(5)
+            ->toDateString();
+        $checkIn = StayTime::parseLocal($checkInDate, '08:00');
 
         return array_merge([
-            'check_in' => $checkIn->toDateString(),
-            'check_out' => $checkIn->copy()->addDays(2)->toDateString(),
+            'check_in' => $checkIn->toIso8601String(),
+            'check_out' => StayTime::parseLocal($checkInDate, '18:00')
+                ->addDays(2)
+                ->toIso8601String(),
             'rooms' => [
                 [
                     'service_id' => $service->id,

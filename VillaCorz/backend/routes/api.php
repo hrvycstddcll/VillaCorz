@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AdminAssistantController;
 use App\Http\Controllers\Api\AdminOfferController;
 use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AvailabilityController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CustomerAssistantController;
@@ -83,6 +84,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Public service routes
 Route::get('/services', [ServiceController::class, 'index']);
+Route::get('/services/availability', [AvailabilityController::class, 'range'])
+    ->middleware('throttle:30,1');
+Route::get('/services/{service}/blocked-dates', [AvailabilityController::class, 'blockedDates'])
+    ->middleware('throttle:30,1');
 Route::get('/services/{id}', [ServiceController::class, 'show']);
 Route::get('/services/{id}/reviews', [ServiceReviewController::class, 'index']);
 Route::get('/services/{id}/can-review', [ServiceReviewController::class, 'canReview'])

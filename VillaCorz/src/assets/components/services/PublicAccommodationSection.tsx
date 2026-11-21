@@ -9,6 +9,7 @@ export function PublicAccommodationSection({
     onRetry,
     selectedStay,
     selectedRoomIds,
+    unavailableRoomIds = [],
     onSelectStay,
     onReserve,
 }: {
@@ -18,6 +19,7 @@ export function PublicAccommodationSection({
     onRetry: () => void
     selectedStay: Stay | null
     selectedRoomIds: string[]
+    unavailableRoomIds?: string[]
     onSelectStay: (stay: Stay) => void
     onReserve: (stay: Stay) => void
 }) {
@@ -106,6 +108,10 @@ export function PublicAccommodationSection({
                             isReservationSelected={selectedRoomIds.includes(
                                 stay.id,
                             )}
+                            selectedRoomNumber={
+                                selectedRoomIds.indexOf(stay.id) + 1 || undefined
+                            }
+                            unavailable={unavailableRoomIds.includes(stay.id)}
                             onSelect={() => onSelectStay(stay)}
                             onToggleReservation={() => onReserve(stay)}
                         />

@@ -238,6 +238,104 @@
     transform: translateY(-50%) scale(0.78);
   }
 
+  .booking-scrollbar {
+    scrollbar-color: #93c5fd transparent;
+    scrollbar-width: thin;
+  }
+
+  .booking-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .booking-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .booking-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #bfdbfe;
+  }
+
+  .booking-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #60a5fa;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .booking-field-label {
+    @apply mb-1 block text-[11px] font-medium text-slate-600;
+  }
+
+  .booking-input {
+    @apply min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition;
+  }
+
+  .booking-input:focus {
+    border-color: #006dfc;
+    box-shadow: 0 0 0 2px rgb(0 109 252 / 0.2);
+  }
+
+  .booking-input[aria-invalid='true'] {
+    border-color: #fda4af;
+    background-color: rgb(255 241 242 / 0.45);
+  }
+
+  .booking-input[aria-invalid='true']:focus {
+    border-color: #f43f5e;
+    box-shadow: 0 0 0 2px rgb(244 63 94 / 0.2);
+  }
+
+  .booking-input:disabled {
+    cursor: not-allowed;
+    background-color: #f1f5f9;
+    color: #94a3b8;
+  }
+
+  .booking-stepper-shell {
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    background-color: #ffffff;
+  }
+
+  .booking-stepper-button {
+    display: inline-flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    color: #475569;
+    transition: background-color 180ms ease, color 180ms ease;
+  }
+
+  .booking-stepper-button:hover {
+    background-color: #eff6ff;
+    color: #006dfc;
+  }
+
+  .booking-stepper-button:focus-visible {
+    outline: 2px solid #006dfc;
+    outline-offset: -2px;
+  }
+
+  .booking-stepper-value {
+    min-width: 2rem;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
   .auth-submit {
     @apply mt-1 h-12 w-full bg-[#0866e8] text-sm font-bold text-white shadow-lg transition hover:bg-[#0757c7] focus:outline-none focus:ring-4 focus:ring-blue-200;
   }
@@ -281,6 +379,11 @@
   }
 
   .input-float-label {
+    transition: none;
+  }
+
+  .booking-input,
+  .booking-stepper-button {
     transition: none;
   }
 

@@ -59,7 +59,7 @@ class ServiceReviewController extends Controller
         $completedBooking = Booking::query()
             ->where('user_id', $user->id)
             ->where('status', 'confirmed')
-            ->whereDate('check_out', '<', now()->toDateString())
+            ->where('check_out', '<', now())
             ->whereHas('rooms', fn ($q) => $q->where('service_id', $service->id))
             ->orderByDesc('check_out')
             ->first();
@@ -190,7 +190,7 @@ class ServiceReviewController extends Controller
         $completedBooking = Booking::query()
             ->where('user_id', $user->id)
             ->where('status', 'confirmed')
-            ->whereDate('check_out', '<', now()->toDateString())
+            ->where('check_out', '<', now())
             ->whereHas('rooms', fn ($q) => $q->where('service_id', $serviceId))
             ->orderByDesc('check_out')
             ->first();

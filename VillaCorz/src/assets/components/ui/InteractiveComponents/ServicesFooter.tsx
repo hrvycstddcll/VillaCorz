@@ -1,15 +1,16 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { useState, type Dispatch, type SetStateAction } from 'react'
 import {
     CalendarDays,
     Check,
-    ChevronLeft,
     ChevronUp,
     ChevronDown,
-    ChevronRight,
     Minus,
     Plus,
     UsersRound,
+    X,
 } from 'lucide-react'
+import StayDateTimeFields from './StayDateTimeFields'
+import { formatStayDateTime, type StayDateFields } from '../../../../lib/stayDateTime'
 
 export type RoomGuests = {
     stayId: string | null
@@ -25,85 +26,44 @@ export type BookingRoomChoice = {
 
 type BookingPopover = 'dates' | 'guests' | null
 
-type DateParts = {
-    day: string
-    monthYear: string
-    weekday: string
-}
-
-type DateFormatter = (value: string) => DateParts
-
 type ServicesFooterProps = {
+    fields: StayDateFields
+    onChange: (patch: Partial<StayDateFields>) => void
     checkIn: string
     checkOut: string
-    setCheckIn: Dispatch<SetStateAction<string>>
-    setCheckOut: Dispatch<SetStateAction<string>>
+    nights: number
     roomGuests: RoomGuests[]
     setRoomGuests: Dispatch<SetStateAction<RoomGuests[]>>
     roomChoices: BookingRoomChoice[]
     notice: string
-    dateParts: DateFormatter
-    onDateChange: () => void
+    unavailableRoomIds?: string[]
+    unavailableDates?: string[]
+    blockedReason?: string
+    checkingAvailability?: boolean
+    onUnavailableDate?: (date: string) => void
     onCheckAvailability: () => void
 }
 
-const dateValue = (date: Date) => {
-    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-    return localDate.toISOString().slice(0, 10)
-}
-
-const startOfMonth = (date: Date) =>
-    new Date(date.getFullYear(), date.getMonth(), 1)
-
-const monthDays = (date: Date) => {
-    const firstDay = startOfMonth(date)
-    const offset = firstDay.getDay()
-    const daysInMonth = new Date(
-        date.getFullYear(),
-        date.getMonth() + 1,
-        0,
-    ).getDate()
-
-    return [
-        ...Array.from({ length: offset }, () => null),
-        ...Array.from({ length: daysInMonth }, (_, index) =>
-            new Date(date.getFullYear(), date.getMonth(), index + 1),
-        ),
-    ]
-}
-
-const monthLabel = (date: Date) =>
-    new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(date)
-
 const ServicesFooter = ({
+    fields,
+    onChange,
     checkIn,
     checkOut,
-    setCheckIn,
-    setCheckOut,
+    nights,
     roomGuests,
     setRoomGuests,
     roomChoices,
     notice,
-    dateParts,
-    onDateChange,
+    unavailableRoomIds = [],
+    unavailableDates = [],
+    blockedReason = '',
+    checkingAvailability = false,
+    onUnavailableDate,
     onCheckAvailability,
 }: ServicesFooterProps) => {
     const [bookingPopover, setBookingPopover] = useState<BookingPopover>(null)
     const [isExpanded, setIsExpanded] = useState(false)
-    const [calendarMonth, setCalendarMonth] = useState(() =>
-        startOfMonth(new Date()),
-    )
 
-    const nights = useMemo(() => {
-        if (!checkIn || !checkOut) return 0
-        const difference =
-            new Date(`${checkOut}T00:00:00`).getTime() -
-            new Date(`${checkIn}T00:00:00`).getTime()
-        return Math.max(0, Math.round(difference / 86_400_000))
-    }, [checkIn, checkOut])
-
-    const today = dateValue(new Date())
-    const todayDate = new Date(`${today}T00:00:00`)
     const adults = roomGuests.reduce((total, room) => total + room.adults, 0)
     const children = roomGuests.reduce((total, room) => total + room.kids, 0)
     const assignedRooms = roomGuests.filter((room) => room.stayId !== null).length
@@ -115,20 +75,6 @@ const ServicesFooter = ({
             (choice) => choice.id === room.stayId && choice.category === 'exclusive',
         ),
     )
-
-    const chooseDate = (date: Date) => {
-        const value = dateValue(date)
-        onDateChange()
-
-        if (!checkIn || checkOut || value <= checkIn) {
-            setCheckIn(value)
-            setCheckOut('')
-            return
-        }
-
-        setCheckOut(value)
-        setBookingPopover(null)
-    }
 
     const updateRoomGuests = (
         roomIndex: number,
@@ -169,19 +115,10 @@ const ServicesFooter = ({
                 >
                     <button
                         type="button"
-                        aria-label="Choose check-in and check-out dates"
+                        aria-label="Choose check-in and check-out date and time"
                         aria-haspopup="dialog"
                         aria-expanded={bookingPopover === 'dates'}
-                        onClick={() => {
-                            setCalendarMonth(
-                                startOfMonth(
-                                    checkIn
-                                        ? new Date(`${checkIn}T00:00:00`)
-                                        : new Date(),
-                                ),
-                            )
-                            togglePopover('dates')
-                        }}
+                        onClick={() => togglePopover('dates')}
                         className="grid w-full min-w-0 grid-cols-[36px_minmax(0,1fr)_1px_minmax(0,1fr)_1px_44px] items-center gap-2 bg-[#f1f1f3] px-2 py-2 text-left sm:grid-cols-[48px_minmax(0,1fr)_1px_minmax(0,1fr)_1px_62px] sm:gap-3 sm:px-4 sm:py-3"
                     >
                         <span className="flex size-9 items-center justify-center rounded-full bg-[#0875f9] text-white sm:size-11">
@@ -190,40 +127,34 @@ const ServicesFooter = ({
                                 aria-hidden="true"
                             />
                         </span>
-                        <span className="flex min-w-0 items-center gap-1">
-                            <span className="text-xl font-bold leading-none text-slate-500 sm:text-2xl">
-                                {dateParts(checkIn).day}
+                        <span className="min-w-0">
+                            <span className="block text-[9px] leading-tight text-slate-600 sm:text-xs">
+                                Check-in
                             </span>
-                            <span className="min-w-0">
-                                <span className="block text-[9px] leading-tight text-slate-600 sm:text-xs">
-                                    Check-in
-                                </span>
-                                <span className="block truncate text-[8px] font-bold uppercase leading-tight text-slate-600 sm:text-[9px]">
-                                    {dateParts(checkIn).monthYear}
-                                </span>
-                                <span className="block truncate text-[8px] leading-tight text-slate-500 sm:text-[9px]">
-                                    {dateParts(checkIn).weekday || 'Choose a date'}
-                                </span>
+                            <span className="block truncate text-[10px] font-semibold leading-tight text-slate-700 sm:text-xs">
+                                {formatStayDateTime(checkIn, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                })}
                             </span>
                         </span>
                         <span
                             className="h-7 w-px bg-slate-400/70"
                             aria-hidden="true"
                         />
-                        <span className="flex min-w-0 items-center gap-1">
-                            <span className="text-xl font-bold leading-none text-slate-500 sm:text-2xl">
-                                {dateParts(checkOut).day}
+                        <span className="min-w-0">
+                            <span className="block text-[9px] leading-tight text-slate-600 sm:text-xs">
+                                Check-out
                             </span>
-                            <span className="min-w-0">
-                                <span className="block text-[9px] leading-tight text-slate-600 sm:text-xs">
-                                    Check-out
-                                </span>
-                                <span className="block truncate text-[8px] font-bold uppercase leading-tight text-slate-600 sm:text-[9px]">
-                                    {dateParts(checkOut).monthYear}
-                                </span>
-                                <span className="block truncate text-[8px] leading-tight text-slate-500 sm:text-[9px]">
-                                    {dateParts(checkOut).weekday || 'Choose a date'}
-                                </span>
+                            <span className="block truncate text-[10px] font-semibold leading-tight text-slate-700 sm:text-xs">
+                                {formatStayDateTime(checkOut, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                })}
                             </span>
                         </span>
                         <span
@@ -242,152 +173,17 @@ const ServicesFooter = ({
                     {bookingPopover === 'dates' && (
                         <div
                             role="dialog"
-                            aria-label="Choose your stay dates"
-                            className="absolute bottom-full left-0 z-50 mb-3 w-[min(94vw,700px)] rounded-lg border border-slate-200 bg-white p-3 shadow-xl sm:p-4"
+                            aria-label="Choose your stay date and time"
+                            className="absolute bottom-full left-0 z-50 mb-3 w-[min(94vw,520px)] rounded-lg border border-slate-200 bg-white p-3 shadow-xl sm:p-4"
                         >
-                            <div className="mb-3 flex items-center justify-between">
-                                <p className="text-xs font-semibold text-slate-700 sm:text-sm">
-                                    {checkIn && !checkOut
-                                        ? 'Select check-out date'
-                                        : 'Select check-in date'}
-                                </p>
-                                <div className="flex gap-1">
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setCalendarMonth((month) =>
-                                                new Date(
-                                                    month.getFullYear(),
-                                                    month.getMonth() - 1,
-                                                    1,
-                                                ),
-                                            )
-                                        }
-                                        disabled={
-                                            calendarMonth <= startOfMonth(todayDate)
-                                        }
-                                        aria-label="Previous month"
-                                        className="flex size-7 items-center justify-center rounded-full border border-slate-200 text-slate-600 enabled:hover:bg-slate-100 disabled:opacity-40"
-                                    >
-                                        <ChevronLeft
-                                            className="size-4"
-                                            aria-hidden="true"
-                                        />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setCalendarMonth((month) =>
-                                                new Date(
-                                                    month.getFullYear(),
-                                                    month.getMonth() + 1,
-                                                    1,
-                                                ),
-                                            )
-                                        }
-                                        aria-label="Next month"
-                                        className="flex size-7 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-100"
-                                    >
-                                        <ChevronRight
-                                            className="size-4"
-                                            aria-hidden="true"
-                                        />
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-                                {[0, 1].map((monthOffset) => {
-                                    const month = new Date(
-                                        calendarMonth.getFullYear(),
-                                        calendarMonth.getMonth() + monthOffset,
-                                        1,
-                                    )
-                                    return (
-                                        <div key={month.toISOString()}>
-                                            <h3 className="mb-2 text-center text-[11px] font-semibold text-slate-700 sm:text-xs">
-                                                {monthLabel(month)}
-                                            </h3>
-                                            <div className="grid grid-cols-7 gap-y-1 text-center">
-                                                {[
-                                                    'Su',
-                                                    'Mo',
-                                                    'Tu',
-                                                    'We',
-                                                    'Th',
-                                                    'Fr',
-                                                    'Sa',
-                                                ].map((day) => (
-                                                    <span
-                                                        key={day}
-                                                        className="py-1 text-[9px] font-medium text-slate-500"
-                                                    >
-                                                        {day}
-                                                    </span>
-                                                ))}
-                                                {monthDays(month).map(
-                                                    (day, index) => {
-                                                        if (!day) {
-                                                            return (
-                                                                <span
-                                                                    key={`empty-${index}`}
-                                                                />
-                                                            )
-                                                        }
-                                                        const value = dateValue(day)
-                                                        const selected =
-                                                            value === checkIn ||
-                                                            value === checkOut
-                                                        const inRange =
-                                                            Boolean(
-                                                                checkIn &&
-                                                                    checkOut &&
-                                                                    value > checkIn &&
-                                                                    value < checkOut,
-                                                            )
-                                                        const disabled = value < today
-
-                                                        return (
-                                                            <button
-                                                                key={value}
-                                                                type="button"
-                                                                disabled={disabled}
-                                                                onClick={() =>
-                                                                    chooseDate(day)
-                                                                }
-                                                                aria-label={new Intl.DateTimeFormat(
-                                                                    'en',
-                                                                    {
-                                                                        dateStyle:
-                                                                            'full',
-                                                                    },
-                                                                ).format(day)}
-                                                                aria-pressed={selected}
-                                                                className={`mx-auto flex size-7 items-center justify-center rounded-full text-[10px] transition sm:size-8 sm:text-[11px] ${
-                                                                    selected
-                                                                        ? 'bg-[#0875f9] font-semibold text-white'
-                                                                        : inRange
-                                                                          ? 'bg-blue-50 text-[#0875f9]'
-                                                                          : 'text-slate-700 hover:bg-blue-50 hover:text-[#0875f9]'
-                                                                } disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent`}
-                                                            >
-                                                                {day.getDate()}
-                                                            </button>
-                                                        )
-                                                    },
-                                                )}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                            <div className="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setBookingPopover(null)}
-                                    className="rounded px-3 py-1.5 text-[10px] font-medium text-slate-600 hover:bg-slate-100"
-                                >
-                                    Cancel
-                                </button>
+                            <StayDateTimeFields
+                                fields={fields}
+                                onChange={onChange}
+                                compact
+                                unavailableDates={unavailableDates}
+                                onUnavailableDate={onUnavailableDate}
+                            />
+                            <div className="mt-3 flex justify-end border-t border-slate-100 pt-3">
                                 <button
                                     type="button"
                                     onClick={() => setBookingPopover(null)}
@@ -477,32 +273,77 @@ const ServicesFooter = ({
                                                     ? `Guests for ${roomTitle ?? 'selected room'}`
                                                     : 'Choose a room or villa for these guests'
                                             }
-                                            className="border-b border-slate-100 pb-3 last:border-0"
+                                            className={`rounded-lg border px-2.5 py-2 ${
+                                                room.stayId
+                                                    ? 'border-[#006dfc]/40 bg-blue-50/60'
+                                                    : 'border-slate-200 bg-white'
+                                            }`}
                                         >
-                                            <div className="mb-1 flex items-center justify-between">
-                                                <h3 className="text-[11px] font-medium text-slate-600">
-                                                    {room.stayId
-                                                        ? `Guests for ${roomTitle ?? 'selected room'}`
-                                                        : 'Choose a room or villa'}
-                                                </h3>
-                                                {roomGuests.length > 1 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setRoomGuests(
-                                                                (currentRooms) =>
-                                                                    currentRooms.filter(
-                                                                        (_, index) =>
-                                                                            index !==
-                                                                            roomIndex,
-                                                                    ),
-                                                            )
-                                                        }
-                                                        className="text-[10px] font-medium text-slate-500 hover:text-red-600"
-                                                    >
-                                                        Remove room
-                                                    </button>
-                                                )}
+                                            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                                    <h3 className="text-[11px] font-semibold text-slate-700">
+                                                        Room {roomIndex + 1}
+                                                    </h3>
+                                                    {room.stayId ? (
+                                                        <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-[#006dfc]/10 px-2 py-0.5 text-[10px] font-medium text-[#006dfc]">
+                                                            <Check
+                                                                className="size-3 shrink-0"
+                                                                aria-hidden="true"
+                                                            />
+                                                            <span className="truncate">
+                                                                Added · {roomTitle ?? 'selected room'}
+                                                            </span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                                                            Not added
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex shrink-0 items-center gap-1">
+                                                    {room.stayId && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setRoomGuests(
+                                                                    (currentRooms) =>
+                                                                        currentRooms.filter(
+                                                                            (_, index) =>
+                                                                                index !==
+                                                                                roomIndex,
+                                                                        ),
+                                                                )
+                                                            }
+                                                            aria-label={`Deselect room ${roomIndex + 1}`}
+                                                            className="inline-flex min-h-11 items-center gap-1 rounded-md px-1.5 text-[10px] font-semibold text-[#006dfc] hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                                        >
+                                                            <X
+                                                                className="size-3"
+                                                                aria-hidden="true"
+                                                            />
+                                                            Clear
+                                                        </button>
+                                                    )}
+                                                    {roomGuests.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setRoomGuests(
+                                                                    (currentRooms) =>
+                                                                        currentRooms.filter(
+                                                                            (_, index) =>
+                                                                                index !==
+                                                                                roomIndex,
+                                                                        ),
+                                                                )
+                                                            }
+                                                            aria-label={`Remove room ${roomIndex + 1}`}
+                                                            className="inline-flex min-h-11 items-center rounded-md px-1.5 text-[10px] font-medium text-slate-500 hover:bg-white hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                                        >
+                                                            Remove room
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                             <label className="mb-2 block">
                                                 <span className="sr-only">
@@ -510,28 +351,28 @@ const ServicesFooter = ({
                                                 </span>
                                                 <select
                                                     value={room.stayId ?? ''}
-                                                    onChange={(event) =>
-                                                        setRoomGuests(
-                                                            (currentRooms) =>
-                                                                currentRooms.map(
-                                                                    (
-                                                                        currentRoom,
-                                                                        index,
-                                                                    ) =>
-                                                                        index ===
-                                                                        roomIndex
-                                                                            ? {
-                                                                                  ...currentRoom,
-                                                                                  stayId:
-                                                                                      event
-                                                                                          .target
-                                                                                          .value ||
-                                                                                      null,
-                                                                              }
-                                                                            : currentRoom,
-                                                                ),
-                                                        )
-                                                    }
+                                                    onChange={(event) => {
+                                                        const stayId =
+                                                            event.target.value || null
+                                                        setRoomGuests((currentRooms) => {
+                                                            if (!stayId) {
+                                                                return currentRooms.filter(
+                                                                    (_, index) =>
+                                                                        index !==
+                                                                        roomIndex,
+                                                                )
+                                                            }
+                                                            return currentRooms.map(
+                                                                (currentRoom, index) =>
+                                                                    index === roomIndex
+                                                                        ? {
+                                                                              ...currentRoom,
+                                                                              stayId,
+                                                                          }
+                                                                        : currentRoom,
+                                                            )
+                                                        })
+                                                    }}
                                                     className="w-full rounded border border-slate-200 bg-white px-2.5 py-2 text-[10px] text-slate-700 outline-none focus:border-[#0875f9] focus:ring-1 focus:ring-[#0875f9]"
                                                 >
                                                     <option value="">
@@ -549,6 +390,10 @@ const ServicesFooter = ({
                                                                     otherRoom.stayId ===
                                                                         choice.id,
                                                             )
+                                                        const unavailable =
+                                                            unavailableRoomIds.includes(
+                                                                choice.id,
+                                                            )
 
                                                         return (
                                                             <option
@@ -556,6 +401,9 @@ const ServicesFooter = ({
                                                                 value={choice.id}
                                                                 disabled={
                                                                     selectedElsewhere ||
+                                                                    (unavailable &&
+                                                                        room.stayId !==
+                                                                            choice.id) ||
                                                                     (choice.category ===
                                                                         'exclusive' &&
                                                                         otherRoomsAssigned) ||
@@ -565,6 +413,9 @@ const ServicesFooter = ({
                                                                 }
                                                             >
                                                                 {choice.title}
+                                                                {unavailable
+                                                                    ? ' (unavailable)'
+                                                                    : ''}
                                                             </option>
                                                         )
                                                     })}
@@ -642,11 +493,12 @@ const ServicesFooter = ({
                                 type="button"
                                 disabled={
                                     hasExclusiveRoom ||
-                                    publicChoices.every((choice) =>
-                                        roomGuests.some(
-                                            (room) => room.stayId === choice.id,
-                                        ),
-                                    )
+                                    (roomGuests.length > 0 &&
+                                        publicChoices.every((choice) =>
+                                            roomGuests.some(
+                                                (room) => room.stayId === choice.id,
+                                            ),
+                                        ))
                                 }
                                 onClick={() =>
                                     setRoomGuests((currentRooms) => [
@@ -691,7 +543,9 @@ const ServicesFooter = ({
                         }}
                         className="inline-flex min-h-11 w-[90%] items-center justify-center rounded-sm bg-[#2875e8] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#1763d4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006dfc] focus-visible:ring-offset-2 sm:min-h-12 sm:text-base lg:min-h-[66px] lg:w-full lg:text-lg"
                     >
-                        Check availability
+                        {checkingAvailability
+                            ? 'Checking availability'
+                            : 'Check availability'}
                     </button>
 
                     <button
@@ -711,6 +565,16 @@ const ServicesFooter = ({
                         )}
                     </button>
                 </div>
+                {blockedReason && (
+                    <p
+                        role="alert"
+                        className={`col-span-2 rounded-lg bg-rose-50 p-2.5 text-[10px] leading-4 text-rose-700 lg:col-span-3 ${
+                            !isExpanded ? 'hidden lg:flex' : ''
+                        }`}
+                    >
+                        {blockedReason}
+                    </p>
+                )}
                 {notice && (
                     <p
                         role="status"

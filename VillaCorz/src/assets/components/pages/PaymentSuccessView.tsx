@@ -1,6 +1,7 @@
 import { ArrowLeft, Check, Clock3, RefreshCw } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { money } from '../../../lib/format'
+import { formatStayDateTime } from '../../../lib/stayDateTime'
 
 type PaymentViewStatus = 'pending' | 'success' | 'expired' | 'cancelled'
 
@@ -22,17 +23,14 @@ type PaymentSuccessViewProps = {
 }
 
 function formatReceiptDate(value: string) {
-    if (!value) return 'Not selected'
-
-    const date = new Date(`${value}T00:00:00`)
-    if (!Number.isFinite(date.getTime())) return 'Not selected'
-
-    return new Intl.DateTimeFormat('en', {
+    return formatStayDateTime(value, {
         weekday: 'short',
-        day: '2-digit',
         month: 'short',
+        day: 'numeric',
         year: 'numeric',
-    }).format(date)
+        hour: 'numeric',
+        minute: '2-digit',
+    })
 }
 
 function PaymentSuccessView({

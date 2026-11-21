@@ -1,3 +1,5 @@
+import { phtDateKey } from './stayDateTime'
+
 export type ReservationStay = {
     price: number
     weekendPrice?: number
@@ -5,6 +7,8 @@ export type ReservationStay = {
     additionalHeadWeekdayPrice?: number
     additionalHeadWeekendPrice?: number
 }
+
+const DAY_MS = 86_400_000
 
 export const getReservationPrice = (
     stay: ReservationStay,
@@ -17,17 +21,21 @@ export const getReservationPrice = (
     extraHeads: number
     additionalHeadTotal: number
 } => {
-    const start = new Date(`${checkIn}T00:00:00Z`)
-    const end = new Date(`${checkOut}T00:00:00Z`)
-    const startTime = start.getTime()
-    const endTime = end.getTime()
+    const checkInMs = Date.parse(checkIn)
+    const checkOutMs = Date.parse(checkOut)
+    const startKey = phtDateKey(checkIn)
+    const endKey = phtDateKey(checkOut)
+    const startDateMs = Date.parse(`${startKey}T00:00:00Z`)
+    const endDateMs = Date.parse(`${endKey}T00:00:00Z`)
 
     if (
         !checkIn ||
         !checkOut ||
-        !Number.isFinite(startTime) ||
-        !Number.isFinite(endTime) ||
-        endTime <= startTime
+        !Number.isFinite(checkInMs) ||
+        !Number.isFinite(checkOutMs) ||
+        !Number.isFinite(startDateMs) ||
+        !Number.isFinite(endDateMs) ||
+        checkOutMs <= checkInMs
     ) {
         return {
             nights: 1,
@@ -37,6 +45,10 @@ export const getReservationPrice = (
         }
     }
 
+    const nights = Math.max(
+        1,
+        Math.round((endDateMs - startDateMs) / DAY_MS),
+    )
     const pax =
         stay.pax != null && Number.isFinite(Number(stay.pax))
             ? Math.max(0, Math.floor(Number(stay.pax)))
@@ -53,12 +65,13 @@ export const getReservationPrice = (
     )
 
     let total = 0
-    let nights = 0
     let additionalHeadTotal = 0
+    const billableEnd = startDateMs + nights * DAY_MS
 
-    for (let time = startTime; time < endTime; time += 86_400_000) {
-        const day = new Date(time).getUTCDay()
-        const isWeekend = day === 0 || day === 5 || day === 6
+    for (let time = startDateMs; time < billableEnd; time += DAY_MS) {
+        const dayKey = new Date(time).toISOString().slice(0, 10)
+        const weekday = new Date(`${dayKey}T00:00:00Z`).getUTCDay()
+        const isWeekend = weekday === 0 || weekday === 5 || weekday === 6
         const nightlyTotal = isWeekend
             ? (stay.weekendPrice ?? stay.price)
             : stay.price
@@ -67,7 +80,6 @@ export const getReservationPrice = (
 
         total += nightlyTotal + nightlyHeadTotal
         additionalHeadTotal += nightlyHeadTotal
-        nights += 1
     }
 
     return { nights, total, extraHeads, additionalHeadTotal }
