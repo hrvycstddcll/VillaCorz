@@ -53,10 +53,10 @@ const BeachHouse = () => {
             `}</style>
             <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
                 <div className="mb-8 mx-auto max-w-2xl text-center">
-                    <h2 className="font-instrument text-4xl italic leading-tight tracking-tight text-black sm:text-5xl lg:text-6xl">
+                    <h2 className="font-jakarta text-[50px] font-bold leading-tight tracking-tight text-black">
                         The Beach <span className="text-[#006dfc]">House</span>
                     </h2>
-                    <p className="mt-4 font-helvetica-world text-sm leading-relaxed text-slate-500 sm:text-base">
+                    <p className="mt-4 font-jakarta text-sm leading-relaxed text-slate-500 sm:text-base">
                         Villa Corz is a private beach house in Lian, Batangas, with 5 rooms.
                         Colorful, calm, and made for slow mornings on the veranda. Hover over
                         the map to take a look around.
@@ -89,10 +89,10 @@ const BeachHouse = () => {
                                         <span className="font-instrument text-[18px] italic text-black">
                                             {room.title}
                                         </span>
-                                        <span className="font-helvetica-world text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                        <span className="font-jakarta text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                                             {room.pax}
                                         </span>
-                                        <span className="font-helvetica-world text-[10px] text-[#006dfc]">
+                                        <span className="font-jakarta text-[10px] text-[#006dfc]">
                                             with aircon
                                         </span>
                                     </span>
@@ -135,13 +135,13 @@ const BeachHouse = () => {
                                                 {room.title}
                                             </span>
                                         </div>
-                                        <span className="font-helvetica-world text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                        <span className="font-jakarta text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                                             {room.pax}
                                         </span>
-                                        <span className="font-helvetica-world text-[11px] text-[#006dfc]">
+                                        <span className="font-jakarta text-[11px] text-[#006dfc]">
                                             with aircon
                                         </span>
-                                        <span className="font-helvetica-world text-[9px] text-slate-500">
+                                        <span className="font-jakarta text-[9px] text-slate-500">
                                             Inclusions: TV &amp; Private CR
                                         </span>
                                     </div>

@@ -311,7 +311,7 @@ const AccordionGallery = ({
                                     className="text-xs font-semibold tracking-wide text-white [text-orientation:mixed] [writing-mode:horizontal-tb] md:text-sm md:[writing-mode:vertical-rl]"
                                     style={{
                                         fontFamily:
-                                            '"Helvetica World", Helvetica, Arial, sans-serif',
+                                            '"Plus Jakarta Sans", sans-serif',
                                     }}
                                 >
                                     {p.label}
@@ -350,7 +350,7 @@ const AccordionGallery = ({
                                         className="text-sm leading-relaxed text-white md:text-base"
                                         style={{
                                             fontFamily:
-                                                '"Helvetica World", Helvetica, Arial, sans-serif',
+                                                '"Plus Jakarta Sans", sans-serif',
                                         }}
                                     >
                                         {p.body}
