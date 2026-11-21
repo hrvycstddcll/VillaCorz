@@ -125,6 +125,7 @@ class ServiceReviewTest extends TestCase
             'check_in' => $checkOut->copy()->subDays(2),
             'check_out' => $checkOut,
             'nights' => 2,
+            'paid_days' => 2,
             'adults' => 1,
             'kids' => 0,
             'subtotal' => 3000,

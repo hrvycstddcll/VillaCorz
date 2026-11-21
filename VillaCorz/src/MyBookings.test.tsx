@@ -26,6 +26,7 @@ const makeBooking = (
     completed_at: null,
     check_in: checkIn,
     check_out: addDays(2),
+    paid_days: 2,
     nights: 2,
     adults: 2,
     kids: 0,
@@ -97,8 +98,19 @@ describe('MyBookings', () => {
 
         await screen.findByText('VC-BOOKED-1')
 
+        expect(screen.getByText(/2 paid days/)).toBeInTheDocument()
         expect(
             screen.getByRole('button', { name: /cancel booking/i }),
         ).toBeInTheDocument()
+    })
+
+    it('falls back to nights when an older booking has no paid_days', async () => {
+        const booking = makeBooking('VC-LEGACY-1', 'booked', addDays(20))
+        delete (booking as { paid_days?: number }).paid_days
+        renderBookings([booking])
+
+        await screen.findByText('VC-LEGACY-1')
+
+        expect(screen.getByText(/2 nights/)).toBeInTheDocument()
     })
 })

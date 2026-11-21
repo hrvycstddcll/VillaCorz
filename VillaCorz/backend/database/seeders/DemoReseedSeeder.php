@@ -16,6 +16,8 @@ use App\Models\ServiceReview;
 use App\Models\ServiceReviewImage;
 use App\Models\User;
 use App\Models\UserPhoneNumber;
+use App\Support\StayPolicy;
+use App\Support\StayTime;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -93,10 +95,14 @@ class DemoReseedSeeder extends Seeder
         foreach ([1, 2, 3, 4] as $slot) {
             $customer = $customers[($slot - 1) % $customers->count()];
             $createdAt = now()->subDays(2 + ($slot * 2))->setTime(9 + $slot, 15);
-            $checkIn = $createdAt->copy()->addDays(7);
-            $checkOut = $checkIn->copy()->addDays(2);
+            $paidDays = 2;
+            $checkIn = StayTime::parseLocal(
+                $createdAt->copy()->addDays(7)->toDateString(),
+                StayPolicy::defaultCheckInTime(),
+            );
+            $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
             $reference = 'VC-DEMO-CANCEL-'.str_pad((string) $slot, 2, '0', STR_PAD_LEFT);
-            $total = (float) $service->price * 2;
+            $total = $this->stayTotal($service, $checkIn, $paidDays);
 
             $booking = Booking::create([
                 'user_id' => $customer->id,
@@ -106,7 +112,8 @@ class DemoReseedSeeder extends Seeder
                 'contact_phone' => null,
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
-                'nights' => 2,
+                'paid_days' => $paidDays,
+                'nights' => $paidDays,
                 'adults' => 2,
                 'kids' => 0,
                 'subtotal' => $total,
@@ -178,10 +185,14 @@ class DemoReseedSeeder extends Seeder
         foreach ([1, 2] as $slot) {
             $customer = $customers[($slot + 2) % $customers->count()];
             $createdAt = now()->subDays($slot + 1)->setTime(14 + $slot, 30);
-            $checkIn = now()->addDays(8 + $slot)->startOfDay();
-            $checkOut = $checkIn->copy()->addDays(2);
+            $paidDays = 2;
+            $checkIn = StayTime::parseLocal(
+                now()->addDays(8 + $slot)->toDateString(),
+                StayPolicy::defaultCheckInTime(),
+            );
+            $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
             $reference = 'VC-DEMO-PENDING-'.str_pad((string) $slot, 2, '0', STR_PAD_LEFT);
-            $total = (float) $service->price * 2;
+            $total = $this->stayTotal($service, $checkIn, $paidDays);
 
             $booking = Booking::create([
                 'user_id' => $customer->id,
@@ -191,7 +202,8 @@ class DemoReseedSeeder extends Seeder
                 'contact_phone' => null,
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
-                'nights' => 2,
+                'paid_days' => $paidDays,
+                'nights' => $paidDays,
                 'adults' => 2,
                 'kids' => 0,
                 'subtotal' => $total,
@@ -341,5 +353,18 @@ class DemoReseedSeeder extends Seeder
                 'active' => true,
             ]);
         }
+    }
+
+    protected function stayTotal(Service $service, mixed $checkIn, int $paidDays): float
+    {
+        $weekdayPrice = (float) $service->price;
+        $weekendPrice = (float) ($service->weekend_price ?? $service->price);
+        $total = 0.0;
+
+        foreach (StayPolicy::windows($checkIn, $paidDays) as $window) {
+            $total += $window['is_weekend'] ? $weekendPrice : $weekdayPrice;
+        }
+
+        return round($total, 2);
     }
 }

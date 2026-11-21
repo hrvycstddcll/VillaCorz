@@ -2,7 +2,7 @@
 import { useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import React from 'react'
 import { createPortal } from 'react-dom'
-import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 
 type Side = 'top' | 'bottom' | 'left' | 'right'
 type Size = 'sm' | 'md' | 'lg'
@@ -111,24 +111,19 @@ export const WarmTooltip = ({
     const [open, setOpen] = useState(false)
     const [fuseProgress, setFuseProgress] = useState(0)
     const [pos, setPos] = useState({ x: 0, y: 0, side })
-
-    const x = useMotionValue(0)
-    const y = useMotionValue(0)
-    const springX = useSpring(x, { stiffness: 400, damping: 30 })
-    const springY = useSpring(y, { stiffness: 400, damping: 30 })
-    const tilt = useTransform(springX, (v) => {
-        const center = window.innerWidth / 2
-        return ((v - center) / center) * 4
-    })
+    const bubbleRef = useRef<HTMLDivElement | null>(null)
 
     const isActive = ctx ? ctx.activeId === id : open
 
     const computePosition = useCallback(() => {
         const el = triggerRef.current
-        if (!el) return
+        if (!el) return false
+
         const rect = el.getBoundingClientRect()
-        const bubbleW = 220
-        const bubbleH = 48
+        if (rect.width === 0 && rect.height === 0) return false
+
+        const bubbleW = bubbleRef.current?.offsetWidth || 220
+        const bubbleH = bubbleRef.current?.offsetHeight || 48
         const gap = 8
         let s: Side = side
         let top = 0
@@ -151,14 +146,12 @@ export const WarmTooltip = ({
             left = rect.right + gap
             if (left + bubbleW > window.innerWidth - 8) { s = 'left'; left = rect.left - bubbleW - gap }
         }
-        // clamp
+
         left = Math.max(8, Math.min(left, window.innerWidth - bubbleW - 8))
         top = Math.max(8, Math.min(top, window.innerHeight - bubbleH - 8))
-
         setPos({ x: left, y: top, side: s })
-        x.set(left)
-        y.set(top)
-    }, [side, x, y])
+        return true
+    }, [side])
 
     const isWarm = useCallback(() => {
         if (!ctx) return false
@@ -166,8 +159,7 @@ export const WarmTooltip = ({
     }, [ctx, warmWindow])
 
     const openTooltip = useCallback(() => {
-        if (disabled) return
-        computePosition()
+        if (disabled || !computePosition()) return
         if (ctx) ctx.setActiveId(id)
         else setOpen(true)
     }, [disabled, computePosition, ctx, id])
@@ -220,7 +212,7 @@ export const WarmTooltip = ({
     // recompute on active change / scroll
     useEffect(() => {
         if (!(ctx ? ctx.activeId === id : open)) return
-        computePosition()
+        if (!computePosition()) return
         const onScroll = () => computePosition()
         window.addEventListener('scroll', onScroll, true)
         window.addEventListener('resize', onScroll)
@@ -295,6 +287,7 @@ export const WarmTooltip = ({
 
     const bubble = (
         <motion.div
+            ref={bubbleRef}
             id={`wt-bubble-${id}`}
             role="tooltip"
             initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
@@ -303,10 +296,9 @@ export const WarmTooltip = ({
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             style={{
                 position: 'fixed',
-                left: springX,
-                top: springY,
+                left: pos.x,
+                top: pos.y,
                 zIndex: 9999,
-                rotate: tilt,
                 backgroundColor: surfaceColor,
                 color: inkColor,
             }}

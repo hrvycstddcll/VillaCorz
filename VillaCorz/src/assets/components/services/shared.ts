@@ -3,7 +3,12 @@ import type { RoomGuests } from '../ui/InteractiveComponents/ServicesFooter'
 import { getOfferBadgeLabel, getOfferPricing } from '../../../lib/pricing'
 
 export type StayCategory = 'public' | 'exclusive'
-export type BookingRequest = { checkIn: string; checkOut: string; rooms: RoomGuests[] }
+export type BookingRequest = {
+    checkIn: string
+    checkOut: string
+    paidDays: number
+    rooms: RoomGuests[]
+}
 export type Stay = {
     id: string
     title: string
@@ -85,10 +90,10 @@ export const toStay = (service: Service): Stay => {
         weekendPrice: pricing.weekend.price,
         pax: service.pax,
         additionalHeadWeekdayPrice: Number(
-            service.additional_head_weekday_price ?? 50,
+            service.additional_head_weekday_price ?? 0,
         ),
         additionalHeadWeekendPrice: Number(
-            service.additional_head_weekend_price ?? 100,
+            service.additional_head_weekend_price ?? 0,
         ),
         originalPrice: pricing.weekday.originalPrice ?? undefined,
         weekendOriginalPrice: pricing.weekend.originalPrice ?? undefined,
@@ -154,10 +159,10 @@ export const toExclusiveStay = (service: Service): Stay => {
         weekendPrice: weekendPricing.price,
         pax: service.pax,
         additionalHeadWeekdayPrice: Number(
-            service.additional_head_weekday_price ?? 50,
+            service.additional_head_weekday_price ?? 0,
         ),
         additionalHeadWeekendPrice: Number(
-            service.additional_head_weekend_price ?? 100,
+            service.additional_head_weekend_price ?? 0,
         ),
         originalPrice: weekdayPricing.originalPrice ?? undefined,
         weekendOriginalPrice: weekendPricing.originalPrice ?? undefined,

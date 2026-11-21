@@ -1,8 +1,7 @@
-import { ArrowLeft, Check, Clock3, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Check, Clock3, RefreshCw } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { money } from '../../../lib/format'
-import { formatStayDateTime } from '../../../lib/stayDateTime'
-import SlideCommit from '../ui/ReactBits/SlideCommit'
+import { formatPaidDays, formatStayDateTime } from '../../../lib/stayDateTime'
 
 type PaymentViewStatus = 'pending' | 'success' | 'expired' | 'cancelled'
 
@@ -15,15 +14,13 @@ type PaymentSuccessViewProps = {
     qrValue: string
     checkIn: string
     checkOut: string
-    nights: number
+    paidDays?: number
+    nights?: number
     rooms: Array<{ name: string; adults: number; kids: number }>
     total: number
     error?: string
     onConfirm: () => void
     onRefresh: () => void
-    onConfirmPayment?: () => Promise<void>
-    onPaymentConfirmed?: () => void
-    onPaymentError?: (reason: unknown) => void
 }
 
 function formatReceiptDate(value: string) {
@@ -46,21 +43,23 @@ function PaymentSuccessView({
     qrValue,
     checkIn,
     checkOut,
+    paidDays,
     nights,
     rooms,
     total,
     error,
     onConfirm,
     onRefresh,
-    onConfirmPayment,
-    onPaymentConfirmed,
-    onPaymentError,
 }: PaymentSuccessViewProps) {
     const guestCount = rooms.reduce(
         (sum, room) => sum + room.adults + room.kids,
         0,
     )
     const roomCount = rooms.length
+    const stayLabel =
+        paidDays != null
+            ? formatPaidDays(paidDays)
+            : `${nights ?? 1} night${(nights ?? 1) === 1 ? '' : 's'}`
     const isSuccessful = status === 'success'
     const isExpired = status === 'expired'
     const isCancelled = status === 'cancelled'
@@ -82,7 +81,7 @@ function PaymentSuccessView({
             : 'Scan the QR code with your phone to confirm this reservation. Your dates are reserved after confirmation.'
 
     return (
-        <main className="min-h-dvh bg-[#f7f6fa] px-4 py-6 font-poppins sm:px-6 sm:py-8">
+        <main className="min-h-dvh bg-slate-50 px-4 py-6 font-poppins sm:px-6 sm:py-8">
             <div className="mx-auto w-full max-w-5xl">
                 {error && (
                     <p
@@ -96,7 +95,7 @@ function PaymentSuccessView({
                     <ol className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
                         <li>Reservation</li>
                         <li aria-hidden="true">/</li>
-                        <li aria-current="step" className="text-slate-800">
+                        <li aria-current="step" className="text-[#006dfc]">
                             Payment
                         </li>
                     </ol>
@@ -106,7 +105,7 @@ function PaymentSuccessView({
                     aria-labelledby="payment-success-title"
                     aria-live="polite"
                     aria-atomic="true"
-                    className="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_3px_12px_rgba(15,23,42,0.08)] sm:p-5"
+                    className="flex items-start gap-4 rounded-2xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,0.05)] sm:p-5"
                 >
                     <div
                         aria-hidden="true"
@@ -125,7 +124,7 @@ function PaymentSuccessView({
                         )}
                     </div>
                     <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                             Villa Corz · Booking update
                         </p>
                         <h1
@@ -156,9 +155,9 @@ function PaymentSuccessView({
                     {status === 'pending' && (
                         <section
                             aria-labelledby="payment-qr-title"
-                            className="flex min-w-0 flex-col items-center rounded-xl border border-slate-200 bg-white p-4 shadow-[0_3px_12px_rgba(15,23,42,0.08)] sm:p-5"
+                            className="flex min-w-0 flex-col items-center rounded-2xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,0.05)] sm:p-5"
                         >
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 Demo payment
                             </p>
                             <h2
@@ -168,62 +167,32 @@ function PaymentSuccessView({
                                 Scan to confirm
                             </h2>
                             <p className="mt-1 text-center text-sm leading-5 text-slate-600">
-                                Open your phone camera and scan this code.
+                                Scan this code, then complete confirmation on your phone.
                             </p>
-                            <QRCodeSVG
-                                aria-label="Scannable Villa Corz demo payment confirmation QR code"
-                                className="my-5 size-52 max-w-full sm:size-56"
-                                value={qrValue}
-                                size={224}
-                                level="Q"
-                                marginSize={4}
-                            />
+                            <div className="my-5 grid w-full place-items-center rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4">
+                                <QRCodeSVG
+                                    aria-label="Scannable Villa Corz demo payment confirmation QR code"
+                                    className="size-52 max-w-full sm:size-56"
+                                    value={qrValue}
+                                    size={224}
+                                    level="Q"
+                                    marginSize={4}
+                                />
+                            </div>
                             <a
                                 href={qrValue}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-sm font-semibold text-[#0875f9] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#006dfc] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#0057c9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                             >
                                 Open confirmation link
+                                <ArrowUpRight className="size-4" aria-hidden="true" />
                             </a>
-
-                            {onConfirmPayment && (
-                                <div className="mt-4 w-full border-t border-slate-100 pt-4">
-                                    <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                        Confirm here
-                                    </p>
-                                    <div className="mt-3 flex justify-center">
-                                        <SlideCommit
-                                            className="max-w-full"
-                                            label="Slide to confirm"
-                                            doneLabel="Confirmed"
-                                            errorLabel="Payment failed"
-                                            onConfirm={onConfirmPayment}
-                                            onDone={onPaymentConfirmed}
-                                            onError={onPaymentError}
-                                            trackColor="#003079"
-                                            handleColor="#F8FAFC"
-                                            successColor="#047857"
-                                            dangerColor="#E11D48"
-                                            width={280}
-                                            height={56}
-                                            radius={28}
-                                            speed={50}
-                                            returnBounce={0.38}
-                                            landingDip={0.026}
-                                            holdMs={1500}
-                                        />
-                                    </div>
-                                    <p className="mt-2 text-center text-xs leading-5 text-slate-500">
-                                        Slide to reserve these dates without scanning the QR code.
-                                    </p>
-                                </div>
-                            )}
 
                             <button
                                 type="button"
                                 onClick={onRefresh}
-                                className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-[#0875f9]/40 hover:text-[#0875f9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[rgba(0,0,0,0.08)] bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-[#006dfc]/40 hover:text-[#006dfc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                             >
                                 <RefreshCw
                                     className="size-4"
@@ -232,17 +201,15 @@ function PaymentSuccessView({
                                 Check payment status
                             </button>
 
-                            <p className="mt-4 w-full rounded-lg bg-amber-50 px-3 py-3 text-xs leading-5 text-amber-900">
-                                Demo only: no real payment is processed. Complete
-                                the confirmation on your phone to reserve these
-                                dates.
+                            <p className="mt-4 w-full rounded-xl border border-[rgba(0,0,0,0.06)] bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+                                Demo only: no real payment is processed. Complete confirmation on the linked page.
                             </p>
                         </section>
                     )}
 
                     <section
                         aria-labelledby="receipt-title"
-                        className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_3px_12px_rgba(15,23,42,0.08)] sm:p-5"
+                        className="min-w-0 rounded-2xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,0.05)] sm:p-5"
                     >
                         <h2
                             id="receipt-title"
@@ -274,10 +241,10 @@ function PaymentSuccessView({
                             />
                             <ReceiptField
                                 label="Stay"
-                                value={`${nights} night${nights === 1 ? '' : 's'} · ${roomCount} room${roomCount === 1 ? '' : 's'} · ${guestCount} guest${guestCount === 1 ? '' : 's'}`}
+                                value={`${stayLabel} · ${roomCount} room${roomCount === 1 ? '' : 's'} · ${guestCount} guest${guestCount === 1 ? '' : 's'}`}
                             />
                         </dl>
-                        <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">
+                        <p className="mt-5 border-t border-slate-100 pt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                             Booking reference
                             <strong className="mt-1 block break-words font-medium text-slate-700 [overflow-wrap:anywhere]">
                                 {bookingId}
@@ -287,7 +254,7 @@ function PaymentSuccessView({
                             <span className="text-sm font-medium text-slate-600">
                                 Total amount
                             </span>
-                            <strong className="text-xl font-semibold tabular-nums text-[#0875f9]">
+                            <strong className="text-xl font-semibold tabular-nums text-[#006dfc]">
                                 {money(total)}
                             </strong>
                         </div>
@@ -297,10 +264,10 @@ function PaymentSuccessView({
                 <button
                     type="button"
                     onClick={onConfirm}
-                    className={`mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:w-auto ${
+                    className={`mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:w-auto ${
                         isSuccessful
-                            ? 'bg-[#0875f9] text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] hover:bg-blue-700 focus-visible:outline-blue-700'
-                            : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                            ? 'bg-[#006dfc] text-white shadow-[0_4px_12px_rgba(0,109,252,0.25)] hover:bg-[#0057c9]'
+                            : 'border border-[rgba(0,0,0,0.08)] bg-white text-slate-700 hover:border-[#006dfc]/40 hover:text-[#006dfc]'
                     }`}
                 >
                     {!isSuccessful && <ArrowLeft aria-hidden="true" className="size-4" />}
@@ -314,7 +281,9 @@ function PaymentSuccessView({
 function ReceiptField({ label, value }: { label: string; value: string }) {
     return (
         <div className="min-w-0">
-            <dt className="text-xs font-medium text-slate-500">{label}</dt>
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {label}
+            </dt>
             <dd className="mt-1 break-words text-sm font-medium leading-5 text-slate-800 [overflow-wrap:anywhere]">
                 {value}
             </dd>

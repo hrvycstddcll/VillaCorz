@@ -5,6 +5,7 @@ namespace App\Services\Assistant;
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\User;
+use App\Support\StayPolicy;
 use App\Support\StayTime;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -21,9 +22,17 @@ class CustomerAssistantContextBuilder
 
     private const DESCRIPTION_LIMIT = 240;
 
-    private const DEFAULT_CHECK_IN_TIME = '14:00';
+    private static function defaultCheckInTime(): string
+    {
+        return StayPolicy::defaultCheckInTime();
+    }
 
-    private const DEFAULT_CHECK_OUT_TIME = '12:00';
+    private static function defaultCheckOutTime(): string
+    {
+        return Carbon::createFromFormat('H:i', self::defaultCheckInTime(), StayTime::TIMEZONE)
+            ->subHours(StayPolicy::turnoverHours())
+            ->format('H:i');
+    }
 
     private const MONTH_NUMBERS = [
         'january' => 1,
@@ -126,6 +135,7 @@ class CustomerAssistantContextBuilder
                 'cancellation' => 'Direct cancellation is available only for pending-payment or confirmed bookings with at least 7 days before check-in. Within 7 days, confirmed bookings may submit an emergency cancellation request for review. Completed, cancelled, and expired stays cannot be cancelled.',
                 'payments' => 'Payment options shown in the booking flow are GCash, Maya, PayPal, BDO, Unionbank Internet Banking, and BPI.',
                 'support' => 'Customers can contact the VillaCorz team through the Contact page for human assistance.',
+                'stay' => 'One paid day is a 22-hour occupancy window starting at the guest check-in clock time. Default check-in is '.self::defaultCheckInTime().' PHT and default checkout is '.self::defaultCheckOutTime().' PHT.',
             ],
         ];
 
@@ -160,13 +170,16 @@ class CustomerAssistantContextBuilder
         $cancellationRequest = $booking->latestCancellationRequest;
         $requestPending = $cancellationRequest?->status === 'pending';
 
+        $paidDays = (int) ($booking->paid_days ?? $booking->nights ?? 1);
+
         return [
             'reference' => $booking->reference,
             'status' => $booking->status,
             'lifecycle' => $booking->lifecycle,
             'check_in' => $booking->check_in ? StayTime::formatPht($booking->check_in, 'Y-m-d H:i P') : null,
             'check_out' => $booking->check_out ? StayTime::formatPht($booking->check_out, 'Y-m-d H:i P') : null,
-            'nights' => $booking->nights,
+            'paid_days' => $paidDays,
+            'nights' => $paidDays,
             'adults' => $booking->adults,
             'kids' => $booking->kids,
             'total' => (float) $booking->total,
@@ -289,9 +302,9 @@ class CustomerAssistantContextBuilder
             return null;
         }
 
-        [$checkIn, $checkOut, $label] = $range;
-        $checkInAt = StayTime::toCarbon($checkIn)->toDateTimeString();
-        $checkOutAt = StayTime::toCarbon($checkOut)->toDateTimeString();
+        [$checkIn, $checkOut, $paidDays, $label] = $range;
+        $checkInAt = StayTime::toCarbon($checkIn)->utc();
+        $blockingEnd = StayPolicy::blockingEndFor($checkInAt, $paidDays);
         $checkInDate = StayTime::formatPht($checkIn, 'Y-m-d H:i P');
         $checkOutDate = StayTime::formatPht($checkOut, 'Y-m-d H:i P');
 
@@ -301,8 +314,11 @@ class CustomerAssistantContextBuilder
         $overlaps = DB::table('booking_rooms')
             ->join('bookings', 'bookings.id', '=', 'booking_rooms.booking_id')
             ->where('bookings.status', 'confirmed')
-            ->where('bookings.check_in', '<', $checkOutAt)
-            ->where('bookings.check_out', '>', $checkInAt)
+            ->where('bookings.check_in', '<', $blockingEnd->toDateTimeString())
+            ->whereRaw('DATE_ADD(bookings.check_out, INTERVAL ? HOUR) > ?', [
+                StayPolicy::turnoverHours(),
+                $checkInAt->toDateTimeString(),
+            ])
             ->whereNotNull('booking_rooms.service_id')
             ->pluck('booking_rooms.service_id')
             ->map(fn ($id) => (int) $id)
@@ -339,7 +355,8 @@ class CustomerAssistantContextBuilder
             'requested_label' => $label,
             'check_in' => $checkInDate,
             'check_out' => $checkOutDate,
-            'nights' => max(1, (int) $checkIn->diffInDays($checkOut)),
+            'paid_days' => $paidDays,
+            'nights' => $paidDays,
             'as_of' => $today->toDateString(),
             'basis' => 'current confirmed bookings',
             'results' => $results,
@@ -347,35 +364,38 @@ class CustomerAssistantContextBuilder
     }
 
     /**
-     * @return array{0: Carbon, 1: Carbon, 2: string}|null
+     * @return array{0: Carbon, 1: Carbon, 2: int, 3: string}|null
      */
     private function requestedRange(string $message, Carbon $today): ?array
     {
         $text = Str::lower($message);
 
         if (preg_match('/\btomorrow\b/u', $text) === 1) {
-            $checkIn = $today->copy()->addDay();
+            $checkIn = $today->copy()->addDay()->setTimeFromTimeString(self::defaultCheckInTime());
+            $checkOut = $checkIn->copy()->addDay()->setTimeFromTimeString(self::defaultCheckOutTime());
 
-            return [$checkIn, $checkIn->copy()->addDay(), 'tomorrow night'];
+            return [$checkIn, $checkOut, 1, 'tomorrow for one paid day'];
         }
 
         if (preg_match('/\btonight\b/u', $text) === 1) {
-            $checkIn = $today->copy();
+            $checkIn = $today->copy()->setTimeFromTimeString(self::defaultCheckInTime());
+            $checkOut = $checkIn->copy()->addDay()->setTimeFromTimeString(self::defaultCheckOutTime());
 
-            return [$checkIn, $checkIn->copy()->addDay(), 'tonight'];
+            return [$checkIn, $checkOut, 1, 'tonight'];
         }
 
         if (preg_match('/\btoday\b/u', $text) === 1) {
-            $checkIn = $today->copy();
+            $checkIn = $today->copy()->setTimeFromTimeString(self::defaultCheckInTime());
+            $checkOut = $checkIn->copy()->addDay()->setTimeFromTimeString(self::defaultCheckOutTime());
 
-            return [$checkIn, $checkIn->copy()->addDay(), 'today'];
+            return [$checkIn, $checkOut, 1, 'today'];
         }
 
         return $this->specificDateRange($text, $today);
     }
 
     /**
-     * @return array{0: Carbon, 1: Carbon, 2: string}|null
+     * @return array{0: Carbon, 1: Carbon, 2: int, 3: string}|null
      */
     private function specificDateRange(string $text, Carbon $today): ?array
     {
@@ -392,26 +412,34 @@ class CustomerAssistantContextBuilder
             $checkInDate['year'],
             $checkInDate['month'],
             $checkInDate['day'],
-            self::DEFAULT_CHECK_IN_TIME,
+            self::defaultCheckInTime(),
         );
-        $checkOut = $checkOutDate === null
-            ? $checkIn->copy()->addDay()->setTimeFromTimeString(self::DEFAULT_CHECK_OUT_TIME)
-            : $this->phtDate(
-                $checkOutDate['year'],
-                $checkOutDate['month'],
-                $checkOutDate['day'],
-                self::DEFAULT_CHECK_OUT_TIME,
-            );
 
-        if ($checkOut->lessThanOrEqualTo($checkIn)) {
-            $checkOut = $checkIn->copy()->addDay()->setTimeFromTimeString(self::DEFAULT_CHECK_OUT_TIME);
+        if ($checkOutDate === null) {
+            $paidDays = 1;
+            $checkOut = $checkIn->copy()->addDay()->setTimeFromTimeString(self::defaultCheckOutTime());
+            $label = $checkIn->format('M j, Y').' for one paid day';
+
+            return [$checkIn, $checkOut, $paidDays, $label];
         }
 
-        $label = $checkOutDate === null
-            ? $checkIn->format('M j, Y').' for one night'
-            : $checkIn->format('M j, Y').' – '.$checkOut->format('M j, Y');
+        $checkOutBoundary = $this->phtDate(
+            $checkOutDate['year'],
+            $checkOutDate['month'],
+            $checkOutDate['day'],
+            self::defaultCheckInTime(),
+        );
+        $paidDays = max(1, (int) $checkIn->copy()->startOfDay()->diffInDays($checkOutBoundary->copy()->startOfDay()));
+        $checkOut = $checkIn->copy()->addDays($paidDays)->setTimeFromTimeString(self::defaultCheckOutTime());
 
-        return [$checkIn, $checkOut, $label];
+        if ($checkOut->lessThanOrEqualTo($checkIn)) {
+            $paidDays = 1;
+            $checkOut = $checkIn->copy()->addDay()->setTimeFromTimeString(self::defaultCheckOutTime());
+        }
+
+        $label = $checkIn->format('M j, Y').' – '.$checkOutBoundary->format('M j, Y');
+
+        return [$checkIn, $checkOut, $paidDays, $label];
     }
 
     /**

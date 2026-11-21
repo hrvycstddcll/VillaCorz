@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { BedDouble, Check } from 'lucide-react'
 import ServicesFooter, {
     type RoomGuests,
 } from '../ui/InteractiveComponents/ServicesFooter'
@@ -10,8 +9,11 @@ import { money } from '../../../lib/format'
 import { getReservationPrice } from '../../../lib/reservation'
 import {
     fieldsFromStay,
+    formatPaidDays,
     formatStayDateTime,
     getStayWindow,
+    paidDayStartDates,
+    PAID_DAY_HINT,
     phtToday,
     type StayDateFields,
 } from '../../../lib/stayDateTime'
@@ -73,11 +75,13 @@ export default function Services({
         fieldsFromStay(
             incomingReservation?.checkIn ?? incomingBooking?.checkIn ?? '',
             incomingReservation?.checkOut ?? incomingBooking?.checkOut ?? '',
+            incomingReservation?.paidDays ?? incomingBooking?.paidDays,
         ),
     )
     const stayWindow = useMemo(() => getStayWindow(stayFields), [stayFields])
     const checkIn = stayWindow.checkIn
     const checkOut = stayWindow.checkOut
+    const paidDays = stayWindow.paidDays
     const availabilityFrom = useMemo(() => phtToday(), [])
     const availabilityTo = useMemo(() => {
         const date = new Date(`${availabilityFrom}T00:00:00Z`)
@@ -188,6 +192,7 @@ export default function Services({
         () => roomGuests.flatMap((room) => (room.stayId ? [room.stayId] : [])),
         [roomGuests],
     )
+    const hasSelectedRooms = selectedRoomIds.length > 0
     const selectedStays = useMemo(() => {
         return [...new Set(selectedRoomIds)].flatMap((id) => {
             const stay =
@@ -247,7 +252,7 @@ export default function Services({
 
         const timer = window.setTimeout(() => {
             setCheckingAvailability(true)
-            getAvailabilityForRange(checkIn, checkOut, controller.signal)
+            getAvailabilityForRange(checkIn, paidDays, controller.signal)
                 .then((response) => {
                     if (requestId !== availabilityRequestRef.current) return
                     const next: Record<number, boolean> = {}
@@ -276,12 +281,9 @@ export default function Services({
             window.clearTimeout(timer)
             controller.abort()
         }
-    }, [checkIn, checkOut, reservationOnly, services, stayWindow.valid])
+    }, [checkIn, paidDays, reservationOnly, services, stayWindow.valid])
 
     const hasDates = stayWindow.valid
-    const hasRooms = selectedStays.length > 0
-    const activeBookingStep = !hasDates ? 0 : !hasRooms ? 1 : 2
-    const nights = stayWindow.nights
     const unavailableRoomIds = useMemo(
         () =>
             availabilityError
@@ -294,23 +296,16 @@ export default function Services({
                       .map((choice) => choice.id),
         [availabilityByServiceId, availabilityError, roomChoices],
     )
-    const blockedDatesScopeIds = useMemo(
-        () =>
-            selectedRoomIds.length > 0
-                ? selectedRoomIds
-                : roomChoices.map((choice) => choice.id),
-        [roomChoices, selectedRoomIds],
-    )
     const unavailableDates = useMemo(
         () =>
             [
                 ...new Set(
-                    blockedDatesScopeIds.flatMap(
+                    selectedRoomIds.flatMap(
                         (id) => blockedDatesByServiceId[id] ?? [],
                     ),
                 ),
             ].sort(),
-        [blockedDatesByServiceId, blockedDatesScopeIds],
+        [blockedDatesByServiceId, selectedRoomIds],
     )
     const unavailableSelectedStays = useMemo(
         () =>
@@ -321,10 +316,10 @@ export default function Services({
     )
     const unavailableSelectedDates = useMemo(
         () =>
-            [stayFields.checkInDate, stayFields.checkOutDate].filter(
-                (date) => date && unavailableDates.includes(date),
+            paidDayStartDates(stayFields, paidDays).filter((date) =>
+                unavailableDates.includes(date),
             ),
-        [stayFields.checkInDate, stayFields.checkOutDate, unavailableDates],
+        [stayFields, paidDays, unavailableDates],
     )
     const blockedReason =
         availabilityError ||
@@ -337,7 +332,7 @@ export default function Services({
             : '')
 
     const bookingSummary = useMemo(() => {
-        if (!hasDates || nights < 1) {
+        if (!hasDates || paidDays < 1) {
             return { lines: 0, total: 0 }
         }
 
@@ -350,7 +345,7 @@ export default function Services({
                 const pricing = getReservationPrice(
                     stay,
                     checkIn,
-                    checkOut,
+                    paidDays,
                     room.adults + room.kids,
                 )
 
@@ -361,7 +356,24 @@ export default function Services({
             },
             { lines: 0, total: 0 },
         )
-    }, [checkIn, checkOut, hasDates, nights, roomChoices, roomGuests])
+    }, [checkIn, hasDates, paidDays, roomChoices, roomGuests])
+
+    const assignedRooms = useMemo(
+        () =>
+            roomGuests
+                .flatMap((room) => {
+                    const stay = roomChoices.find(
+                        (choice) => choice.id === room.stayId,
+                    )
+                    return stay ? [{ room, stay }] : []
+                })
+                .map(({ room, stay }, index) => ({ room, stay, index })),
+        [roomChoices, roomGuests],
+    )
+    const assignedGuestCount = assignedRooms.reduce(
+        (total, { room }) => total + room.adults + room.kids,
+        0,
+    )
 
     const [resolvedIncomingId, setResolvedIncomingId] = useState<string | null>(
         null,
@@ -467,7 +479,7 @@ export default function Services({
 
             return [...current, { stayId: stay.id, adults: 2, kids: 0 }]
         })
-        showNotice(`${stay.title} added to your booking.`, 'success')
+        showNotice(`${stay.title} added. Choose your dates next.`, 'success')
     }
 
     const removeStayFromBooking = (stay: Stay) => {
@@ -487,6 +499,11 @@ export default function Services({
     }
 
     const handleCheckAvailability = () => {
+        if (!hasSelectedRooms) {
+            showNotice('Choose a room before choosing dates.')
+            return
+        }
+
         if (!stayWindow.valid) {
             showNotice(stayWindow.error)
             return
@@ -514,26 +531,27 @@ export default function Services({
         if (bookingOnly) {
             navigate('/services', {
                 state: {
-                    booking: { checkIn, checkOut, rooms: roomGuests },
+                    booking: {
+                        checkIn,
+                        checkOut,
+                        paidDays,
+                        rooms: roomGuests,
+                    },
                 } satisfies ServicesRouteState,
             })
-            return
-        }
-
-        if (!roomGuests.some((room) => room.stayId)) {
-            showNotice('Choose a room before continuing to your reservation.')
             return
         }
 
         showNotice('')
         navigate('/reservation', {
             state: {
-                reservation: {
-                    checkIn,
-                    checkOut,
-                    rooms: roomGuests,
-                    roomChoices,
-                },
+                    reservation: {
+                        checkIn,
+                        checkOut,
+                        paidDays,
+                        rooms: roomGuests,
+                        roomChoices,
+                    },
             } satisfies ServicesRouteState,
         })
     }
@@ -551,6 +569,7 @@ export default function Services({
             <ReservationView
                 checkIn={incomingReservation.checkIn}
                 checkOut={incomingReservation.checkOut}
+                paidDays={incomingReservation.paidDays}
                 roomGuests={incomingReservation.rooms}
                 roomChoices={incomingReservation.roomChoices}
             />
@@ -563,12 +582,10 @@ export default function Services({
                         aria-hidden="true"
                         className="pointer-events-none absolute -top-28 -bottom-12 -left-[100vw] right-0 hidden bg-[#006dfc] lg:block"
                     />
-                    <div
-                        className="hide-scrollbar relative space-y-4 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:overscroll-contain lg:py-6 lg:pr-6 lg:pl-4"
-                        data-lenis-prevent
-                    >
+                    <div className="relative space-y-4 lg:py-6 lg:pr-6 lg:pl-4">
                     <BookingCalendarPanel
                         fields={stayFields}
+                        hasSelectedRooms={hasSelectedRooms}
                         onChange={updateStayFields}
                         roomGuests={roomGuests}
                         setRoomGuests={setRoomGuests}
@@ -587,84 +604,140 @@ export default function Services({
 
                     <section
                         aria-labelledby="selected-stays-heading"
-                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
+                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)]"
                     >
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                    Your selection
+                                <p className="font-poppins text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs lg:text-sm">
+                                    Your stay
                                 </p>
                                 <h2
                                     id="selected-stays-heading"
-                                    className="mt-1 text-sm font-semibold text-slate-900"
+                                    className="mt-1 font-jakarta text-sm font-semibold tracking-[-0.01em] text-slate-950 sm:text-base"
                                 >
-                                    {hasRooms
-                                        ? `${selectedStays.length} room${
-                                              selectedStays.length === 1 ? '' : 's'
-                                          } ready`
-                                        : 'No rooms selected yet'}
+                                    {assignedRooms.length === 1
+                                        ? '1 room in this stay'
+                                        : `${assignedRooms.length} rooms in this stay`}
                                 </h2>
                             </div>
                             <span
                                 aria-hidden="true"
-                                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f5f9ff] text-[#006dfc]"
+                                className="shrink-0 border-b-2 border-[#006dfc] pb-0.5 font-jakarta text-xs font-semibold tabular-nums text-[#006dfc] sm:text-sm"
                             >
-                                <BedDouble className="size-5" />
+                                {String(assignedRooms.length).padStart(2, '0')}
                             </span>
                         </div>
 
-                        {hasRooms ? (
-                            <ul className="mt-3 space-y-2">
-                                {selectedStays.slice(0, 3).map((stay) => (
-                                    <li
-                                        key={stay.id}
-                                        className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 bg-white p-2"
-                                    >
-                                        <img
-                                            src={stay.image || wholeVilla}
-                                            alt=""
-                                            loading="lazy"
-                                            className="size-11 shrink-0 rounded-lg border border-slate-100 object-cover"
-                                        />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-[13px] font-semibold text-slate-800">
-                                                {stay.title}
-                                            </p>
-                                            <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                                                {stay.category === 'exclusive'
-                                                    ? 'Whole villa'
-                                                    : 'Private room'}{' '}
-                                                · {money(stay.price)}/night
-                                            </p>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
+                        <div className="mt-3 border-y border-slate-100 py-2.5">
+                            {hasDates ? (
+                                <>
+                                    <p className="font-jakarta text-xs leading-relaxed text-slate-900 sm:text-sm">
+                                        {formatStayDateTime(checkIn, {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: 'numeric',
+                                            minute: '2-digit',
+                                        })}
+                                        <span aria-hidden="true" className="px-1.5 text-slate-300">
+                                            →
+                                        </span>
+                                        {formatStayDateTime(checkOut, {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: 'numeric',
+                                            minute: '2-digit',
+                                        })}
+                                    </p>
+                                    <p className="mt-1 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                                        {formatPaidDays(paidDays)} · {assignedGuestCount} guest
+                                        {assignedGuestCount === 1 ? '' : 's'} · PHP
+                                    </p>
+                                </>
+                            ) : (
+                                <p className="font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                                    Set your dates to see room pricing.
+                                </p>
+                            )}
+                        </div>
+
+                        {assignedRooms.length > 0 ? (
+                            <ol className="divide-y divide-slate-100">
+                                {assignedRooms.slice(0, 3).map(({ room, stay, index }) => {
+                                    const guests = room.adults + room.kids
+                                    const lineTotal = hasDates
+                                        ? getReservationPrice(stay, checkIn, paidDays, guests).total
+                                        : null
+
+                                    return (
+                                        <li
+                                            key={`${stay.id}-${index}`}
+                                            className="flex min-w-0 items-start gap-3 py-3"
+                                        >
+                                            <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-[#eff6ff] font-jakarta text-xs font-semibold tabular-nums text-[#006dfc] ring-1 sm:text-sm ring-inset ring-[#d7e6ff]">
+                                                {String(index + 1).padStart(2, '0')}
+                                            </span>
+                                            <img
+                                                src={stay.image || wholeVilla}
+                                                alt=""
+                                                loading="lazy"
+                                                className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-inset ring-black/5"
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="break-words font-jakarta text-xs leading-relaxed text-slate-950 sm:text-sm">
+                                                    {stay.title}
+                                                </p>
+                                                <p className="mt-1 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                                                    {stay.category === 'exclusive'
+                                                        ? 'Whole villa'
+                                                        : 'Private room'}{' '}
+                                                    · {guests} guest{guests === 1 ? '' : 's'}
+                                                </p>
+                                                {unavailableRoomIds.includes(stay.id) && (
+                                                    <p className="mt-1 font-poppins text-[13px] leading-relaxed text-rose-600 sm:text-sm">
+                                                        Unavailable for these dates
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {lineTotal !== null && (
+                                                <strong className="shrink-0 font-jakarta text-xs font-semibold tabular-nums text-slate-900 sm:text-sm">
+                                                    {money(lineTotal)}
+                                                </strong>
+                                            )}
+                                        </li>
+                                    )
+                                })}
+                            </ol>
                         ) : (
-                            <p className="mt-3 rounded-xl border border-dashed border-[#d7e6ff] bg-[#f5f9ff] p-3 text-[11px] leading-5 text-slate-600">
-                                Pick a private room or the whole villa on the right
-                                to build your stay.
+                            <p className="mt-3 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                                Rooms you add from the list will appear here.
                             </p>
                         )}
 
-                        {selectedStays.length > 3 && (
-                            <p className="mt-2 text-[11px] text-slate-500">
-                                +{selectedStays.length - 3} more selected
+                        {assignedRooms.length > 3 && (
+                            <p className="pt-2 font-poppins text-xs text-slate-500 sm:text-sm">
+                                +{assignedRooms.length - 3} more rooms in this stay
                             </p>
                         )}
+
                         {bookingSummary.lines > 0 && (
-                            <div className="mt-3 rounded-xl border border-[#d7e6ff] bg-[#f5f9ff] p-3">
-                                <div className="flex items-center justify-between gap-3">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                        Estimated total
-                                    </p>
-                                    <p className="text-sm font-semibold text-[#006dfc]">
+                            <div className="mt-1 border-t border-slate-100 pt-3" aria-live="polite">
+                                <div className="flex items-end justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="font-poppins text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs lg:text-sm">
+                                            Estimated total
+                                        </p>
+                                        <p className="mt-1 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                                            {bookingSummary.lines} room
+                                            {bookingSummary.lines === 1 ? '' : 's'} · {assignedGuestCount} guest
+                                            {assignedGuestCount === 1 ? '' : 's'}
+                                        </p>
+                                    </div>
+                                    <strong className="shrink-0 font-jakarta text-xl font-semibold tracking-[-0.02em] tabular-nums text-[#006dfc]">
                                         {money(bookingSummary.total)}
-                                    </p>
+                                    </strong>
                                 </div>
-                                <p className="mt-1 text-[11px] leading-4 text-slate-500">
-                                    {nights} night{nights === 1 ? '' : 's'} · {bookingSummary.lines} room
-                                    {bookingSummary.lines === 1 ? '' : 's'} · final amount shown at reservation
+                                <p className="mt-2 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-400">
+                                    Final amount is confirmed on the reservation page.
                                 </p>
                             </div>
                         )}
@@ -672,73 +745,55 @@ export default function Services({
 
                     <section
                         aria-labelledby="booking-guide-heading"
-                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
+                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)]"
                     >
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                            How it works
-                        </p>
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="font-poppins text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs lg:text-sm">
+                                How it works
+                            </p>
+                            <p className="font-poppins text-xs font-semibold text-[#006dfc] sm:text-sm">
+                                2 steps
+                            </p>
+                        </div>
                         <h2 id="booking-guide-heading" className="sr-only">
-                            Booking progress
+                            Booking guide
                         </h2>
-                        <ol className="mt-3 space-y-3">
+                        <p className="mt-2 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                            Choose rooms first — dates appear after your first room.
+                        </p>
+                        <ul className="mt-3 space-y-3 border-t border-slate-100 pt-3">
                             {[
-                                {
-                                    title: 'Set your stay time',
-                                    description:
-                                        'Enter check-in and check-out date and time in PHT.',
-                                },
                                 {
                                     title: 'Pick your rooms',
                                     description:
                                         'Select a private room or the whole villa.',
                                 },
                                 {
+                                    title: 'Set arrival and paid days',
+                                    description: PAID_DAY_HINT,
+                                },
+                                {
                                     title: 'Review and continue',
                                     description:
                                         'Your choices carry over to the reservation page.',
                                 },
-                            ].map((step, index) => {
-                                const done = index < activeBookingStep
-                                const active = index === activeBookingStep
-
-                                return (
-                                    <li key={step.title} className="flex gap-3">
-                                        <span
-                                            className={`mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${
-                                                done
-                                                    ? 'bg-[#006dfc] text-white'
-                                                    : active
-                                                      ? 'border border-[#006dfc] bg-white text-[#006dfc]'
-                                                      : 'bg-slate-100 text-slate-400'
-                                            }`}
-                                        >
-                                            {done ? (
-                                                <Check
-                                                    className="size-3.5"
-                                                    aria-hidden="true"
-                                                />
-                                            ) : (
-                                                `0${index + 1}`
-                                            )}
-                                        </span>
-                                        <div className="min-w-0">
-                                            <p
-                                                className={`text-xs font-semibold ${
-                                                    active || done
-                                                        ? 'text-slate-900'
-                                                        : 'text-slate-500'
-                                                }`}
-                                            >
-                                                {step.title}
-                                            </p>
-                                            <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
-                                                {step.description}
-                                            </p>
-                                        </div>
-                                    </li>
-                                )
-                            })}
-                        </ol>
+                            ].map((step) => (
+                                <li key={step.title} className="flex gap-3">
+                                    <span
+                                        className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#006dfc]"
+                                        aria-hidden="true"
+                                    />
+                                    <div className="min-w-0">
+                                        <p className="font-jakarta text-xs font-semibold tracking-[-0.01em] text-slate-950 sm:text-sm">
+                                            {step.title}
+                                        </p>
+                                        <p className="mt-0.5 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                                            {step.description}
+                                        </p>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
                     </section>
                     </div>
                 </div>
@@ -775,11 +830,11 @@ export default function Services({
                     <>
                 <header className="mb-7 sm:mb-9">
                     <div>
-                        <h1 className="font-poppins text-2xl font-bold leading-tight tracking-[-0.03em] text-[#171717] sm:text-3xl">
+                        <h1 className="font-jakarta text-xl font-bold leading-[1.2] tracking-[-0.02em] text-[#171717] sm:text-2xl lg:text-3xl">
                             Choose your stay
                         </h1>
-                        <p className="mt-1.5 max-w-2xl text-xs leading-5 text-slate-500 sm:text-sm">
-                            Add a private room or choose the whole villa. Set your check-in and check-out date and time in PHT.
+                        <p className="mt-1.5 max-w-2xl font-poppins text-[13px] leading-relaxed text-slate-500 sm:text-sm lg:text-base">
+                            Add a private room or choose the whole villa. Dates appear after your first room, in PHT.
                         </p>
                     </div>
 
@@ -794,7 +849,7 @@ export default function Services({
                                 type="button"
                                 onClick={() => setActiveFilter(value as 'all' | StayCategory)}
                                 aria-pressed={activeFilter === value}
-                                className={`min-h-11 rounded-full border px-4 py-2 text-xs font-medium shadow-sm transition sm:text-sm ${
+                                className={`min-h-11 rounded-full border px-4 py-2 font-poppins text-[13px] font-medium shadow-sm transition sm:text-sm lg:text-base ${
                                     activeFilter === value
                                         ? 'border-[#006dfc] bg-[#006dfc] text-white'
                                         : 'border-slate-300/80 bg-white/75 text-slate-700 backdrop-blur-md hover:border-[#006dfc]/50 hover:text-[#006dfc]'
@@ -855,11 +910,13 @@ export default function Services({
                 aria-live="polite"
                 className="mx-auto mt-24 max-w-7xl px-4 pt-6 font-poppins sm:px-7"
             >
-                <p className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-900">
-                    <strong>Booking request:</strong>{' '}
+                <p className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 font-poppins text-[13px] text-blue-900 sm:text-sm lg:text-base">
+                    <strong className="font-jakarta">Booking request:</strong>{' '}
                     {formatStayDateTime(incomingBooking.checkIn)}
                     {' – '}
                     {formatStayDateTime(incomingBooking.checkOut)}
+                    {' · '}
+                    {formatPaidDays(incomingBooking.paidDays)}
                     {' · '}
                     {incomingBooking.rooms.reduce((total, room) => total + room.adults, 0)} adults,{' '}
                     {incomingBooking.rooms.reduce((total, room) => total + room.kids, 0)} kids
@@ -871,10 +928,11 @@ export default function Services({
         {bookingOnly && (
             <ServicesFooter
                 fields={stayFields}
+                hasSelectedRooms={hasSelectedRooms}
                 onChange={updateStayFields}
                 checkIn={checkIn}
                 checkOut={checkOut}
-                nights={nights}
+                paidDays={paidDays}
                 roomGuests={roomGuests}
                 setRoomGuests={setRoomGuests}
                 roomChoices={roomChoices}
@@ -885,6 +943,7 @@ export default function Services({
                 checkingAvailability={checkingAvailability}
                 onUnavailableDate={handleUnavailableDate}
                 onCheckAvailability={handleCheckAvailability}
+                onBrowseRooms={() => navigate('/services')}
             />
         )}
         </>

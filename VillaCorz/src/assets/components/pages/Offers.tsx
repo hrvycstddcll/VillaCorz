@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { money } from '../../../lib/format'
+import { phtDateKey } from '../../../lib/stayDateTime'
 import type { Service } from '../../../services/types'
 import { getDashboard } from '../../../services/dashboardService'
 import {
@@ -407,6 +408,18 @@ const Offers = () => {
             ? summary?.availability[String(selectedCalendar.id)] ?? []
             : []
         availability.forEach((booking) => {
+            const startKey =
+                phtDateKey(booking.check_in) || booking.check_in.slice(0, 10)
+
+            if (booking.paid_days != null && booking.paid_days > 0) {
+                const cursor = new Date(`${startKey}T00:00:00Z`)
+                for (let day = 0; day < booking.paid_days; day += 1) {
+                    dates.add(cursor.toISOString().slice(0, 10))
+                    cursor.setUTCDate(cursor.getUTCDate() + 1)
+                }
+                return
+            }
+
             const cursor = new Date(`${booking.check_in}T00:00:00`)
             const end = new Date(`${booking.check_out}T00:00:00`)
             while (cursor < end) {
@@ -467,14 +480,14 @@ const Offers = () => {
         },
         {
             key: 'additional-head',
-            label: 'Extra head / night',
+            label: 'Extra head / paid day',
             align: 'right',
             className: 'hidden xl:table-cell',
             render: (service) =>
                 service.pax != null ? (
                     <span className="font-mono text-xs tabular-nums">
-                        {money(Number(service.additional_head_weekday_price ?? 50))} /{' '}
-                        {money(Number(service.additional_head_weekend_price ?? 100))}
+                        {money(Number(service.additional_head_weekday_price ?? 0))} /{' '}
+                        {money(Number(service.additional_head_weekend_price ?? 0))}
                     </span>
                 ) : (
                     <span className="text-xs text-slate-400">—</span>
@@ -670,6 +683,7 @@ const Offers = () => {
                     ) : services.length === 0 ? (
                         <AdminEmptyState
                             icon={Plus}
+                            state="empty"
                             heading="No offers yet"
                             subtitle="Add the first room or whole-villa offer to begin."
                             ctaLabel="Create an offer"
@@ -678,6 +692,7 @@ const Offers = () => {
                     ) : visibleServices.length === 0 ? (
                         <AdminEmptyState
                             icon={Search}
+                            state="empty"
                             heading="No matching offers"
                             subtitle="Try another search or status filter."
                             ctaLabel="Clear filters"
@@ -728,19 +743,17 @@ const Offers = () => {
                                         </div>
                                         {service.pax != null && (
                                             <div className="mt-2 flex items-baseline justify-between gap-3 text-[10px] text-slate-500">
-                                                <span>Extra head / night</span>
+                                                <span>Extra head / paid day</span>
                                                 <span className="font-mono tabular-nums">
                                                     {money(
                                                         Number(
-                                                            service.additional_head_weekday_price ??
-                                                                50,
+                                                            service.additional_head_weekday_price ?? 0,
                                                         ),
                                                     )}{' '}
                                                     weekday /{' '}
                                                     {money(
                                                         Number(
-                                                            service.additional_head_weekend_price ??
-                                                                100,
+                                                            service.additional_head_weekend_price ?? 0,
                                                         ),
                                                     )}{' '}
                                                     weekend
@@ -776,7 +789,7 @@ const Offers = () => {
                                 />
                             </div>
                             <p className="mt-3 text-[10px] leading-5 text-slate-500">
-                                30-day performance reflects paid bookings and stays in the selected window. Archive keeps offer history; delete permanently removes the offer.
+                                30-day performance reflects paid bookings and paid days in the selected window. Archive keeps offer history; delete permanently removes the offer.
                             </p>
                         </div>
                     )}

@@ -15,6 +15,8 @@ use App\Models\Service;
 use App\Models\ServiceReview;
 use App\Models\User;
 use App\Models\UserPhoneNumber;
+use App\Support\StayPolicy;
+use App\Support\StayTime;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -177,10 +179,14 @@ class DemoCleanReseedSeeder extends DemoReseedSeeder
             }
 
             $reference = (string) $proofReferences->get($review->id);
-            $checkOut = now()->subDays(6 + (($slot % 10) * 3))->startOfDay();
-            $checkIn = $checkOut->copy()->subDays(2);
+            $paidDays = 2;
+            $checkIn = StayTime::parseLocal(
+                now()->subDays(6 + (($slot % 10) * 3))->subDays($paidDays)->toDateString(),
+                StayPolicy::defaultCheckInTime(),
+            );
+            $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
             $createdAt = $checkIn->copy()->subDays(4);
-            $total = (float) $service->price * 2;
+            $total = $this->stayTotal($service, $checkIn, $paidDays);
 
             $booking = Booking::create([
                 'user_id' => $customer->id,
@@ -190,7 +196,8 @@ class DemoCleanReseedSeeder extends DemoReseedSeeder
                 'contact_phone' => null,
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
-                'nights' => 2,
+                'paid_days' => $paidDays,
+                'nights' => $paidDays,
                 'adults' => 2,
                 'kids' => 0,
                 'subtotal' => $total,

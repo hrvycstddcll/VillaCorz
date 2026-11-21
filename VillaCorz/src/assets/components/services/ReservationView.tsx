@@ -23,6 +23,7 @@ import onlineBankLogo from '../../images/onlinebank.png'
 import { type ServicesRouteState, type Stay } from './shared'
 import {
     fieldsFromStay,
+    formatPaidDays,
     formatStayDateTime,
     getStayWindow,
 } from '../../../lib/stayDateTime'
@@ -30,11 +31,13 @@ import {
 export function ReservationView({
     checkIn,
     checkOut,
+    paidDays,
     roomGuests,
     roomChoices,
 }: {
     checkIn: string
     checkOut: string
+    paidDays: number
     roomGuests: RoomGuests[]
     roomChoices: Stay[]
 }) {
@@ -96,17 +99,17 @@ export function ReservationView({
         const stay = roomChoices.find((choice) => choice.id === room.stayId)
         return stay ? [{ room, stay }] : []
     })
-    const nights = useMemo(() => {
-        const stay = getStayWindow(fieldsFromStay(checkIn, checkOut))
-        return stay.nights || 1
-    }, [checkIn, checkOut])
+    const stayWindow = useMemo(
+        () => getStayWindow(fieldsFromStay(checkIn, checkOut, paidDays)),
+        [checkIn, checkOut, paidDays],
+    )
     const total = assignedRooms.reduce(
         (sum, { room, stay }) =>
             sum +
             getReservationPrice(
                 stay,
                 checkIn,
-                checkOut,
+                stayWindow.paidDays,
                 room.adults + room.kids,
             ).total,
         0,
@@ -202,6 +205,7 @@ export function ReservationView({
             const response = await createBooking(
                 {
                     check_in: checkIn,
+                    paid_days: stayWindow.paidDays,
                     check_out: checkOut,
                     rooms: selectedRooms.map((room) => ({
                         service_id: Number(room.stayId),
@@ -301,7 +305,7 @@ export function ReservationView({
             <div className="relative mx-auto grid max-w-5xl items-start gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] md:gap-6">
                 <nav
                     aria-label="Booking steps"
-                    className="col-span-full flex flex-wrap items-center gap-x-3 gap-y-2 text-xs"
+                    className="col-span-full flex flex-wrap items-center gap-x-3 gap-y-2 text-xs sm:text-sm lg:text-base"
                 >
                     <button
                         type="button"
@@ -311,12 +315,13 @@ export function ReservationView({
                                     booking: {
                                         checkIn,
                                         checkOut,
+                                        paidDays: stayWindow.paidDays,
                                         rooms: roomGuests,
                                     },
                                 } satisfies ServicesRouteState,
                             })
                         }
-                        className="inline-flex min-h-10 items-center rounded-lg bg-[#006dfc] px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                        className="inline-flex min-h-10 items-center rounded-lg bg-[#006dfc] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] sm:text-sm lg:text-base transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
                     >
                         Back to services
                     </button>
@@ -333,7 +338,7 @@ export function ReservationView({
                 >
                     <h1
                         id="reservation-title"
-                        className="mb-4 text-left text-lg font-semibold text-slate-800"
+                        className="mb-4 text-left font-jakarta text-lg font-semibold text-slate-800 sm:text-xl lg:text-2xl"
                     >
                         Your reservation
                     </h1>
@@ -348,30 +353,32 @@ export function ReservationView({
                             <div
                                 role="img"
                                 aria-label={`${assignedRooms[0].stay.title} photo unavailable`}
-                                className="grid h-40 place-items-center rounded-lg bg-slate-100 text-sm text-slate-500 sm:h-48"
+                                className="grid h-40 place-items-center rounded-lg bg-slate-100 text-xs text-slate-500 sm:h-48 sm:text-sm lg:text-base"
                             >
                                 Photo unavailable
                             </div>
                         ))}
-                    <p className="mt-3 border-b border-slate-100 pb-2 text-xs font-medium text-slate-500">
+                    <p className="mt-3 border-b border-slate-100 pb-2 text-xs font-medium text-slate-500 sm:text-sm lg:text-base">
                         Selected accommodations
                     </p>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-b border-slate-100 py-3 text-xs text-slate-600 sm:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-b border-slate-100 py-3 text-xs text-slate-600 sm:grid-cols-4 sm:text-sm lg:text-base">
                         <div>
                             <span className="block">Check-in</span>
-                            <strong className="text-sm font-semibold text-slate-800">{dateLabel(checkIn)}</strong>
+                            <strong className="font-jakarta text-xs font-semibold text-slate-800 sm:text-sm lg:text-base">{dateLabel(checkIn)}</strong>
                         </div>
                         <div>
                             <span className="block">Check-out</span>
-                            <strong className="text-sm font-semibold text-slate-800">{dateLabel(checkOut)}</strong>
+                            <strong className="font-jakarta text-xs font-semibold text-slate-800 sm:text-sm lg:text-base">{dateLabel(checkOut)}</strong>
                         </div>
                         <div>
-                            <span className="block">Nights</span>
-                            <strong className="text-sm font-semibold text-slate-800">{nights}</strong>
+                            <span className="block">Paid days</span>
+                            <strong className="font-jakarta text-xs font-semibold text-slate-800 sm:text-sm lg:text-base">
+                                {formatPaidDays(stayWindow.paidDays)}
+                            </strong>
                         </div>
                         <div>
                             <span className="block">Guest</span>
-                            <strong className="text-sm font-semibold text-slate-800">
+                            <strong className="font-jakarta text-xs font-semibold text-slate-800 sm:text-sm lg:text-base">
                                 {roomGuests.reduce(
                                     (sum, room) => sum + room.adults + room.kids,
                                     0,
@@ -385,7 +392,7 @@ export function ReservationView({
                             const linePricing = getReservationPrice(
                                 stay,
                                 checkIn,
-                                checkOut,
+                                stayWindow.paidDays,
                                 room.adults + room.kids,
                             )
 
@@ -394,7 +401,7 @@ export function ReservationView({
                                     key={`${stay.id}-${index}`}
                                     className="flex min-w-0 items-start justify-between gap-3 py-3"
                                 >
-                                    <div className="min-w-0 text-xs leading-5 text-slate-600">
+                                    <div className="min-w-0 text-[13px] leading-relaxed text-slate-600 sm:text-sm lg:text-base">
                                         <p className="break-words font-semibold text-[#006dfc]">
                                             {stay.title} #{index + 1}
                                         </p>
@@ -415,7 +422,7 @@ export function ReservationView({
                                         <p>Not refundable</p>
                                         <p>Payment Center / E-Wallet</p>
                                     </div>
-                                    <strong className="shrink-0 text-sm font-semibold tabular-nums text-slate-700 sm:text-base">
+                                    <strong className="shrink-0 font-jakarta text-sm font-semibold tabular-nums text-slate-700 sm:text-base lg:text-lg">
                                         {money(linePricing.total)}
                                     </strong>
                                 </div>
@@ -434,15 +441,15 @@ export function ReservationView({
                                 className="size-8 object-contain"
                             />
                             <div>
-                                <p                                 className="text-sm font-semibold text-slate-700">
+                                <p                                 className="text-xs font-semibold text-slate-700 sm:text-sm lg:text-base">
                                     {paymentMethod}
                                 </p>
                                 {maskedPaymentNumber ? (
-                                    <p className="text-xs text-slate-500">
+                                    <p className="text-xs text-slate-500 sm:text-sm lg:text-base">
                                         {maskedPaymentNumber}
                                     </p>
                                 ) : (
-                                    <p className="text-xs leading-5 text-slate-500">
+                                    <p className="text-[13px] leading-relaxed text-slate-500 sm:text-sm lg:text-base">
                                         <Link
                                             to="/account/settings"
                                             className="font-semibold text-[#006dfc] hover:underline"
@@ -458,7 +465,7 @@ export function ReservationView({
                             aria-haspopup="dialog"
                             aria-expanded={showPaymentMethods}
                             onClick={() => setShowPaymentMethods(true)}
-                            className="inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-sm font-semibold text-[#006dfc] hover:bg-slate-50 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                            className="inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-xs font-semibold text-[#006dfc] hover:bg-slate-50 sm:text-sm lg:text-base hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                         >
                             Change
                         </button>
@@ -481,12 +488,12 @@ export function ReservationView({
                             >
                                 <h2
                                     id="payment-method-title"
-                                    className="mb-4 text-left text-lg font-semibold text-slate-800"
+                                    className="mb-4 text-left font-jakarta text-lg font-semibold text-slate-800 sm:text-xl lg:text-2xl"
                                 >
                                     Payment Method
                                 </h2>
                                 {!maskedPaymentNumber && (
-                                    <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-5 text-amber-900">
+                                    <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-[13px] leading-relaxed text-amber-900 sm:text-sm lg:text-base">
                                         No mobile number linked yet.{' '}
                                         <Link
                                             to="/account/settings"
@@ -503,7 +510,7 @@ export function ReservationView({
                                         type="button"
                                         aria-expanded={isEWalletOpen}
                                         onClick={() => setIsEWalletOpen((open) => !open)}
-                                        className="flex min-h-11 w-full items-center justify-between bg-slate-50 px-3 py-2 text-left text-sm font-semibold text-slate-700"
+                                        className="flex min-h-11 w-full items-center justify-between bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-700 sm:text-sm lg:text-base"
                                     >
                                         <span className="flex items-center gap-2">
                                             <img
@@ -532,10 +539,10 @@ export function ReservationView({
                                                         className="h-5 w-7 shrink-0 object-contain"
                                                     />
                                                     <span className="min-w-0 flex-1">
-                                                        <span className="block text-sm font-semibold leading-tight text-slate-700">
+                                                        <span className="block text-xs font-semibold leading-tight text-slate-700 sm:text-sm lg:text-base">
                                                             {option.name}
                                                         </span>
-                                                        <span className="block text-xs leading-5 text-slate-500">
+                                                        <span className="block text-[13px] leading-relaxed text-slate-500 sm:text-sm lg:text-base">
                                                             {option.detail}
                                                         </span>
                                                     </span>
@@ -557,7 +564,7 @@ export function ReservationView({
                                         type="button"
                                         aria-expanded={isBankOpen}
                                         onClick={() => setIsBankOpen((open) => !open)}
-                                        className="flex min-h-11 w-full items-center justify-between bg-slate-50 px-3 py-2 text-left text-sm font-semibold text-slate-700"
+                                        className="flex min-h-11 w-full items-center justify-between bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-700 sm:text-sm lg:text-base"
                                     >
                                         <span className="flex items-center gap-2">
                                             <img
@@ -586,10 +593,10 @@ export function ReservationView({
                                                         className="h-5 w-7 shrink-0 object-contain"
                                                     />
                                                     <span className="min-w-0 flex-1">
-                                                        <span className="block text-sm font-semibold leading-tight text-slate-700">
+                                                        <span className="block text-xs font-semibold leading-tight text-slate-700 sm:text-sm lg:text-base">
                                                             {option.name}
                                                         </span>
-                                                        <span className="block text-xs leading-5 text-slate-500">
+                                                        <span className="block text-[13px] leading-relaxed text-slate-500 sm:text-sm lg:text-base">
                                                             {option.detail}
                                                         </span>
                                                     </span>
@@ -609,7 +616,7 @@ export function ReservationView({
                                 <button
                                     type="button"
                                     onClick={() => setShowPaymentMethods(false)}
-                                    className="mt-4 min-h-12 w-full rounded-lg bg-[#006dfc] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                                    className="mt-4 min-h-12 w-full rounded-lg bg-[#006dfc] px-4 text-[13px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] sm:text-sm lg:text-base transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
                                 >
                                     Confirm Payment Method
                                 </button>
@@ -617,8 +624,8 @@ export function ReservationView({
                         </div>
                     )}
                     <div className="mt-4 flex items-center justify-between rounded-lg border border-slate-100 p-3 shadow-[0_3px_12px_rgba(15,23,42,0.12)]">
-                        <span className="text-sm text-slate-600">Total payment</span>
-                        <strong className="text-xl font-semibold tabular-nums text-[#006dfc]">{money(total)}</strong>
+                        <span className="text-xs text-slate-600 sm:text-sm lg:text-base">Total payment</span>
+                        <strong className="font-jakarta text-xl font-semibold tabular-nums text-[#006dfc] sm:text-2xl lg:text-3xl">{money(total)}</strong>
                     </div>
                 </section>
 
@@ -628,11 +635,11 @@ export function ReservationView({
                 >
                     <h2
                         id="details-title"
-                        className="mb-3 text-lg font-semibold text-slate-800"
+                        className="mb-3 text-base font-semibold text-slate-800 sm:text-lg lg:text-xl"
                     >
                         Contact details
                     </h2>
-                    <p className="mb-5 text-sm leading-6 text-slate-600">
+                    <p className="mb-5 text-[13px] leading-relaxed text-slate-600 sm:text-sm lg:text-base">
                         {user
                             ? savedNumbers.length > 0
                                 ? 'Your name and email are prefilled from your account. Choose a saved phone number, or use another one for this booking.'
@@ -649,29 +656,29 @@ export function ReservationView({
                     >
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <label className="block space-y-1">
-                                <span className="block text-sm font-medium text-slate-700">First name <span aria-hidden="true">*</span></span>
+                                <span className="block text-xs font-medium text-slate-700 sm:text-sm lg:text-base">First name <span aria-hidden="true">*</span></span>
                                 <input
                                     required
                                     autoComplete="given-name"
                                     value={firstName}
                                     onChange={(event) => setFirstName(event.target.value)}
                                     readOnly={Boolean(user?.firstname)}
-                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] read-only:bg-slate-50 sm:text-sm"
+                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] sm:text-sm lg:text-base read-only:bg-slate-50"
                                 />
                             </label>
                             <label className="block space-y-1">
-                                <span className="block text-sm font-medium text-slate-700">Last name <span aria-hidden="true">*</span></span>
+                                <span className="block text-xs font-medium text-slate-700 sm:text-sm lg:text-base">Last name <span aria-hidden="true">*</span></span>
                                 <input
                                     required
                                     autoComplete="family-name"
                                     value={lastName}
                                     onChange={(event) => setLastName(event.target.value)}
                                     readOnly={Boolean(user?.lastname)}
-                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] read-only:bg-slate-50 sm:text-sm"
+                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] sm:text-sm lg:text-base read-only:bg-slate-50"
                                 />
                             </label>
                             <label className="block space-y-1 sm:col-span-2">
-                                <span className="block text-sm font-medium text-slate-700">Email <span aria-hidden="true">*</span></span>
+                                <span className="block text-xs font-medium text-slate-700 sm:text-sm lg:text-base">Email <span aria-hidden="true">*</span></span>
                                 <input
                                     required
                                     type="email"
@@ -679,12 +686,12 @@ export function ReservationView({
                                     value={email}
                                     onChange={(event) => setEmail(event.target.value)}
                                     readOnly={Boolean(user?.email)}
-                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] read-only:bg-slate-50 sm:text-sm"
+                                    className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] sm:text-sm lg:text-base read-only:bg-slate-50"
                                 />
                             </label>
                         </div>
                         <div className="space-y-1">
-                            <span className="block text-sm font-medium text-slate-700">
+                            <span className="block text-xs font-medium text-slate-700 sm:text-sm lg:text-base">
                                 Phone number <span aria-hidden="true">*</span>
                             </span>
                             {savedNumbers.length > 0 ? (
@@ -696,7 +703,7 @@ export function ReservationView({
                                             setPhoneChoice(event.target.value)
                                             setSubmitError('')
                                         }}
-                                        className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] sm:text-sm"
+                                        className="min-h-12 w-full rounded-md border border-slate-200 bg-white px-3 text-base text-slate-800 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] sm:text-sm lg:text-base"
                                     >
                                         {savedNumbers.map((phone) => (
                                             <option key={phone.id} value={String(phone.id)}>
@@ -708,7 +715,7 @@ export function ReservationView({
                                         <option value="new">Use another number</option>
                                     </select>
                                     {usingSavedNumber ? (
-                                        <p className="text-xs leading-5 text-slate-500">
+                                        <p className="text-[13px] leading-relaxed text-slate-500 sm:text-sm lg:text-base">
                                             Saved to your account. Choose “Use another number” to
                                             book with a different one.
                                         </p>
@@ -721,7 +728,7 @@ export function ReservationView({
                                                 required
                                                 className="min-h-12 rounded-md"
                                             />
-                                            <p className="text-xs leading-5 text-slate-500">
+                                            <p className="text-[13px] leading-relaxed text-slate-500 sm:text-sm lg:text-base">
                                                 Booking-only number. The +63 prefix is added
                                                 automatically and the number is stored in
                                                 international format.
@@ -738,14 +745,14 @@ export function ReservationView({
                                         required
                                         className="min-h-12 rounded-md"
                                     />
-                                    <p className="text-xs leading-5 text-slate-500">
+                                    <p className="text-[13px] leading-relaxed text-slate-500 sm:text-sm lg:text-base">
                                         Use your 10-digit PH mobile number (starting with
                                         9). The +63 prefix is added automatically.
                                     </p>
                                 </>
                             )}
                         </div>
-                        <div className="text-xs leading-5 text-slate-600">
+                        <div className="text-[13px] leading-relaxed text-slate-600 sm:text-sm lg:text-base">
                             <label className="flex min-h-11 items-start gap-3 rounded-md py-2">
                                 <input required type="checkbox" className="mt-0.5 size-5 shrink-0 accent-[#006dfc]" />
                                 <span>
@@ -760,7 +767,7 @@ export function ReservationView({
                         {submitError && (
                             <p
                                 role="alert"
-                                className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-sm leading-5 text-rose-800"
+                                className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-[13px] leading-relaxed text-rose-800"
                             >
                                 {submitError}
                             </p>
@@ -770,7 +777,7 @@ export function ReservationView({
                             onClick={continueToPayment}
                             disabled={isSubmitting}
                             aria-busy={isSubmitting}
-                            className="min-h-12 w-full rounded-lg bg-[#006dfc] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none"
+                            className="min-h-12 w-full rounded-lg bg-[#006dfc] px-4 text-[13px] font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] sm:text-sm lg:text-base transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none"
                         >
                             {isSubmitting ? 'Creating your booking…' : 'Continue to payment'}
                         </button>

@@ -10,6 +10,7 @@ use App\Models\ServiceImage;
 use App\Models\ServiceReview;
 use App\Models\ServiceReviewImage;
 use App\Models\User;
+use App\Support\StayPolicy;
 use Database\Seeders\DemoReseedSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -59,6 +60,18 @@ class DemoSeederTest extends TestCase
 
         $this->assertGreaterThan(0, Booking::where('status', 'cancelled')->count());
         $this->assertGreaterThan(0, CancellationRequest::count());
+
+        $paidBookings = Booking::whereNotNull('paid_days')->get();
+        $this->assertGreaterThan(0, $paidBookings->count());
+        foreach ($paidBookings as $booking) {
+            $this->assertGreaterThanOrEqual(1, (int) $booking->paid_days);
+            $this->assertSame((int) $booking->paid_days, (int) $booking->nights);
+            $this->assertTrue(StayPolicy::isValidStay(
+                $booking->check_in,
+                $booking->check_out,
+                (int) $booking->paid_days,
+            ));
+        }
 
         $revenue = (float) Payment::query()
             ->where('status', 'paid')

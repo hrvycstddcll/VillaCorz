@@ -1,16 +1,11 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Dashboard from './assets/components/pages/Dashboard'
 import { getDashboard } from './services/dashboardService'
-import { adjustServicePrice } from './services/serviceService'
 import type { DashboardSummary } from './services/types'
 
 vi.mock('./services/dashboardService', () => ({
     getDashboard: vi.fn(),
-}))
-
-vi.mock('./services/serviceService', () => ({
-    adjustServicePrice: vi.fn(),
 }))
 
 const summary: DashboardSummary = {
@@ -105,53 +100,51 @@ const summary: DashboardSummary = {
         ],
     },
     dropoff_reasons: [],
-    pricing_insights: {
+    demand_forecast: {
         model: 'sarimax',
         forecast_preset: '30',
         forecast_window: { start: '2026-11-18', end: '2026-12-17' },
-        forecast: [
-            {
-                date: '2026-11-18',
-                label: 'Nov 18',
-                expected_bookings: 1.2,
-                expected_occupancy: 72,
-                factor: 1,
-                is_weekend: false,
-                holiday: null,
-            },
-        ],
+        forecast: Array.from({ length: 30 }, (_, index) => ({
+            date: new Date(Date.UTC(2026, 10, 18 + index))
+                .toISOString()
+                .slice(0, 10),
+            label: `Day ${index + 1}`,
+            expected_room_nights: 1.2,
+            expected_occupancy: index === 0 ? 72 : 40,
+            factor: 1,
+            is_weekend: false,
+            holiday: null,
+        })),
         holiday_days: 0,
         average_forecast_occupancy: 72,
+        expected_room_nights: 36,
+        peak_day: {
+            date: '2026-11-18',
+            label: 'Day 1',
+            expected_occupancy: 72,
+        },
         accuracy: {
             window_days: 7,
             model: 'sarimax',
             mae: 0.4,
             mape: 12.5,
+            wape: 9.8,
             points: [
                 {
                     date: '2026-11-17',
                     label: 'Nov 17',
-                    actual_bookings: 2,
-                    predicted_bookings: 1.6,
+                    actual_room_nights: 2,
+                    predicted_room_nights: 1.6,
                 },
             ],
         },
-        recommendations: [
+        factors: [
             {
-                service_id: 1,
-                name: 'Seaview Room',
-                current_price: 2500,
-                suggested_price: 3000,
-                change_percent: 20,
-                direction: 'increase',
-                confidence: 'medium',
-                current_occupancy: 60,
-                forward_occupancy: 40,
-                demand_score: 62,
-                reasons: ['Strong forward demand'],
+                key: 'history',
+                label: '90-day stay history',
+                impact: 'SARIMAX learns from paid-day demand per day',
             },
         ],
-        factors: [],
     },
 }
 
@@ -177,7 +170,7 @@ describe('Dashboard', () => {
             </MemoryRouter>,
         )
 
-        await screen.findByRole('button', { name: 'Review adjustment' })
+        await screen.findByRole('heading', { name: 'Demand outlook' })
         const metrics = screen.getAllByRole('group', { name: 'Key metrics' })[0]
         expect(within(metrics).getByText('New bookings')).toBeInTheDocument()
         expect(within(metrics).getByText('Occupancy')).toBeInTheDocument()
@@ -196,7 +189,7 @@ describe('Dashboard', () => {
             </MemoryRouter>,
         )
 
-        await screen.findByRole('button', { name: 'Review adjustment' })
+        await screen.findByRole('heading', { name: 'Demand outlook' })
         const metrics = screen.getAllByRole('group', { name: 'Key metrics' })[0]
         const churnLink = await within(metrics).findByRole('link', { name: /Churn/ })
 
@@ -226,7 +219,7 @@ describe('Dashboard', () => {
         expect(within(table).getAllByRole('row')).toHaveLength(6)
     })
 
-    it('uses one chart for actual-vs-predicted and price prediction views', async () => {
+    it('uses one chart for backtest accuracy and occupancy outlook views', async () => {
         render(
             <MemoryRouter>
                 <Dashboard />
@@ -235,53 +228,43 @@ describe('Dashboard', () => {
 
         expect(
             await screen.findByRole('group', {
-                name: /Actual and predicted bookings/,
+                name: /Actual and predicted paid days/,
             }),
         ).toBeInTheDocument()
 
-        fireEvent.click(screen.getByRole('button', { name: 'Price prediction' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Occupancy outlook' }))
 
         expect(
             await screen.findByRole('group', {
-                name: /Projected base prices/,
+                name: /Forecast occupancy/,
             }),
         ).toBeInTheDocument()
         expect(
             screen.queryByRole('group', {
-                name: /Actual and predicted bookings/,
+                name: /Actual and predicted paid days/,
             }),
         ).not.toBeInTheDocument()
         expect(
-            screen.getByRole('heading', { name: 'Price recommendations' }),
+            screen.getByRole('heading', { name: 'Occupancy forecast' }),
         ).toBeInTheDocument()
     })
 
-    it('only changes an offer price after explicit confirmation', async () => {
-        vi.mocked(adjustServicePrice).mockResolvedValue({
-            data: {
-                success: true,
-                message: 'Offer price updated.',
-                data: {} as never,
-            },
-        } as Awaited<ReturnType<typeof adjustServicePrice>>)
-
+    it('summarises forecast occupancy and paid days without price controls', async () => {
         render(
             <MemoryRouter>
                 <Dashboard />
             </MemoryRouter>,
         )
 
-        fireEvent.click(await screen.findByRole('button', { name: 'Review adjustment' }))
-        expect(screen.getByRole('dialog')).toHaveTextContent(
-            'Change the base price from ₱2,500 to ₱3,000',
-        )
-        expect(adjustServicePrice).not.toHaveBeenCalled()
+        await screen.findByRole('heading', { name: 'Demand outlook' })
 
-        fireEvent.click(screen.getByRole('button', { name: 'Confirm price update' }))
-
-        await waitFor(() => {
-            expect(adjustServicePrice).toHaveBeenCalledWith(1, 3000)
-        })
-        expect(await screen.findByText('Offer price updated.')).toBeInTheDocument()
+        expect(screen.getByText('72.0%')).toBeInTheDocument()
+        expect(screen.getByText('36')).toBeInTheDocument()
+        expect(screen.getByText('Day 1')).toBeInTheDocument()
+        expect(screen.getByText(/WAPE 9.8%/)).toBeInTheDocument()
+        expect(screen.queryByText(/Price recommendations/)).not.toBeInTheDocument()
+        expect(
+            screen.queryByRole('button', { name: 'Review adjustment' }),
+        ).not.toBeInTheDocument()
     })
 })

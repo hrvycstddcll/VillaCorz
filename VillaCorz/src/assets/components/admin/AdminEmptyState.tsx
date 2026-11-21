@@ -1,5 +1,9 @@
 import type { ComponentType, SVGProps } from 'react'
 import { Link } from 'react-router-dom'
+import {
+    stateMascots,
+    type StateKind,
+} from '../ui/ModalComponents/stateModalConfig'
 
 type LucideIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>
 
@@ -7,6 +11,7 @@ type AdminEmptyStateProps = {
     icon: LucideIcon
     heading: string
     subtitle: string
+    state?: StateKind
     ctaLabel?: string
     onAction?: () => void
     href?: string
@@ -19,17 +24,29 @@ const AdminEmptyState = ({
     icon: Icon,
     heading,
     subtitle,
+    state,
     ctaLabel,
     onAction,
     href,
 }: AdminEmptyStateProps) => (
     <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
-        <span
-            className="grid size-12 place-items-center rounded-full bg-slate-100 text-slate-500"
-            aria-hidden="true"
-        >
-            <Icon className="size-5" />
-        </span>
+        {state ? (
+            <img
+                src={stateMascots[state]}
+                alt=""
+                aria-hidden="true"
+                className="size-20 object-contain"
+                loading="lazy"
+                decoding="async"
+            />
+        ) : (
+            <span
+                className="grid size-12 place-items-center rounded-full bg-slate-100 text-slate-500"
+                aria-hidden="true"
+            >
+                <Icon className="size-5" />
+            </span>
+        )}
         <p className="mt-4 font-jakarta-serif text-xl font-semibold text-slate-900">
             {heading}
         </p>

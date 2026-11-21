@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Loader2, Paperclip, Send } from 'lucide-react'
 import { getApiErrorMessage } from '../../../../lib/apiError'
 import { requestCancellation } from '../../../../services/bookingService'
+import StateModal from './StateModal'
 
 const focusRing =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
@@ -44,6 +45,18 @@ const CancelRequestModal = ({
 
 
     if (!open) return null
+
+    if (success) {
+        return (
+            <StateModal
+                state="cancelled"
+                title="Cancellation requested"
+                description="Your request has been sent. We will review it and contact you by email."
+                primaryLabel="Close"
+                onPrimary={onClose}
+            />
+        )
+    }
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -107,13 +120,7 @@ const CancelRequestModal = ({
                     You can only use this within 7 days of check-in.
                 </p>
 
-                {success ? (
-                    <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                        Your request has been sent. We will review it and contact
-                        you by email.
-                    </div>
-                ) : (
-                    <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                         <div>
                             <label
                                 htmlFor="cancel-request-reason"
@@ -201,20 +208,7 @@ const CancelRequestModal = ({
                                 Close
                             </button>
                         </div>
-                    </form>
-                )}
-
-                {success && (
-                    <div className="mt-4 flex justify-end">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className={`min-h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 ${focusRing}`}
-                        >
-                            Close
-                        </button>
-                    </div>
-                )}
+                </form>
                 </div>
             </section>
         </div>

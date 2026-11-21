@@ -144,7 +144,7 @@ const faqs: FaqItem[] = [
     category: 'Policies & Security',
     question: 'What are the check-in and check-out times?',
     answer:
-      'Standard check-in is at 2:00 PM and check-out is at 12:00 PM. Flexible arrangements may be available upon request.',
+      'Standard check-in is at 10:00 AM PHT. Check-out is at 08:00 AM PHT on your final paid day; each paid day is a 22-hour stay at the same check-in time, with a 2-hour turnover.',
   },
   {
     category: 'Policies & Security',

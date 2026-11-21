@@ -9,10 +9,10 @@ use App\Models\CancellationRequest;
 use App\Models\ContactSubmission;
 use App\Models\PageView;
 use App\Models\Payment;
-use App\Models\Service;
 use App\Models\ServiceReview;
 use App\Models\User;
 use App\Queries\Offers\OfferMetricsQuery;
+use App\Support\StayPolicy;
 use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
@@ -31,8 +31,6 @@ class DashboardController extends Controller
     private const FORECAST_FULL_DAYS = 60;
 
     private const RECENT_BOOKINGS_LIMIT = 20;
-
-    private const MINIMUM_PRICE_INCREASE = 500.0;
 
     public function summary(Request $request): JsonResponse
     {
@@ -418,9 +416,8 @@ class DashboardController extends Controller
                         : 0,
                     'booked_forward_revenue' => $bookedForwardRevenue,
                 ],
-                'pricing_insights' => $this->buildPricingInsights(
+                'demand_forecast' => $this->buildDemandForecast(
                     $services,
-                    $offerMetrics,
                     $forecastPreset,
                     $backtestRange,
                     $includeHolidays,
@@ -449,221 +446,147 @@ class DashboardController extends Controller
     }
 
     /**
-     * Build an advisory demand forecast and per-offer price recommendations.
+     * Build a daily room-night demand and occupancy forecast.
      */
-    private function buildPricingInsights(
+    private function buildDemandForecast(
         $services,
-        $offerMetrics,
         string $forecastPreset,
         int $backtestRange,
         bool $includeHolidays,
         bool $includeWeekends,
     ): array {
-        $historyStart = now()->subDays(90)->startOfDay();
-        $historyEnd = now()->endOfDay();
-
-        $historyBookings = Booking::query()
-            ->whereBetween('created_at', [$historyStart, $historyEnd])
-            ->where('status', 'confirmed')
-            ->get(['created_at']);
-
         $historyDays = 90;
-
-        $historyCounts = $historyBookings
-            ->filter(fn (Booking $booking) => $booking->created_at !== null)
-            ->groupBy(fn (Booking $booking) => Carbon::parse($booking->created_at)->toDateString())
-            ->map(fn ($bookings) => $bookings->count());
-        $historySeries = [];
-        for ($offset = $historyDays - 1; $offset >= 0; $offset--) {
-            $dateKey = now()->subDays($offset)->toDateString();
-            $historySeries[] = [
-                'date' => $dateKey,
-                'bookings' => (int) ($historyCounts[$dateKey] ?? 0),
-            ];
-        }
-
+        $history = $this->occupancyHistory($historyDays);
         $holidays = $this->philippineHolidays();
         $activeServiceCount = max(1, $services->where('status', 'active')->count());
 
-        $today = now()->startOfDay();
-        $tomorrow = $today->copy()->addDay();
-        $forecastStart = $tomorrow->copy();
-        $selectedStart = $forecastStart->copy();
+        $forecastStart = now()->startOfDay()->addDay();
         $presetDays = max(1, (int) $forecastPreset);
-        $selectedEnd = $selectedStart->copy()->addDays($presetDays - 1);
-        $forecastWindowDays = $presetDays;
+        $forecastEnd = $forecastStart->copy()->addDays($presetDays - 1);
 
-        $pythonHorizon = self::FORECAST_FULL_DAYS;
         $pythonForecast = $this->requestPythonForecast(
-            $historySeries,
+            $history,
             $holidays,
             $activeServiceCount,
-            $pythonHorizon,
+            self::FORECAST_FULL_DAYS,
             $backtestRange,
             $includeHolidays,
             $includeWeekends,
         );
-        $forecast = $pythonForecast['forecast'];
-        $forecastModel = $pythonForecast['model'];
-        $backtest = $pythonForecast['backtest'];
 
-        $forwardStart = $selectedStart->toDateString();
-        $forwardEnd = $selectedEnd->copy()->addDay()->toDateString();
-        $forwardRooms = BookingRoom::query()
-            ->whereHas('booking', function ($query) use ($forwardStart, $forwardEnd) {
-                $query->where('status', 'confirmed')
-                    ->whereDate('check_in', '<', $forwardEnd)
-                    ->whereDate('check_out', '>', $forwardStart)
-                    ->whereHas('payments', fn ($paymentQuery) => $paymentQuery->where('status', 'paid'));
-            })
-            ->with('booking:id,check_in,check_out')
-            ->get(['service_id', 'booking_id']);
+        $forecastStartKey = $forecastStart->toDateString();
+        $forecastEndKey = $forecastEnd->toDateString();
+        $selectedForecast = collect($pythonForecast['forecast'])
+            ->filter(fn (array $day) => $day['date'] >= $forecastStartKey && $day['date'] <= $forecastEndKey)
+            ->values();
+        $peakDay = $selectedForecast->sortByDesc('expected_occupancy')->first();
+        $multipliers = $pythonForecast['multipliers'];
 
-        $forwardNights = [];
-        foreach ($forwardRooms as $room) {
-            if ($room->service_id === null || $room->booking === null) {
-                continue;
-            }
-
-            $occupiedFrom = max($forwardStart, $room->booking->check_in->toDateString());
-            $occupiedUntil = min($forwardEnd, $room->booking->check_out->toDateString());
-            $nights = max(
-                0,
-                Carbon::parse($occupiedFrom)->diffInDays(Carbon::parse($occupiedUntil)),
+        $holidayImpact = '+45% expected room-nights on holiday dates';
+        if ($includeHolidays && $multipliers !== null) {
+            $holidayImpact = sprintf(
+                '%+d%% expected room-nights on holidays, learned from stay history',
+                round(($multipliers['holiday'] - 1) * 100),
             );
-            $forwardNights[(int) $room->service_id] = ($forwardNights[(int) $room->service_id] ?? 0) + $nights;
         }
 
-        $metricsByService = $offerMetrics->keyBy('service_id');
-        $selectedStartDate = $selectedStart->toDateString();
-        $selectedEndDate = $selectedEnd->toDateString();
-        $selectedForecast = collect($forecast)->filter(
-            fn (array $day) => $day['date'] >= $selectedStartDate && $day['date'] <= $selectedEndDate,
-        );
-        $holidayDays = $selectedForecast->filter(fn ($day) => $day['holiday'] !== null)->count();
-        $avgForecastOccupancy = (float) ($selectedForecast->avg('expected_occupancy') ?? 0);
-        $avgWeekendOccupancy = (float) ($selectedForecast
-            ->filter(fn ($day) => $day['is_weekend'])
-            ->avg('expected_occupancy') ?? 0);
-        $avgHolidayOccupancy = (float) ($selectedForecast
-            ->filter(fn ($day) => $day['holiday'] !== null)
-            ->avg('expected_occupancy') ?? 0);
-
-        $recommendations = $services->where('status', 'active')->map(function (Service $service) use (
-            $metricsByService,
-            $forwardNights,
-            $forecastWindowDays,
-            $avgForecastOccupancy,
-            $avgWeekendOccupancy,
-            $avgHolidayOccupancy,
-            $holidayDays,
-        ) {
-            $metrics = $metricsByService->get($service->id);
-            $currentOccupancy = (float) ($metrics['occupancy'] ?? 0);
-            $forwardOccupancy = round((($forwardNights[(int) $service->id] ?? 0) / max(1, $forecastWindowDays)) * 100, 1);
-            $demandScore = ($currentOccupancy * 0.55) + ($forwardOccupancy * 0.25) + ($avgForecastOccupancy * 0.2);
-
-            $change = 0;
-            $reasons = [];
-            if ($demandScore >= 70) {
-                $change = $demandScore >= 80 ? 12 : 8;
-                $reasons[] = "Strong forward demand in the {$forecastWindowDays}-day forecast window";
-            } elseif ($demandScore < 40) {
-                $change = $demandScore < 25 ? -10 : -5;
-                $reasons[] = 'Soft occupancy in the current and forward window';
-            }
-
-            // Leisure destinations like Matabungkay fill up whenever guests are
-            // off work, so holidays always push the recommendation upward.
-            if ($holidayDays > 0) {
-                $holidayLift = $holidayDays >= 4 ? 15 : ($holidayDays >= 2 ? 12 : 8);
-                if ($change < $holidayLift) {
-                    $change = $holidayLift;
-                }
-                $reasons[] = "{$holidayDays} Philippine holiday date(s) fall in the forecast window";
-            }
-            if ($avgHolidayOccupancy >= 65 && $change < 15) {
-                $change = 15;
-                $reasons[] = 'Holiday dates show peak forecast occupancy';
-            }
-            if ($avgWeekendOccupancy >= 55 && $change < 5) {
-                $change = 5;
-                $reasons[] = 'Weekend forecast occupancy is above 55%';
-            }
-            if ($forwardOccupancy >= 60) {
-                $reasons[] = "Most of the {$forecastWindowDays}-day forecast window is already booked";
-            }
-            if ($currentOccupancy >= 75) {
-                $reasons[] = 'Recent occupancy is above target';
-            }
-            if ($reasons === []) {
-                $reasons[] = 'Demand is steady; hold the current price';
-            }
-            $reasons = array_values(array_unique($reasons));
-
-            $bookingCount = (int) ($metrics['bookings'] ?? 0);
-            $confidence = $bookingCount >= 5 ? 'high' : ($bookingCount >= 2 ? 'medium' : 'low');
-            $currentPrice = (float) $service->price;
-            $suggestedPrice = round($currentPrice * (1 + ($change / 100)), 2);
-            if ($change > 0) {
-                $suggestedPrice = round(
-                    max($suggestedPrice, $currentPrice + self::MINIMUM_PRICE_INCREASE),
-                    2,
-                );
-            }
-            $effectiveChange = $currentPrice > 0
-                ? round((($suggestedPrice - $currentPrice) / $currentPrice) * 100, 1)
-                : $change;
-
-            return [
-                'service_id' => $service->id,
-                'name' => $service->name,
-                'current_price' => $currentPrice,
-                'suggested_price' => $suggestedPrice,
-                'change_percent' => $effectiveChange,
-                'direction' => $change > 0 ? 'increase' : ($change < 0 ? 'decrease' : 'hold'),
-                'confidence' => $confidence,
-                'current_occupancy' => $currentOccupancy,
-                'forward_occupancy' => $forwardOccupancy,
-                'demand_score' => round($demandScore, 1),
-                'reasons' => $reasons,
-            ];
-        })->sortByDesc('demand_score')->values()->all();
+        $weekendImpact = '+22% expected room-nights Fri–Sun';
+        if ($includeWeekends && $multipliers !== null) {
+            $weekendImpact = sprintf(
+                '%+d%% expected room-nights Fri–Sun, learned from stay history',
+                round(($multipliers['weekend'] - 1) * 100),
+            );
+        }
 
         return [
-            'model' => $forecastModel,
+            'model' => $pythonForecast['model'],
             'forecast_preset' => $forecastPreset,
             'forecast_window' => [
-                'start' => $selectedStart->toDateString(),
-                'end' => $selectedEnd->toDateString(),
+                'start' => $forecastStartKey,
+                'end' => $forecastEndKey,
             ],
-            'forecast' => $forecast,
-            'holiday_days' => $holidayDays,
-            'average_forecast_occupancy' => round($avgForecastOccupancy, 1),
-            'accuracy' => $backtest,
-            'recommendations' => $recommendations,
+            'forecast' => $selectedForecast->all(),
+            'holiday_days' => $selectedForecast->filter(fn ($day) => $day['holiday'] !== null)->count(),
+            'average_forecast_occupancy' => round((float) ($selectedForecast->avg('expected_occupancy') ?? 0), 1),
+            'expected_room_nights' => round((float) $selectedForecast->sum('expected_room_nights'), 1),
+            'peak_day' => $peakDay === null ? null : [
+                'date' => $peakDay['date'],
+                'label' => $peakDay['label'],
+                'expected_occupancy' => $peakDay['expected_occupancy'],
+            ],
+            'accuracy' => $pythonForecast['backtest'],
             'factors' => [
+                [
+                    'key' => 'history',
+                    'label' => '90-day stay history',
+                    'impact' => 'SARIMAX learns from occupied room-nights per day',
+                ],
                 [
                     'key' => 'holidays',
                     'label' => 'Philippine holidays',
-                    'impact' => $includeHolidays
-                        ? 'Always lifts the suggested price; +45% demand on holiday dates'
-                        : 'Excluded from this forecast',
+                    'impact' => $includeHolidays ? $holidayImpact : 'Excluded from this forecast',
                 ],
                 [
                     'key' => 'weekends',
                     'label' => 'Weekend pattern',
-                    'impact' => $includeWeekends
-                        ? '+22% demand Fri–Sun when guests are off work'
-                        : 'Excluded from this forecast',
-                ],
-                [
-                    'key' => 'forward_bookings',
-                    'label' => 'Forward bookings',
-                    'impact' => 'Confirmed paid stays already on the books',
+                    'impact' => $includeWeekends ? $weekendImpact : 'Excluded from this forecast',
                 ],
             ],
         ];
+    }
+
+    /**
+     * Count paid-day windows by their PHT start date. The API keeps the
+     * historical "bookings" key, but each unit is now a paid 22-hour stay.
+     *
+     * @return array<int, array{date: string, bookings: int}>
+     */
+    private function occupancyHistory(int $days): array
+    {
+        $start = now()->subDays($days - 1)->startOfDay();
+        $startKey = $start->toDateString();
+        $endKey = now()->toDateString();
+
+        $bookingRooms = BookingRoom::query()
+            ->whereHas('booking', function ($query) use ($startKey, $endKey) {
+                $query->whereIn('status', ['confirmed', 'completed'])
+                    ->whereDate('check_in', '<=', $endKey)
+                    ->whereDate('check_out', '>=', $startKey)
+                    ->whereHas('payments', fn ($paymentQuery) => $paymentQuery->where('status', 'paid'));
+            })
+            ->whereHas('service', fn ($serviceQuery) => $serviceQuery->where('status', 'active'))
+            ->with('booking:id,check_in,check_out,paid_days,nights')
+            ->get(['booking_id']);
+
+        $counts = array_fill(0, $days, 0);
+        foreach ($bookingRooms as $room) {
+            $booking = $room->booking;
+            if ($booking === null || $booking->check_in === null) {
+                continue;
+            }
+
+            $paidDays = (int) ($booking->paid_days ?? 0);
+            if ($paidDays < 1) {
+                continue;
+            }
+
+            foreach (StayPolicy::windows($booking->check_in, $paidDays) as $window) {
+                $index = (int) $start->diffInDays(Carbon::parse($window['date'])->startOfDay(), false);
+                if ($index >= 0 && $index < $days) {
+                    $counts[$index]++;
+                }
+            }
+        }
+
+        $history = [];
+        for ($offset = 0; $offset < $days; $offset++) {
+            $history[] = [
+                'date' => $start->copy()->addDays($offset)->toDateString(),
+                'bookings' => $counts[$offset],
+            ];
+        }
+
+        return $history;
     }
 
     /**
@@ -674,7 +597,8 @@ class DashboardController extends Controller
      * @return array{
      *     forecast: array<int, array<string, mixed>>,
      *     model: 'sarimax',
-     *     backtest: array<string, mixed>|null
+     *     backtest: array<string, mixed>|null,
+     *     multipliers: array{weekend: float, holiday: float}|null
      * }
      */
     private function requestPythonForecast(
@@ -702,6 +626,7 @@ class DashboardController extends Controller
                     'backtest_days' => $backtestDays,
                     'include_holidays' => $includeHolidays,
                     'include_weekends' => $includeWeekends,
+                    'as_of_date' => now()->toDateString(),
                 ]);
         } catch (ConnectionException $exception) {
             throw new HttpException(503, 'SARIMAX forecasting service is unavailable.', $exception);
@@ -738,13 +663,28 @@ class DashboardController extends Controller
             $normalized[] = [
                 'date' => $date->toDateString(),
                 'label' => $date->format('M j'),
-                'expected_bookings' => round((float) $point['expected_bookings'], 1),
+                'expected_room_nights' => round((float) $point['expected_bookings'], 1),
                 'expected_occupancy' => round((float) $point['expected_occupancy'], 1),
                 'factor' => round((float) ($point['factor'] ?? 1), 2),
                 'is_weekend' => (bool) ($point['is_weekend'] ?? false),
                 'holiday' => isset($point['holiday']) && $point['holiday'] !== ''
                     ? (string) $point['holiday']
                     : null,
+            ];
+        }
+
+        $rawMultipliers = $payload['multipliers'] ?? null;
+        $multipliers = null;
+        if (is_array($rawMultipliers)) {
+            $weekend = $rawMultipliers['weekend'] ?? null;
+            $holiday = $rawMultipliers['holiday'] ?? null;
+            $multipliers = [
+                'weekend' => is_numeric($weekend) && is_finite((float) $weekend)
+                    ? round((float) $weekend, 2)
+                    : 1.22,
+                'holiday' => is_numeric($holiday) && is_finite((float) $holiday)
+                    ? round((float) $holiday, 2)
+                    : 1.45,
             ];
         }
 
@@ -776,8 +716,8 @@ class DashboardController extends Controller
                 $backtestPoints[] = [
                     'date' => $date->toDateString(),
                     'label' => $date->format('M j'),
-                    'actual_bookings' => round((float) $point['actual_bookings'], 1),
-                    'predicted_bookings' => round((float) $point['predicted_bookings'], 1),
+                    'actual_room_nights' => round((float) $point['actual_bookings'], 1),
+                    'predicted_room_nights' => round((float) $point['predicted_bookings'], 1),
                 ];
             }
 
@@ -789,6 +729,9 @@ class DashboardController extends Controller
                     'mape' => isset($rawBacktest['mape']) && $rawBacktest['mape'] !== null
                         ? round((float) $rawBacktest['mape'], 1)
                         : null,
+                    'wape' => isset($rawBacktest['wape']) && $rawBacktest['wape'] !== null
+                        ? round((float) $rawBacktest['wape'], 1)
+                        : null,
                     'points' => $backtestPoints,
                 ];
             }
@@ -798,6 +741,7 @@ class DashboardController extends Controller
             'forecast' => $normalized,
             'model' => 'sarimax',
             'backtest' => $backtest,
+            'multipliers' => $multipliers,
         ];
     }
 

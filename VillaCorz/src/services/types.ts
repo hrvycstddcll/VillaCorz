@@ -129,6 +129,7 @@ export type Booking = {
     completed_at: string | null
     check_in: string
     check_out: string
+    paid_days?: number
     nights: number
     adults: number
     kids: number
@@ -228,7 +229,10 @@ export type DashboardSummary = {
         occupancy: number
         rating: number
     }>
-    availability: Record<string, Array<{ check_in: string; check_out: string }>>
+    availability: Record<
+        string,
+        Array<{ check_in: string; check_out: string; paid_days?: number }>
+    >
     operational: {
         occupancy: number
         adr: number
@@ -254,7 +258,7 @@ export type DashboardSummary = {
         count: number
         share: number
     }>
-    pricing_insights: {
+    demand_forecast: {
         model: string
         forecast_preset?: string
         forecast_window?: {
@@ -264,7 +268,7 @@ export type DashboardSummary = {
         forecast: Array<{
             date: string
             label: string
-            expected_bookings: number
+            expected_room_nights: number
             expected_occupancy: number
             factor: number
             is_weekend: boolean
@@ -272,31 +276,25 @@ export type DashboardSummary = {
         }>
         holiday_days: number
         average_forecast_occupancy: number
+        expected_room_nights: number
+        peak_day: {
+            date: string
+            label: string
+            expected_occupancy: number
+        } | null
         accuracy: {
             window_days: number
             model: string
             mae: number
             mape: number | null
+            wape?: number | null
             points: Array<{
                 date: string
                 label: string
-                actual_bookings: number
-                predicted_bookings: number
+                actual_room_nights: number
+                predicted_room_nights: number
             }>
         } | null
-        recommendations: Array<{
-            service_id: number
-            name: string
-            current_price: number
-            suggested_price: number
-            change_percent: number
-            direction: 'increase' | 'decrease' | 'hold'
-            confidence: 'low' | 'medium' | 'high'
-            current_occupancy: number
-            forward_occupancy: number
-            demand_score: number
-            reasons: string[]
-        }>
         factors: Array<{
             key: string
             label: string
@@ -306,7 +304,8 @@ export type DashboardSummary = {
 }
 export type CreateBookingInput = {
     check_in: string
-    check_out: string
+    paid_days: number
+    check_out?: string
     rooms: Array<{ service_id: number; adults: number; kids: number }>
     contact_name: string
     contact_email: string

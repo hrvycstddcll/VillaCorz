@@ -41,17 +41,17 @@ const BookingRoomsModal = ({ rooms, onClose }: BookingRoomsModalProps) => {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="booking-rooms-title"
-                className="flex w-full max-w-3xl max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_24px_80px_rgba(0,0,0,0.22)]"
+                className="flex w-full max-w-3xl max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white font-poppins shadow-[0_24px_80px_rgba(0,0,0,0.22)]"
             >
                 <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                     <div>
                         <h2
                             id="booking-rooms-title"
-                            className="text-lg font-bold tracking-tight text-slate-900"
+                            className="font-jakarta text-lg font-bold tracking-tight text-slate-900 sm:text-xl lg:text-2xl"
                         >
                             Reserved rooms
                         </h2>
-                        <p className="mt-0.5 text-xs text-slate-500">
+                        <p className="mt-0.5 text-xs text-slate-500 sm:text-sm lg:text-base">
                             {rooms.length} room{rooms.length === 1 ? '' : 's'} ·{' '}
                             {totalGuests} guest{totalGuests === 1 ? '' : 's'}
                         </p>
@@ -89,22 +89,22 @@ const BookingRoomsModal = ({ rooms, onClose }: BookingRoomsModalProps) => {
                                             />
                                         </div>
                                     )}
-                                    <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 backdrop-blur">
+                                    <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700 backdrop-blur sm:text-xs lg:text-sm">
                                         {room.kind === 'exclusive'
                                             ? 'Exclusive'
                                             : 'Room'}
                                     </span>
                                 </div>
                                 <div className="p-4">
-                                    <h3 className="text-sm font-semibold text-slate-800">
+                                    <h3 className="font-jakarta text-sm font-semibold text-slate-800 sm:text-base lg:text-lg">
                                         {room.name}
                                     </h3>
                                     {room.description && (
-                                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                                        <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-slate-500 sm:text-sm lg:text-base">
                                             {room.description}
                                         </p>
                                     )}
-                                    <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
+                                    <div className="mt-3 flex items-center justify-between text-xs text-slate-600 sm:text-sm lg:text-base">
                                         <span className="inline-flex items-center gap-1">
                                             <Users
                                                 className="size-3.5"
@@ -116,7 +116,7 @@ const BookingRoomsModal = ({ rooms, onClose }: BookingRoomsModalProps) => {
                                                 ? `, ${room.kids} kid${room.kids === 1 ? '' : 's'}`
                                                 : ''}
                                         </span>
-                                        <span className="font-semibold text-slate-800">
+                                        <span className="font-jakarta text-xs font-semibold text-slate-800 sm:text-sm lg:text-base">
                                             {money(Number(room.line_total))}
                                         </span>
                                     </div>

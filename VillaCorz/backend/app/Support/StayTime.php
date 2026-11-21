@@ -50,7 +50,11 @@ class StayTime
         }
 
         if (preg_match(self::DATE_PATTERN, $value) === 1) {
-            return CarbonImmutable::createFromFormat('!Y-m-d H:i', $value.' 08:00', self::TIMEZONE)->utc();
+            return CarbonImmutable::createFromFormat(
+                '!Y-m-d H:i',
+                $value.' '.StayPolicy::defaultCheckInTime(),
+                self::TIMEZONE,
+            )->utc();
         }
 
         if (preg_match(self::SQL_DATETIME_PATTERN, $value) === 1) {

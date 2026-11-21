@@ -1,11 +1,9 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useId, type ReactNode } from 'react'
 import MetaBalls from '../CssComponents/MetaBalls.jsx'
+import { stateMascots, type StateKind } from './stateModalConfig'
 
-type PaymentStateTone = 'success' | 'danger' | 'warning' | 'neutral'
-
-type PaymentStateModalProps = {
-    image: string
-    tone: PaymentStateTone
+type StateModalProps = {
+    state: StateKind
     title: string
     description: string
     details?: ReactNode
@@ -18,35 +16,56 @@ type PaymentStateModalProps = {
 const focusRing =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
 
-const toneStyles: Record<
-    PaymentStateTone,
-    { ball: string; badge: string; icon: string }
+const stateStyles: Record<
+    StateKind,
+    { ball: string; badge: string; icon: string; label: string }
 > = {
+    cancelled: {
+        ball: '#64748B',
+        badge: 'bg-slate-100 text-slate-600',
+        icon: '×',
+        label: 'Cancelled',
+    },
+    choosing: {
+        ball: '#006DFC',
+        badge: 'bg-blue-50 text-[#006dfc]',
+        icon: '?',
+        label: 'Choosing',
+    },
+    empty: {
+        ball: '#3D8BFF',
+        badge: 'bg-blue-50 text-[#006dfc]',
+        icon: 'i',
+        label: 'Empty',
+    },
+    error: {
+        ball: '#E11D48',
+        badge: 'bg-rose-50 text-rose-700',
+        icon: '!',
+        label: 'Error',
+    },
+    interrupted: {
+        ball: '#D97706',
+        badge: 'bg-amber-50 text-amber-700',
+        icon: '!',
+        label: 'Interrupted',
+    },
     success: {
         ball: '#006DFC',
         badge: 'bg-emerald-50 text-emerald-700',
         icon: '✓',
+        label: 'Success',
     },
-    danger: {
+    somethingWentWrong: {
         ball: '#E11D48',
         badge: 'bg-rose-50 text-rose-700',
         icon: '!',
-    },
-    warning: {
-        ball: '#D97706',
-        badge: 'bg-amber-50 text-amber-700',
-        icon: '!',
-    },
-    neutral: {
-        ball: '#3D8BFF',
-        badge: 'bg-blue-50 text-[#006dfc]',
-        icon: 'i',
+        label: 'Something Went Wrong',
     },
 }
 
-function PaymentStateModal({
-    image,
-    tone,
+function StateModal({
+    state,
     title,
     description,
     details,
@@ -54,7 +73,7 @@ function PaymentStateModal({
     onPrimary,
     secondaryLabel,
     onSecondary,
-}: PaymentStateModalProps) {
+}: StateModalProps) {
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key !== 'Escape') return
@@ -67,15 +86,18 @@ function PaymentStateModal({
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [onPrimary, onSecondary])
 
-    const style = toneStyles[tone]
+    const style = stateStyles[state]
+    const id = useId()
+    const titleId = `${id}-title`
+    const descriptionId = `${id}-description`
 
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/60 p-4 backdrop-blur-[6px]"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="payment-state-title"
-            aria-describedby="payment-state-description"
+            aria-labelledby={titleId}
+            aria-describedby={descriptionId}
         >
             <button
                 type="button"
@@ -104,7 +126,7 @@ function PaymentStateModal({
                         />
                     </div>
                     <img
-                        src={image}
+                        src={stateMascots[state]}
                         alt=""
                         className="relative z-10 h-40 w-40 object-contain"
                         loading="lazy"
@@ -119,16 +141,17 @@ function PaymentStateModal({
                     >
                         {style.icon}
                     </span>
+                    <span className="sr-only">{style.label}</span>
 
                     <h2
-                        id="payment-state-title"
+                        id={titleId}
                         className="mt-3 text-[27px] font-extrabold leading-tight tracking-[-0.04em] text-[#172033]"
                     >
                         {title}
                     </h2>
 
                     <p
-                        id="payment-state-description"
+                        id={descriptionId}
                         className="mx-auto mt-3 max-w-70 text-[13px] leading-[1.8] text-gray-500"
                     >
                         {description}
@@ -184,4 +207,4 @@ function PaymentStateModal({
     )
 }
 
-export default PaymentStateModal
+export default StateModal

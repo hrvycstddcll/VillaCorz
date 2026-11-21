@@ -15,7 +15,6 @@ import {
     getDashboard,
     type DashboardForecastOptions,
 } from '../../../services/dashboardService'
-import { adjustServicePrice } from '../../../services/serviceService'
 import type {
     AdminReportKind,
     DashboardRecentBooking,
@@ -32,32 +31,29 @@ import AdminStatStrip from '../admin/AdminStatStrip'
 import AdminTable, { type AdminTableColumn } from '../admin/AdminTable'
 import AdminFilterPills from '../admin/AdminFilterPills'
 import AdminPageHeader from '../ui/InteractiveComponents/AdminPageHeader'
-import ConfirmDialog from '../offers/ConfirmDialog'
 import { WarmTooltip } from '../ui/WarmTooltip'
 
 const ranges = [7, 30, 90] as const
 type Range = (typeof ranges)[number]
 const forecastPresets = ['14', '30', '60'] as const
 const backtestRanges = [7, 14, 30] as const
-type PriceRecommendation =
-    DashboardSummary['pricing_insights']['recommendations'][number]
-type AnalysisView = 'prescriptive' | 'predictive'
+type AnalysisView = 'accuracy' | 'forecast'
 
 const numberFormatter = new Intl.NumberFormat('en-PH')
 const revenueChartSeries: DashboardChartSeries[] = [
     { key: 'revenue', label: 'Revenue', color: '#006dfc' },
 ]
 const accuracyChartSeries: DashboardChartSeries[] = [
-    { key: 'actual', label: 'Actual bookings', color: '#64748b' },
+    { key: 'actual', label: 'Actual paid days', color: '#64748b' },
     {
         key: 'predicted',
-        label: 'Predicted bookings',
+        label: 'Predicted paid days',
         color: '#006dfc',
         strokeDasharray: '6 4',
     },
 ]
-const priceChartSeries: DashboardChartSeries[] = [
-    { key: 'projected', label: 'Projected price', color: '#006dfc' },
+const occupancyChartSeries: DashboardChartSeries[] = [
+    { key: 'occupancy', label: 'Forecast occupancy', color: '#006dfc' },
 ]
 const focusRing =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
@@ -190,25 +186,18 @@ const AnalysisChartSkeleton = () => (
     </div>
 )
 
-const RecommendationsSkeleton = () => (
-    <div role="status" aria-label="Loading recommendations" className="mt-3">
-        <span className="sr-only">Loading recommendations</span>
+const ForecastSummarySkeleton = () => (
+    <div role="status" aria-label="Loading forecast summary" className="mt-3">
+        <span className="sr-only">Loading forecast summary</span>
         <ul className="grid gap-4 sm:grid-cols-2" aria-hidden="true">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: 2 }).map((_, i) => (
                 <li
                     key={i}
                     className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm"
                 >
-                    <div className="flex items-start justify-between gap-3">
-                        <Skeleton className="h-4 w-32 rounded-sm" />
-                        <Skeleton className="h-3 w-12 rounded-sm" />
-                    </div>
-                    <Skeleton className="mt-2 h-3 w-full max-w-xs rounded-sm" />
-                    <Skeleton className="mt-1 h-3 w-4/5 max-w-[16rem] rounded-sm" />
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                        <Skeleton className="h-4 w-36 rounded-sm" />
-                        <Skeleton className="h-8 w-28 rounded-lg" />
-                    </div>
+                    <Skeleton className="h-3 w-28 rounded-sm" />
+                    <Skeleton className="mt-3 h-8 w-24 rounded-sm" />
+                    <Skeleton className="mt-2 h-3 w-4/5 rounded-sm" />
                 </li>
             ))}
         </ul>
@@ -336,15 +325,7 @@ const Dashboard = () => {
         key: string
         message: string
     } | null>(null)
-    const [selectedPriceRecommendation, setSelectedPriceRecommendation] =
-        useState<PriceRecommendation | null>(null)
-    const [priceAdjustmentLoading, setPriceAdjustmentLoading] = useState(false)
-    const [priceAdjustmentError, setPriceAdjustmentError] = useState('')
-    const [priceAdjustmentNotice, setPriceAdjustmentNotice] = useState('')
-    const [priceForecastServiceId, setPriceForecastServiceId] =
-        useState<number | null>(null)
-    const [analysisView, setAnalysisView] =
-        useState<AnalysisView>('prescriptive')
+    const [analysisView, setAnalysisView] = useState<AnalysisView>('accuracy')
     const [showAllBookings, setShowAllBookings] = useState(false)
 
     const requestKey = [
@@ -403,44 +384,22 @@ const Dashboard = () => {
     const error = failure?.key === requestKey ? failure.message : ''
     const bookings = useMemo(() => data?.recent_bookings ?? [], [data])
     const funnelSteps = data?.funnel.steps ?? []
-    const pricing = data?.pricing_insights
-    const recommendations = useMemo(
-        () => pricing?.recommendations ?? [],
-        [pricing],
-    )
-    const selectedForecastRecommendation =
-        recommendations.find(
-            (recommendation) =>
-                recommendation.service_id === priceForecastServiceId,
-        ) ?? recommendations[0]
+    const demandForecast = data?.demand_forecast
     const accuracyPoints = useMemo(
-        () => pricing?.accuracy?.points ?? [],
-        [pricing],
+        () => demandForecast?.accuracy?.points ?? [],
+        [demandForecast],
     )
-    const predictionPoints = useMemo<DashboardChartPoint[]>(() => {
-        const forecastPoints =
-            pricing?.forecast.slice(0, Number(forecastPreset)) ?? []
-        if (selectedForecastRecommendation === undefined) return []
-
-        return forecastPoints.map((point) => {
-            const peakDay =
-                selectedForecastRecommendation.direction === 'increase'
-                    ? point.holiday !== null || point.expected_occupancy >= 55
-                    : selectedForecastRecommendation.direction === 'decrease'
-                      ? point.expected_occupancy < 40
-                      : false
-
-            return {
-                label: point.label,
-                annotation: point.holiday ?? undefined,
-                values: {
-                    projected: peakDay
-                        ? selectedForecastRecommendation.suggested_price
-                        : selectedForecastRecommendation.current_price,
-                },
-            }
-        })
-    }, [pricing, forecastPreset, selectedForecastRecommendation])
+    const occupancyPoints = useMemo<DashboardChartPoint[]>(
+        () =>
+            (demandForecast?.forecast ?? [])
+                .slice(0, Number(forecastPreset))
+                .map((point) => ({
+                    label: point.label,
+                    annotation: point.holiday ?? undefined,
+                    values: { occupancy: point.expected_occupancy },
+                })),
+        [demandForecast, forecastPreset],
+    )
     const reportHref = useCallback(
         (
             report: AdminReportKind,
@@ -514,44 +473,6 @@ const Dashboard = () => {
         setSearchParams(nextParams, { replace: true })
     }
 
-    const closePriceAdjustment = useCallback(() => {
-        if (priceAdjustmentLoading) return
-        setSelectedPriceRecommendation(null)
-        setPriceAdjustmentError('')
-    }, [priceAdjustmentLoading])
-
-    const confirmPriceAdjustment = async () => {
-        if (!selectedPriceRecommendation || priceAdjustmentLoading) return
-
-        setPriceAdjustmentLoading(true)
-        setPriceAdjustmentError('')
-        setPriceAdjustmentNotice('')
-
-        try {
-            const response = await adjustServicePrice(
-                selectedPriceRecommendation.service_id,
-                selectedPriceRecommendation.suggested_price,
-            )
-            setPriceAdjustmentNotice(
-                response.data.message ?? 'The price was updated.',
-            )
-            setPriceForecastServiceId(
-                selectedPriceRecommendation.service_id,
-            )
-            setSelectedPriceRecommendation(null)
-            setRefreshToken((token) => token + 1)
-        } catch (adjustmentFailure) {
-            setPriceAdjustmentError(
-                getApiErrorMessage(
-                    adjustmentFailure,
-                    'Unable to update this price. Please try again.',
-                ),
-            )
-        } finally {
-            setPriceAdjustmentLoading(false)
-        }
-    }
-
     const metrics = data?.metrics
     const comparison = data?.comparison
     const actionCenter = data?.action_center
@@ -568,8 +489,8 @@ const Dashboard = () => {
             accuracyPoints.map((point) => ({
                 label: point.label,
                 values: {
-                    actual: point.actual_bookings,
-                    predicted: point.predicted_bookings,
+                    actual: point.actual_room_nights,
+                    predicted: point.predicted_room_nights,
                 },
             })),
         [accuracyPoints],
@@ -610,13 +531,13 @@ const Dashboard = () => {
         ],
         [data, metrics, comparison, reportHref],
     )
-    const isPrescriptive = analysisView === 'prescriptive'
-    const analysisChartPoints = isPrescriptive
+    const isAccuracy = analysisView === 'accuracy'
+    const analysisChartPoints = isAccuracy
         ? accuracyChartPoints
-        : predictionPoints
-    const analysisChartSeries = isPrescriptive
+        : occupancyPoints
+    const analysisChartSeries = isAccuracy
         ? accuracyChartSeries
-        : priceChartSeries
+        : occupancyChartSeries
     const visibleBookings = useMemo(
         () => (showAllBookings ? bookings : bookings.slice(0, 5)),
         [bookings, showAllBookings],
@@ -902,6 +823,9 @@ const Dashboard = () => {
                                     icon={CreditCard}
 
 
+                                    state="empty"
+
+
                                     heading="No revenue yet"
 
 
@@ -986,12 +910,6 @@ const Dashboard = () => {
                         <CircleAlert className="size-4" aria-hidden="true" />
                         {error}
                     </div>
-                )}
-
-                {priceAdjustmentNotice && (
-                    <p role="status" className="text-sm text-emerald-700">
-                        {priceAdjustmentNotice}
-                    </p>
                 )}
 
                 <section>
@@ -1105,7 +1023,7 @@ const Dashboard = () => {
                     </AdminCard>
                 </section>
 
-                <section aria-labelledby="pricing-title" className="space-y-4">
+                <section aria-labelledby="forecast-title" className="space-y-4">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                         <div>
                             <div className="flex items-center gap-1.5">
@@ -1113,7 +1031,7 @@ const Dashboard = () => {
                                     Demand intelligence
                                 </p>
                                 <WarmTooltip
-                                    content="Forecasts and price suggestions for guidance."
+                                    content="Occupancy forecasts from booking history."
                                     side="top"
                                     size="sm"
                                 >
@@ -1124,14 +1042,14 @@ const Dashboard = () => {
                                 </WarmTooltip>
                             </div>
                             <h2
-                                id="pricing-title"
+                                id="forecast-title"
                                 className="mt-1 font-jakarta-serif text-2xl font-bold tracking-tight"
                             >
-                                Seasonal pricing
+                                Occupancy forecast
                             </h2>
                             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
-                                Review model-led demand and price guidance. No
-                                price changes until you confirm them.
+                                See expected paid days and occupancy by day,
+                                with a backtest of the model's accuracy.
                             </p>
                         </div>
                     </div>
@@ -1179,14 +1097,14 @@ const Dashboard = () => {
                     <div className="flex gap-2 border-b border-[rgba(0,0,0,0.06)]">
                         {[
                             {
-                                key: 'prescriptive' as const,
-                                label: 'Prescriptive guidance',
-                                tip: 'Compare actual vs predicted bookings.',
+                                key: 'accuracy' as const,
+                                label: 'Backtest accuracy',
+                                tip: 'Compare actual vs predicted paid days.',
                             },
                             {
-                                key: 'predictive' as const,
-                                label: 'Price prediction',
-                                tip: 'View projected prices by offer.',
+                                key: 'forecast' as const,
+                                label: 'Occupancy outlook',
+                                tip: 'View forecast occupancy by day.',
                             },
                         ].map((tab) => (
                             <WarmTooltip
@@ -1214,81 +1132,34 @@ const Dashboard = () => {
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                             <div>
                                 <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                    {isPrescriptive
-                                        ? 'Prescriptive guidance'
+                                    {isAccuracy
+                                        ? 'Backtest accuracy'
                                         : 'Predictive outlook'}
                                 </p>
                                 <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
-                                    {isPrescriptive
-                                        ? 'Actual vs predicted bookings'
-                                        : 'Predicted base price'}
+                                    {isAccuracy
+                                        ? 'Actual vs predicted paid days'
+                                        : 'Forecast occupancy'}
                                 </h3>
                                 <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">
-                                    {isPrescriptive
-                                        ? 'Compare recent actual bookings with the SARIMAX backtest.'
-                                        : 'Projected rates are advisory; changes require your confirmation below.'}
+                                    {isAccuracy
+                                        ? 'Compare recent paid days with the SARIMAX backtest.'
+                                        : 'Expected share of available paid-day capacity occupied each day.'}
                                 </p>
                             </div>
                             <div className="flex flex-wrap items-end gap-3">
-                                {!isPrescriptive &&
-                                    recommendations.length > 0 && (
-                                        <label className="grid gap-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                            <WarmTooltip
-                                                content="Choose an offer."
-                                                side="top"
-                                                size="sm"
-                                            >
-                                                <span className="inline-flex items-center gap-1">
-                                                    Offer
-                                                    <Info className="size-3" aria-hidden="true" />
-                                                </span>
-                                            </WarmTooltip>
-                                            <select
-                                                aria-label="Offer for price prediction"
-                                                value={
-                                                    selectedForecastRecommendation
-                                                        ?.service_id ?? ''
-                                                }
-                                                onChange={(event) =>
-                                                    setPriceForecastServiceId(
-                                                        Number(
-                                                            event.target.value,
-                                                        ),
-                                                    )
-                                                }
-                                                className={`min-h-11 max-w-full rounded-lg border border-[rgba(0,0,0,0.12)] bg-white px-3 text-xs font-medium normal-case tracking-normal text-slate-800 ${focusRing}`}
-                                            >
-                                                {recommendations.map(
-                                                    (recommendation) => (
-                                                        <option
-                                                            key={
-                                                                recommendation.service_id
-                                                            }
-                                                            value={
-                                                                recommendation.service_id
-                                                            }
-                                                        >
-                                                            {
-                                                                recommendation.name
-                                                            }
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
-                                        </label>
-                                    )}
                                 <label className="grid gap-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                                     <WarmTooltip
                                         content={
-                                            isPrescriptive
+                                            isAccuracy
                                                 ? 'Past days to compare results.'
-                                                : 'Days to forecast prices.'
+                                                : 'Days to forecast occupancy.'
                                         }
                                         side="top"
                                         size="sm"
                                     >
                                         <span className="inline-flex items-center gap-1">
-                                            {isPrescriptive
+                                            {isAccuracy
                                                 ? 'Backtest window'
                                                 : 'Forecast window'}
                                             <Info className="size-3" aria-hidden="true" />
@@ -1296,12 +1167,12 @@ const Dashboard = () => {
                                     </WarmTooltip>
                                     <select
                                         value={
-                                            isPrescriptive
+                                            isAccuracy
                                                 ? backtestRange
                                                 : forecastPreset
                                         }
                                         onChange={(event) => {
-                                            if (isPrescriptive) {
+                                            if (isAccuracy) {
                                                 setBacktestRange(
                                                     Number(
                                                         event.target.value,
@@ -1316,7 +1187,7 @@ const Dashboard = () => {
                                         }}
                                         className={`min-h-11 rounded-lg border border-[rgba(0,0,0,0.12)] bg-white px-3 text-xs font-medium normal-case tracking-normal text-slate-800 ${focusRing}`}
                                     >
-                                        {isPrescriptive
+                                        {isAccuracy
                                             ? backtestRanges.map((days) => (
                                                 <option
                                                     key={days}
@@ -1340,18 +1211,20 @@ const Dashboard = () => {
 
                         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                             <span className="rounded-full bg-slate-50 px-3 py-1.5 font-mono text-[10px] font-medium capitalize text-slate-600">
-                                {modelLabel(pricing?.model ?? 'sarimax')}
+                                {modelLabel(demandForecast?.model ?? 'sarimax')}
                             </span>
-                            {isPrescriptive && pricing?.accuracy && (
+                            {isAccuracy && demandForecast?.accuracy && (
                                 <WarmTooltip
                                     content="Prediction error (lower is better)."
                                     side="top"
                                     size="sm"
                                 >
                                     <span className="font-mono text-[10px] tabular-nums text-slate-500">
-                                        MAE {pricing.accuracy.mae}
-                                        {pricing.accuracy.mape !== null &&
-                                            ` · MAPE ${pricing.accuracy.mape}%`}
+                                        MAE {demandForecast.accuracy.mae}
+                                        {demandForecast.accuracy.mape !== null &&
+                                            ` · MAPE ${demandForecast.accuracy.mape}%`}
+                                        {demandForecast.accuracy.wape != null &&
+                                            ` · WAPE ${demandForecast.accuracy.wape}%`}
                                     </span>
                                 </WarmTooltip>
                             )}
@@ -1359,10 +1232,7 @@ const Dashboard = () => {
                                 className="flex flex-wrap gap-x-4 gap-y-2"
                                 aria-label="Chart legend"
                             >
-                                {(isPrescriptive
-                                    ? accuracyChartSeries
-                                    : priceChartSeries
-                                ).map((series) => (
+                                {analysisChartSeries.map((series) => (
                                     <li
                                         key={series.key}
                                         className="inline-flex items-center gap-2 text-[10px] text-slate-600"
@@ -1389,9 +1259,9 @@ const Dashboard = () => {
                         ) : error ? (
                             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
                                 <p className="text-sm text-slate-600">
-                                    {isPrescriptive
+                                    {isAccuracy
                                         ? 'Model accuracy unavailable.'
-                                        : 'Price prediction unavailable.'}
+                                        : 'Occupancy forecast unavailable.'}
                                 </p>
                                 <button
                                     type="button"
@@ -1403,18 +1273,16 @@ const Dashboard = () => {
                                     Retry
                                 </button>
                             </div>
-                        ) : isPrescriptive &&
+                        ) : isAccuracy &&
                             accuracyChartPoints.length === 0 ? (
                             <p className="py-16 text-center text-sm text-slate-500">
-                                Not enough booking history to compare a
-                                forecast with actual results yet.
+                                Not enough stay history to compare a forecast
+                                with actual results yet.
                             </p>
-                        ) : !isPrescriptive &&
-                            (predictionPoints.length === 0 ||
-                                !selectedForecastRecommendation) ? (
+                        ) : !isAccuracy && occupancyPoints.length === 0 ? (
                             <p className="py-16 text-center text-sm text-slate-500">
-                                Price projections are unavailable until an
-                                active offer has forecast data.
+                                Occupancy projections are unavailable for this
+                                forecast window.
                             </p>
                         ) : (
                             <div className="mt-4">
@@ -1422,12 +1290,12 @@ const Dashboard = () => {
                                     points={analysisChartPoints}
                                     series={analysisChartSeries}
                                     ariaLabel={
-                                        isPrescriptive
-                                            ? `Actual and predicted bookings over the last ${pricing?.accuracy?.window_days ?? backtestRange} days`
-                                            : `Projected base prices for ${selectedForecastRecommendation?.name ?? 'the selected offer'} over the next ${forecastPreset} days`
+                                        isAccuracy
+                                            ? `Actual and predicted paid days over the last ${demandForecast?.accuracy?.window_days ?? backtestRange} days`
+                                            : `Forecast occupancy over the next ${forecastPreset} days`
                                     }
                                     formatValue={
-                                        isPrescriptive ? undefined : money
+                                        isAccuracy ? undefined : formatPercent
                                     }
                                 />
                             </div>
@@ -1438,26 +1306,27 @@ const Dashboard = () => {
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                    Suggested actions
+                                    Forecast summary
                                 </p>
                                 <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
-                                    Price recommendations
+                                    Demand outlook
                                 </h3>
                                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                                    Increases are at least ₱500; no price
-                                    changes without confirmation.
+                                    {demandForecast?.forecast_window
+                                        ? `${demandForecast.forecast_window.start} to ${demandForecast.forecast_window.end}`
+                                        : 'Expected demand for the selected window.'}
                                 </p>
                             </div>
                             <span className="font-mono text-xs tabular-nums text-slate-500">
-                                {recommendations.length} offers
+                                {demandForecast?.forecast.length ?? 0} days
                             </span>
                         </div>
                         {loading ? (
-                            <RecommendationsSkeleton />
+                            <ForecastSummarySkeleton />
                         ) : error ? (
                             <div className="flex flex-wrap items-center gap-3 py-8">
                                 <p className="text-sm text-slate-600">
-                                    Recommendations unavailable.
+                                    Forecast summary unavailable.
                                 </p>
                                 <button
                                     type="button"
@@ -1469,89 +1338,81 @@ const Dashboard = () => {
                                     Retry
                                 </button>
                             </div>
-                        ) : recommendations.length === 0 ? (
+                        ) : !demandForecast ||
+                          demandForecast.forecast.length === 0 ? (
                             <p className="py-8 text-sm text-slate-500">
-                                No active offers are available to price.
+                                No forecast data is available for this window.
                             </p>
                         ) : (
-                            <ul className="mt-3 grid gap-4 sm:grid-cols-2">
-                                {recommendations.map((recommendation) => (
-                                    <li
-                                        key={recommendation.service_id}
-                                        className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm"
-                                    >
-                                        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                                            <p className="text-sm font-semibold text-slate-900">
-                                                {recommendation.name}
-                                            </p>
-                                            <span
-                                                className={`font-mono text-[10px] font-medium uppercase tracking-wide ${recommendation.direction ===
-                                                        'increase'
-                                                        ? 'text-emerald-700'
-                                                        : recommendation.direction ===
-                                                            'decrease'
-                                                            ? 'text-amber-700'
-                                                            : 'text-slate-500'
-                                                    }`}
-                                            >
-                                                {recommendation.direction ===
-                                                    'hold'
-                                                    ? 'Hold'
-                                                    : `${recommendation.change_percent > 0 ? '+' : ''}${recommendation.change_percent}%`}
-                                            </span>
-                                        </div>
-                                        <p className="mt-1 text-[11px] leading-5 text-slate-500">
-                                            {recommendation.reasons.join(' · ')}
+                            <>
+                                <ul className="mt-3 grid gap-4 sm:grid-cols-2">
+                                    <li className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm">
+                                        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                            Average occupancy
                                         </p>
-                                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                                            <p className="font-mono text-xs tabular-nums text-slate-800">
-                                                {money(
-                                                    recommendation.current_price,
-                                                )}
-                                                <span className="mx-1.5 text-slate-400">
-                                                    →
-                                                </span>
-                                                <strong>
-                                                    {money(
-                                                        recommendation.suggested_price,
-                                                    )}
-                                                </strong>
-                                                <span className="ml-2 text-[9px] uppercase tracking-wide text-slate-500">
-                                                    {recommendation.confidence}{' '}
-                                                    confidence
-                                                </span>
-                                            </p>
-                                            {recommendation.direction ===
-                                                'hold' ? (
-                                                <span className="text-[10px] text-slate-500">
-                                                    No adjustment suggested
-                                                </span>
-                                            ) : (
-                                                <WarmTooltip
-                                                    content="Review before applying to new bookings."
-                                                    side="top"
-                                                    size="sm"
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setPriceAdjustmentError(
-                                                                '',
-                                                            )
-                                                            setSelectedPriceRecommendation(
-                                                                recommendation,
-                                                            )
-                                                        }}
-                                                        className={`inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-semibold text-[#006dfc] hover:bg-slate-50 ${focusRing}`}
-                                                    >
-                                                        Review adjustment
-                                                    </button>
-                                                </WarmTooltip>
+                                        <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">
+                                            {formatPercent(
+                                                demandForecast.average_forecast_occupancy,
                                             )}
-                                        </div>
+                                        </p>
+                                        <p className="mt-1 text-[11px] text-slate-500">
+                                            Across the selected forecast window.
+                                        </p>
                                     </li>
-                                ))}
-                            </ul>
+                                    <li className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm">
+                                        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                            Expected paid days
+                                        </p>
+                                        <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">
+                                            {numberFormatter.format(
+                                                demandForecast.expected_room_nights,
+                                            )}
+                                        </p>
+                                        <p className="mt-1 text-[11px] text-slate-500">
+                                            Total paid 22-hour stays projected.
+                                        </p>
+                                    </li>
+                                    <li className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm">
+                                        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                            Peak day
+                                        </p>
+                                        <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">
+                                            {demandForecast.peak_day?.label ?? '—'}
+                                        </p>
+                                        <p className="mt-1 text-[11px] text-slate-500">
+                                            {demandForecast.peak_day
+                                                ? `${formatPercent(demandForecast.peak_day.expected_occupancy)} projected occupancy`
+                                                : 'No peak day projected.'}
+                                        </p>
+                                    </li>
+                                    <li className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm">
+                                        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                            Holiday dates
+                                        </p>
+                                        <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">
+                                            {demandForecast.holiday_days}
+                                        </p>
+                                        <p className="mt-1 text-[11px] text-slate-500">
+                                            Holidays inside the forecast window.
+                                        </p>
+                                    </li>
+                                </ul>
+                                <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2" aria-label="Forecast factors">
+                                    {demandForecast.factors.map((factor) => (
+                                        <li key={factor.key}>
+                                            <WarmTooltip
+                                                content={factor.impact}
+                                                side="top"
+                                                size="sm"
+                                            >
+                                                <span className="text-[10px] text-slate-600 underline decoration-dotted underline-offset-4">
+                                                    {factor.label}
+                                                </span>
+                                            </WarmTooltip>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </>
                         )}
                     </AdminCard>
                 </section>
@@ -1930,6 +1791,7 @@ const Dashboard = () => {
                             ) : bookings.length === 0 ? (
                                 <AdminEmptyState
                                     icon={CalendarClock}
+                                    state="empty"
                                     heading="No bookings yet"
                                     subtitle="New reservations will appear here as guests book."
                                     ctaLabel="Open bookings report"
@@ -1985,19 +1847,6 @@ const Dashboard = () => {
                     </AdminCard>
                 </section>
             </div>
-            {selectedPriceRecommendation && (
-                <ConfirmDialog
-                    title={`Adjust ${selectedPriceRecommendation.name} base price?`}
-                    description={`Change the base price from ${money(selectedPriceRecommendation.current_price)} to ${money(selectedPriceRecommendation.suggested_price)} (${selectedPriceRecommendation.change_percent > 0 ? '+' : ''}${selectedPriceRecommendation.change_percent}%). This only affects new reservations; existing bookings remain unchanged. The update will not be made unless you confirm.`}
-                    confirmLabel="Confirm price update"
-                    loadingLabel="Saving price…"
-                    confirmVariant="primary"
-                    loading={priceAdjustmentLoading}
-                    error={priceAdjustmentError}
-                    onCancel={closePriceAdjustment}
-                    onConfirm={() => void confirmPriceAdjustment()}
-                />
-            )}
         </main>
     )
 }

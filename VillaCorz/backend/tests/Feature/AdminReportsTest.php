@@ -145,6 +145,7 @@ class AdminReportsTest extends TestCase
             'check_in' => now()->toDateString(),
             'check_out' => now()->addDay()->toDateString(),
             'nights' => 1,
+            'paid_days' => 1,
             'adults' => 1,
             'kids' => 0,
             'subtotal' => 1000,

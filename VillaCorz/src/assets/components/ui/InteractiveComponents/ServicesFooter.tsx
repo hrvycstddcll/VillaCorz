@@ -10,6 +10,7 @@ import {
     X,
 } from 'lucide-react'
 import StayDateTimeFields from './StayDateTimeFields'
+import ChoosingMascotPrompt from './ChoosingMascotPrompt'
 import { formatStayDateTime, type StayDateFields } from '../../../../lib/stayDateTime'
 
 export type RoomGuests = {
@@ -28,10 +29,11 @@ type BookingPopover = 'dates' | 'guests' | null
 
 type ServicesFooterProps = {
     fields: StayDateFields
+    hasSelectedRooms: boolean
     onChange: (patch: Partial<StayDateFields>) => void
     checkIn: string
     checkOut: string
-    nights: number
+    paidDays: number
     roomGuests: RoomGuests[]
     setRoomGuests: Dispatch<SetStateAction<RoomGuests[]>>
     roomChoices: BookingRoomChoice[]
@@ -42,14 +44,16 @@ type ServicesFooterProps = {
     checkingAvailability?: boolean
     onUnavailableDate?: (date: string) => void
     onCheckAvailability: () => void
+    onBrowseRooms: () => void
 }
 
 const ServicesFooter = ({
     fields,
+    hasSelectedRooms,
     onChange,
     checkIn,
     checkOut,
-    nights,
+    paidDays,
     roomGuests,
     setRoomGuests,
     roomChoices,
@@ -60,6 +64,7 @@ const ServicesFooter = ({
     checkingAvailability = false,
     onUnavailableDate,
     onCheckAvailability,
+    onBrowseRooms,
 }: ServicesFooterProps) => {
     const [bookingPopover, setBookingPopover] = useState<BookingPopover>(null)
     const [isExpanded, setIsExpanded] = useState(false)
@@ -105,7 +110,7 @@ const ServicesFooter = ({
     return (
         <footer
             aria-label="Stay dates and guests"
-            className="fixed inset-x-0 bottom-0 z-40 w-full bg-white px-0 pb-0 shadow-[0_-8px_24px_rgba(15,23,42,0.10)]"
+            className="fixed inset-x-0 bottom-0 z-40 w-full bg-white px-0 pb-0 font-poppins shadow-[0_-8px_24px_rgba(15,23,42,0.10)]"
         >
             <div className="grid w-full grid-cols-2 items-center gap-2 bg-white px-4 py-2.5 sm:gap-4 sm:px-7 sm:py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_268px] lg:gap-7">
                 <div
@@ -115,7 +120,11 @@ const ServicesFooter = ({
                 >
                     <button
                         type="button"
-                        aria-label="Choose check-in and check-out date and time"
+                        aria-label={
+                            hasSelectedRooms
+                                ? 'Choose check-in date, time, and paid days'
+                                : 'Choose a room first'
+                        }
                         aria-haspopup="dialog"
                         aria-expanded={bookingPopover === 'dates'}
                         onClick={() => togglePopover('dates')}
@@ -128,10 +137,10 @@ const ServicesFooter = ({
                             />
                         </span>
                         <span className="min-w-0">
-                            <span className="block text-[9px] leading-tight text-slate-600 sm:text-xs">
+                            <span className="block text-xs leading-relaxed text-slate-600 sm:text-sm lg:text-base">
                                 Check-in
                             </span>
-                            <span className="block truncate text-[10px] font-semibold leading-tight text-slate-700 sm:text-xs">
+                            <span className="block truncate font-jakarta text-xs font-semibold leading-relaxed text-slate-700 sm:text-sm lg:text-base">
                                 {formatStayDateTime(checkIn, {
                                     month: 'short',
                                     day: 'numeric',
@@ -145,10 +154,10 @@ const ServicesFooter = ({
                             aria-hidden="true"
                         />
                         <span className="min-w-0">
-                            <span className="block text-[9px] leading-tight text-slate-600 sm:text-xs">
+                            <span className="block text-xs leading-relaxed text-slate-600 sm:text-sm lg:text-base">
                                 Check-out
                             </span>
-                            <span className="block truncate text-[10px] font-semibold leading-tight text-slate-700 sm:text-xs">
+                            <span className="block truncate font-jakarta text-xs font-semibold leading-relaxed text-slate-700 sm:text-sm lg:text-base">
                                 {formatStayDateTime(checkOut, {
                                     month: 'short',
                                     day: 'numeric',
@@ -162,36 +171,50 @@ const ServicesFooter = ({
                             aria-hidden="true"
                         />
                         <span className="min-w-0 text-center">
-                            <span className="block text-[9px] text-slate-600 sm:text-xs">
-                                Nights
+                            <span className="block text-xs text-slate-600 sm:text-sm lg:text-base">
+                                Paid days
                             </span>
-                            <span className="block text-sm font-bold text-slate-600 sm:text-base">
-                                {nights}
+                            <span className="block font-jakarta text-sm font-bold text-slate-600 sm:text-base lg:text-lg">
+                                {paidDays}
                             </span>
                         </span>
                     </button>
                     {bookingPopover === 'dates' && (
                         <div
                             role="dialog"
-                            aria-label="Choose your stay date and time"
+                            aria-label={
+                                hasSelectedRooms
+                                    ? 'Choose your stay date and time'
+                                    : 'Choose a room first'
+                            }
                             className="absolute bottom-full left-0 z-50 mb-3 w-[min(94vw,520px)] rounded-lg border border-slate-200 bg-white p-3 shadow-xl sm:p-4"
                         >
-                            <StayDateTimeFields
-                                fields={fields}
-                                onChange={onChange}
-                                compact
-                                unavailableDates={unavailableDates}
-                                onUnavailableDate={onUnavailableDate}
-                            />
-                            <div className="mt-3 flex justify-end border-t border-slate-100 pt-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setBookingPopover(null)}
-                                    className="rounded bg-[#0875f9] px-4 py-1.5 text-[10px] font-semibold text-white hover:bg-blue-700"
-                                >
-                                    Done
-                                </button>
-                            </div>
+                            {hasSelectedRooms ? (
+                                <>
+                                    <StayDateTimeFields
+                                        fields={fields}
+                                        onChange={onChange}
+                                        compact
+                                        unavailableDates={unavailableDates}
+                                        onUnavailableDate={onUnavailableDate}
+                                    />
+                                    <div className="mt-3 flex justify-end border-t border-slate-100 pt-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setBookingPopover(null)}
+                                            className="rounded bg-[#0875f9] px-4 py-1.5 text-[13px] font-semibold text-white sm:text-sm lg:text-base hover:bg-blue-700"
+                                        >
+                                            Done
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <ChoosingMascotPrompt
+                                    compact
+                                    actionLabel="Browse rooms"
+                                    onChooseRoom={onBrowseRooms}
+                                />
+                            )}
                         </div>
                     )}
                 </div>
@@ -216,14 +239,14 @@ const ServicesFooter = ({
                             />
                         </span>
                         <span className="min-w-0">
-                            <span className="block text-[10px] text-slate-600 sm:text-xs">
+                            <span className="block text-xs text-slate-600 sm:text-sm lg:text-base">
                                 Persons
                             </span>
                             <span className="flex items-center gap-1">
-                                <span className="text-xl font-bold leading-none text-slate-500 sm:text-2xl">
+                                <span className="font-jakarta text-lg font-bold leading-none text-slate-500 sm:text-2xl lg:text-3xl">
                                     {adults}
                                 </span>
-                                <span className="block min-w-0 text-[8px] font-bold uppercase leading-tight text-slate-600 sm:text-[9px]">
+                                <span className="block min-w-0 text-[11px] font-bold uppercase leading-4 text-slate-600 sm:text-xs lg:text-sm">
                                     Adults · +{children} kids
                                     <span className="block font-normal normal-case">
                                         Rooms: {assignedRooms} selected
@@ -281,11 +304,11 @@ const ServicesFooter = ({
                                         >
                                             <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                                                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                                                    <h3 className="text-[11px] font-semibold text-slate-700">
+                                                    <h3 className="font-jakarta text-xs font-semibold text-slate-700 sm:text-sm lg:text-base">
                                                         Room {roomIndex + 1}
                                                     </h3>
                                                     {room.stayId ? (
-                                                        <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-[#006dfc]/10 px-2 py-0.5 text-[10px] font-medium text-[#006dfc]">
+                                                        <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-[#006dfc]/10 px-2 py-0.5 text-xs font-medium text-[#006dfc] sm:text-sm lg:text-base">
                                                             <Check
                                                                 className="size-3 shrink-0"
                                                                 aria-hidden="true"
@@ -295,7 +318,7 @@ const ServicesFooter = ({
                                                             </span>
                                                         </span>
                                                     ) : (
-                                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 sm:text-sm lg:text-base">
                                                             Not added
                                                         </span>
                                                     )}
@@ -315,7 +338,7 @@ const ServicesFooter = ({
                                                                 )
                                                             }
                                                             aria-label={`Deselect room ${roomIndex + 1}`}
-                                                            className="inline-flex min-h-11 items-center gap-1 rounded-md px-1.5 text-[10px] font-semibold text-[#006dfc] hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                                            className="inline-flex min-h-11 items-center gap-1 rounded-md px-1.5 text-xs font-semibold text-[#006dfc] sm:text-sm lg:text-base hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                                                         >
                                                             <X
                                                                 className="size-3"
@@ -338,7 +361,7 @@ const ServicesFooter = ({
                                                                 )
                                                             }
                                                             aria-label={`Remove room ${roomIndex + 1}`}
-                                                            className="inline-flex min-h-11 items-center rounded-md px-1.5 text-[10px] font-medium text-slate-500 hover:bg-white hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                                            className="inline-flex min-h-11 items-center rounded-md px-1.5 text-xs font-medium text-slate-500 sm:text-sm lg:text-base hover:bg-white hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                                                         >
                                                             Remove room
                                                         </button>
@@ -373,7 +396,7 @@ const ServicesFooter = ({
                                                             )
                                                         })
                                                     }}
-                                                    className="w-full rounded border border-slate-200 bg-white px-2.5 py-2 text-[10px] text-slate-700 outline-none focus:border-[#0875f9] focus:ring-1 focus:ring-[#0875f9]"
+                                                    className="w-full rounded border border-slate-200 bg-white px-2.5 py-2 text-base text-slate-700 outline-none focus:border-[#0875f9] focus:ring-1 focus:ring-[#0875f9] sm:text-sm lg:text-base"
                                                 >
                                                     <option value="">
                                                         Choose room or villa
@@ -437,7 +460,7 @@ const ServicesFooter = ({
                                                     key={key}
                                                     className="flex items-center justify-between py-1"
                                                 >
-                                                    <span className="text-xs font-semibold text-slate-700">
+                                                    <span className="text-xs font-semibold text-slate-700 sm:text-sm lg:text-base">
                                                         {room[key]} {label}
                                                     </span>
                                                     <div className="flex items-center gap-2">
@@ -506,7 +529,7 @@ const ServicesFooter = ({
                                         { stayId: null, adults: 2, kids: 0 },
                                     ])
                                 }
-                                className="mt-2 text-[10px] font-semibold text-[#0875f9] hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="mt-2 text-xs font-semibold text-[#0875f9] sm:text-sm lg:text-base hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 + Add room choice
                             </button>
@@ -514,14 +537,14 @@ const ServicesFooter = ({
                                 <button
                                     type="button"
                                     onClick={() => setBookingPopover(null)}
-                                    className="rounded px-3 py-1.5 text-[10px] font-medium text-slate-600 hover:bg-slate-100"
+                                    className="rounded px-3 py-1.5 text-xs font-medium text-slate-600 sm:text-sm lg:text-base hover:bg-slate-100"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setBookingPopover(null)}
-                                    className="rounded bg-[#0875f9] px-4 py-1.5 text-[10px] font-semibold text-white hover:bg-blue-700"
+                                    className="rounded bg-[#0875f9] px-4 py-1.5 text-[13px] font-semibold text-white sm:text-sm lg:text-base hover:bg-blue-700"
                                 >
                                     Done
                                 </button>
@@ -568,7 +591,7 @@ const ServicesFooter = ({
                 {blockedReason && (
                     <p
                         role="alert"
-                        className={`col-span-2 rounded-lg bg-rose-50 p-2.5 text-[10px] leading-4 text-rose-700 lg:col-span-3 ${
+                        className={`col-span-2 rounded-lg bg-rose-50 p-2.5 text-[13px] leading-relaxed text-rose-700 sm:text-sm lg:text-base lg:col-span-3 ${
                             !isExpanded ? 'hidden lg:flex' : ''
                         }`}
                     >
@@ -578,7 +601,7 @@ const ServicesFooter = ({
                 {notice && (
                     <p
                         role="status"
-                        className={`col-span-2 flex items-start gap-2 rounded-lg bg-blue-50 p-2.5 text-[10px] leading-4 text-blue-800 lg:col-span-3 ${
+                        className={`col-span-2 flex items-start gap-2 rounded-lg bg-blue-50 p-2.5 text-[13px] leading-relaxed text-blue-800 sm:text-sm lg:text-base lg:col-span-3 ${
                             !isExpanded ? 'hidden lg:flex' : ''
                         }`}
                     >
