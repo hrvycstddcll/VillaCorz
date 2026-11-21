@@ -261,6 +261,7 @@ const AccordionGallery = ({
             >
                 {panels.map((p, i) => {
                     const isOpen = i === active
+                    const [labelNumber, ...labelWords] = p.label.split(' ')
                     return (
                         <div
                             key={p.label}
@@ -314,7 +315,8 @@ const AccordionGallery = ({
                                             '"Plus Jakarta Sans", sans-serif',
                                     }}
                                 >
-                                    {p.label}
+                                    <strong className="font-bold">{labelNumber}</strong>{' '}
+                                    {labelWords.join(' ')}
                                 </span>
                             </div>
 
@@ -337,7 +339,8 @@ const AccordionGallery = ({
                                         className="mb-4 text-white"
                                         style={{
                                             fontFamily:
-                                                '"Instrument Serif", serif',
+                                                '"Plus Jakarta Sans", sans-serif',
+                                            fontWeight: 700,
                                             fontSize:
                                                 'clamp(1.5rem, 6vw, 2.5rem)',
                                             letterSpacing: '-0.03em',
