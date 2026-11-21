@@ -7,9 +7,12 @@ use App\Models\BookingRoom;
 use App\Models\Payment;
 use App\Models\Service;
 use App\Models\User;
+use App\Support\StayTime;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 use Tests\TestCase;
 
 class CustomerAssistantTest extends TestCase
@@ -99,6 +102,27 @@ class CustomerAssistantTest extends TestCase
         ]);
 
         return $booking;
+    }
+
+    private function nextDate(int $month, int $day): Carbon
+    {
+        $today = now()->setTimezone(StayTime::TIMEZONE)->startOfDay();
+
+        for ($offset = 0; $offset <= 8; $offset++) {
+            $year = (int) $today->year + $offset;
+
+            if (! checkdate($month, $day, $year)) {
+                continue;
+            }
+
+            $candidate = Carbon::create($year, $month, $day, 0, 0, 0, StayTime::TIMEZONE);
+
+            if ($candidate->greaterThanOrEqualTo($today)) {
+                return $candidate;
+            }
+        }
+
+        throw new RuntimeException('No valid future date found.');
     }
 
     private function fakeChat(): void
@@ -198,6 +222,110 @@ class CustomerAssistantTest extends TestCase
                 && str_contains($system, '"reference": "VC-EMERGENCY-3"')
                 && str_contains($system, '"emergency_request_available": true')
                 && str_contains($system, '"direct_cancellation_available": false');
+        });
+    }
+
+    public function test_specific_named_date_is_included_in_availability_context(): void
+    {
+        config()->set('assistant.enabled', true);
+        $customer = $this->makeUser('customer');
+        $this->seedService();
+        $this->fakeChat();
+
+        $date = $this->nextDate(11, 23);
+        $checkIn = StayTime::formatPht(
+            $date->copy()->setTimeFromTimeString('14:00'),
+            'Y-m-d H:i P',
+        );
+        $checkOut = StayTime::formatPht(
+            $date->copy()->addDay()->setTimeFromTimeString('12:00'),
+            'Y-m-d H:i P',
+        );
+        $label = 'Nov 23, '.$date->year.' for one night';
+
+        $this->actingAs($customer)->postJson('/api/customer-assistant/chat', [
+            'message' => 'What room is available in nov. 23?',
+            'context' => ['page' => 'services'],
+        ])->assertOk();
+
+        Http::assertSent(function (HttpRequest $request) use ($checkIn, $checkOut, $label): bool {
+            $system = $request->data()['messages'][0]['content'] ?? '';
+
+            return str_contains($system, '"availability_check"')
+                && str_contains($system, '"check_in": "'.$checkIn.'"')
+                && str_contains($system, '"check_out": "'.$checkOut.'"')
+                && str_contains($system, '"requested_label": "'.$label.'"')
+                && str_contains($system, '"basis": "current confirmed bookings"');
+        });
+    }
+
+    public function test_specific_date_range_is_included_in_availability_context(): void
+    {
+        config()->set('assistant.enabled', true);
+        $customer = $this->makeUser('customer');
+        $this->seedService();
+        $this->fakeChat();
+
+        $start = $this->nextDate(11, 23);
+        $end = $start->copy()->addDays(2);
+        $checkIn = StayTime::formatPht(
+            $start->copy()->setTimeFromTimeString('14:00'),
+            'Y-m-d H:i P',
+        );
+        $checkOut = StayTime::formatPht(
+            $end->copy()->setTimeFromTimeString('12:00'),
+            'Y-m-d H:i P',
+        );
+        $label = $start->format('M j, Y').' – '.$end->format('M j, Y');
+
+        $this->actingAs($customer)->postJson('/api/customer-assistant/chat', [
+            'message' => 'Is a room free from nov. 23 to nov. 25?',
+            'context' => ['page' => 'services'],
+        ])->assertOk();
+
+        Http::assertSent(function (HttpRequest $request) use ($checkIn, $checkOut, $label): bool {
+            $system = $request->data()['messages'][0]['content'] ?? '';
+
+            return str_contains($system, '"availability_check"')
+                && str_contains($system, '"check_in": "'.$checkIn.'"')
+                && str_contains($system, '"check_out": "'.$checkOut.'"')
+                && str_contains($system, '"requested_label": "'.$label.'"');
+        });
+    }
+
+    public function test_invalid_specific_date_is_ignored(): void
+    {
+        config()->set('assistant.enabled', true);
+        $customer = $this->makeUser('customer');
+        $this->fakeChat();
+
+        $this->actingAs($customer)->postJson('/api/customer-assistant/chat', [
+            'message' => 'What room is available feb. 30?',
+            'context' => ['page' => 'services'],
+        ])->assertOk();
+
+        Http::assertSent(function (HttpRequest $request): bool {
+            $system = $request->data()['messages'][0]['content'] ?? '';
+
+            return ! str_contains($system, '"availability_check"');
+        });
+    }
+
+    public function test_past_explicit_date_is_ignored(): void
+    {
+        config()->set('assistant.enabled', true);
+        $customer = $this->makeUser('customer');
+        $this->fakeChat();
+
+        $this->actingAs($customer)->postJson('/api/customer-assistant/chat', [
+            'message' => 'What room is available on 2020-01-01?',
+            'context' => ['page' => 'services'],
+        ])->assertOk();
+
+        Http::assertSent(function (HttpRequest $request): bool {
+            $system = $request->data()['messages'][0]['content'] ?? '';
+
+            return ! str_contains($system, '"availability_check"');
         });
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
+use App\Services\PaymentConfirmationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,6 +22,37 @@ class PaymentController extends Controller
         return response()->json([
             'success' => true,
             'data' => $this->statusPayload($payment),
+        ]);
+    }
+
+    public function confirm(
+        Request $request,
+        string $reference,
+        PaymentConfirmationService $confirmation,
+    ): JsonResponse {
+        $payment = Payment::query()
+            ->where('reference', $reference)
+            ->with('booking')
+            ->firstOrFail();
+
+        $this->authorizeOwner($request, $payment);
+
+        $result = $confirmation->confirm(
+            $payment,
+            'spa',
+            $payment->idempotency_key,
+            $request,
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                ...$this->statusPayload($result['payment']),
+                'conflict' => $result['conflict'],
+                'expired' => $result['expired'],
+                'already_paid' => $result['already_paid'],
+                'message' => $result['message'],
+            ],
         ]);
     }
 
