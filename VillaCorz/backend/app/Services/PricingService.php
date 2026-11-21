@@ -3,7 +3,8 @@
 namespace App\Services;
 
 use App\Models\Service;
-use Carbon\CarbonImmutable;
+use App\Support\StayTime;
+use DateTimeInterface;
 use Illuminate\Support\Collection;
 
 class PricingService
@@ -39,14 +40,15 @@ class PricingService
      */
     public function quote(
         Collection $services,
-        string $checkIn,
-        string $checkOut,
+        DateTimeInterface|string $checkIn,
+        DateTimeInterface|string $checkOut,
         array $guestsByServiceId = [],
     ): array
     {
-        $start = CarbonImmutable::parse($checkIn, 'UTC')->startOfDay();
-        $end = CarbonImmutable::parse($checkOut, 'UTC')->startOfDay();
-        $nights = max(0, (int) $start->diffInDays($end));
+        $start = StayTime::toCarbon($checkIn)->setTimezone(StayTime::TIMEZONE)->startOfDay();
+        $end = StayTime::toCarbon($checkOut)->setTimezone(StayTime::TIMEZONE)->startOfDay();
+        $nights = max(1, (int) $start->diffInDays($end));
+        $billableEnd = $start->addDays($nights);
 
         $rooms = [];
         $subtotal = 0.0;
@@ -81,7 +83,7 @@ class PricingService
             $lineTotal = 0.0;
             $additionalHeadTotal = 0.0;
 
-            for ($date = $start; $date->lt($end); $date = $date->addDay()) {
+            for ($date = $start; $date->lt($billableEnd); $date = $date->addDay()) {
                 $dayOfWeek = (int) $date->format('w');
                 $isWeekend = in_array($dayOfWeek, [0, 5, 6], true);
                 $nightlyPrice = $isWeekend ? $weekendPrice : $weekdayPrice;

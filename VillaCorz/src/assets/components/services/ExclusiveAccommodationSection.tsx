@@ -1,3 +1,4 @@
+import { Check, X } from 'lucide-react'
 import ServiceTile from '../ui/InteractiveComponents/ServiceTile'
 import type { Stay } from './shared'
 
@@ -5,18 +6,28 @@ export function ExclusiveAccommodationSection({
     stay,
     loading = false,
     selectedStay,
+    selectedRoomIds,
+    unavailable = false,
     activePhoto,
     onSelectStay,
+    onToggleReservation,
     onSelectPhoto,
 }: {
     stay: Stay | null
     loading?: boolean
     selectedStay: Stay | null
+    selectedRoomIds: string[]
+    unavailable?: boolean
     activePhoto: string
     onSelectStay: (stay: Stay) => void
+    onToggleReservation: (stay: Stay) => void
     onSelectPhoto: (image: string) => void
 }) {
     const showSkeleton = loading && !stay
+    const isReservationSelected = Boolean(stay && selectedRoomIds.includes(stay.id))
+    const selectedRoomNumber = stay
+        ? selectedRoomIds.indexOf(stay.id) + 1 || undefined
+        : undefined
 
     if (showSkeleton) {
         return (
@@ -87,9 +98,60 @@ export function ExclusiveAccommodationSection({
                 isSelected={selectedStay?.id === stay.id}
                 activePhoto={activePhoto}
                 gallery={stay.gallery}
+                unavailable={unavailable}
                 onSelect={() => onSelectStay(stay)}
                 onSelectPhoto={onSelectPhoto}
             />
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#d7e6ff] bg-[#f5f9ff] px-3 py-2">
+                <span
+                    className={`inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold ${
+                        isReservationSelected
+                            ? 'text-[#006dfc]'
+                            : unavailable
+                              ? 'text-slate-400'
+                              : 'text-slate-500'
+                    }`}
+                >
+                    {isReservationSelected ? (
+                        <>
+                            <Check className="size-4" aria-hidden="true" />
+                            Added{selectedRoomNumber ? ` · Room ${selectedRoomNumber}` : ''}
+                        </>
+                    ) : unavailable ? (
+                        'Unavailable for these dates'
+                    ) : (
+                        'Not added to your booking'
+                    )}
+                </span>
+                <button
+                    type="button"
+                    onClick={() => onToggleReservation(stay)}
+                    disabled={unavailable && !isReservationSelected}
+                    aria-label={
+                        isReservationSelected
+                            ? `Remove ${stay.title} from your booking`
+                            : unavailable
+                              ? `${stay.title} is unavailable for these dates`
+                              : `Add ${stay.title} to your booking`
+                    }
+                    className={`inline-flex min-h-11 items-center gap-1 rounded-md px-4 py-2 text-xs font-semibold shadow-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:opacity-60 ${
+                        isReservationSelected
+                            ? 'bg-[#006dfc] text-white hover:bg-blue-700'
+                            : 'bg-white text-[#006dfc] hover:bg-[#006dfc] hover:text-white'
+                    }`}
+                >
+                    {isReservationSelected ? (
+                        <>
+                            <X className="size-4" aria-hidden="true" />
+                            Remove
+                        </>
+                    ) : unavailable ? (
+                        'Unavailable'
+                    ) : (
+                        'Add whole villa'
+                    )}
+                </button>
+            </div>
         </section>
     )
 }

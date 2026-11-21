@@ -20,7 +20,12 @@ import bdoLogo from '../../images/bdo.png'
 import bpiLogo from '../../images/bpi.png'
 import ewalletLogo from '../../images/ewallet.png'
 import onlineBankLogo from '../../images/onlinebank.png'
-import { dateParts, type ServicesRouteState, type Stay } from './shared'
+import { type ServicesRouteState, type Stay } from './shared'
+import {
+    fieldsFromStay,
+    formatStayDateTime,
+    getStayWindow,
+} from '../../../lib/stayDateTime'
 
 export function ReservationView({
     checkIn,
@@ -91,14 +96,10 @@ export function ReservationView({
         const stay = roomChoices.find((choice) => choice.id === room.stayId)
         return stay ? [{ room, stay }] : []
     })
-    const nights = Math.max(
-        1,
-        Math.round(
-            (new Date(`${checkOut}T00:00:00`).getTime() -
-                new Date(`${checkIn}T00:00:00`).getTime()) /
-                86_400_000,
-        ),
-    )
+    const nights = useMemo(() => {
+        const stay = getStayWindow(fieldsFromStay(checkIn, checkOut))
+        return stay.nights || 1
+    }, [checkIn, checkOut])
     const total = assignedRooms.reduce(
         (sum, { room, stay }) =>
             sum +
@@ -162,10 +163,13 @@ export function ReservationView({
             previousFocus?.focus()
         }
     }, [showPaymentMethods])
-    const dateLabel = (value: string) => {
-        const parts = dateParts(value)
-        return `${parts.day} ${parts.weekday.slice(0, 3)} ${parts.monthYear.slice(0, 3)}`
-    }
+    const dateLabel = (value: string) =>
+        formatStayDateTime(value, {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+        })
 
     const proceedWithBooking = async (number: string) => {
         const normalized = normalizePhoneNumber(number)

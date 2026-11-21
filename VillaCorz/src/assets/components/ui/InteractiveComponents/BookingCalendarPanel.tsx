@@ -1,128 +1,84 @@
 import {
     useCallback,
     useEffect,
-    useMemo,
     useRef,
     useState,
     type Dispatch,
     type SetStateAction,
 } from 'react'
 import { createPortal } from 'react-dom'
-import {
-    CalendarDays,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    Minus,
-    Plus,
-    Trash2,
-    X,
-} from 'lucide-react'
+import { Check, ChevronDown, Minus, Plus, Trash2, X } from 'lucide-react'
+import StayDateTimeFields from './StayDateTimeFields'
+import { formatStayDateTime, getStayWindow } from '../../../../lib/stayDateTime'
+import type { StayDateFields } from '../../../../lib/stayDateTime'
 import type { BookingRoomChoice, RoomGuests } from './ServicesFooter'
 
 type BookingCalendarPanelProps = {
-    checkIn: string
-    checkOut: string
-    setCheckIn: Dispatch<SetStateAction<string>>
-    setCheckOut: Dispatch<SetStateAction<string>>
+    fields: StayDateFields
+    onChange: (patch: Partial<StayDateFields>) => void
     roomGuests: RoomGuests[]
     setRoomGuests: Dispatch<SetStateAction<RoomGuests[]>>
-    selectedRoomIndex: number
-    onSelectedRoomIndexChange: (index: number) => void
     roomChoices: BookingRoomChoice[]
     notice: string
+    noticeTone?: 'success' | 'error'
+    unavailableRoomIds?: string[]
+    unavailableDates?: string[]
+    blockedReason?: string
+    checkingAvailability?: boolean
+    onUnavailableDate?: (date: string) => void
     isOpen: boolean
     onOpenChange: (open: boolean) => void
-    onDateChange: () => void
     onCheckAvailability: () => void
 }
 
-const dateValue = (date: Date) => {
-    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-    return localDate.toISOString().slice(0, 10)
-}
-
-const dateSummary = (value: string) => {
-    const date = new Date(`${value}T00:00:00`)
-    const day = new Intl.DateTimeFormat('en', { day: 'numeric' }).format(date)
-    const weekday = new Intl.DateTimeFormat('en', { weekday: 'short' }).format(date)
-    const month = new Intl.DateTimeFormat('en', { month: 'short' }).format(date)
-
-    return `${day} ${weekday} ${month}`
-}
-
-const startOfMonth = (date: Date) =>
-    new Date(date.getFullYear(), date.getMonth(), 1)
+const summaryDate = (value: string) =>
+    formatStayDateTime(value, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    })
 
 const BookingCalendarPanel = ({
-    checkIn,
-    checkOut,
-    setCheckIn,
-    setCheckOut,
+    fields,
+    onChange,
     roomGuests,
     setRoomGuests,
-    selectedRoomIndex,
-    onSelectedRoomIndexChange,
     roomChoices,
     notice,
+    noticeTone = 'error',
+    unavailableRoomIds = [],
+    unavailableDates = [],
+    blockedReason = '',
+    checkingAvailability = false,
+    onUnavailableDate,
     isOpen,
     onOpenChange,
-    onDateChange,
     onCheckAvailability,
 }: BookingCalendarPanelProps) => {
-    const [calendarMonth, setCalendarMonth] = useState(() =>
-        startOfMonth(checkIn ? new Date(`${checkIn}T00:00:00`) : new Date()),
-    )
     const [isClosing, setIsClosing] = useState(false)
+    const [selectedRoomIndex, setSelectedRoomIndex] = useState(0)
     const triggerRef = useRef<HTMLButtonElement>(null)
     const drawerRef = useRef<HTMLElement>(null)
     const closeTimerRef = useRef<number | null>(null)
     const scrollPositionRef = useRef(0)
-    const today = dateValue(new Date())
-    const days = useMemo(() => {
-        const firstDay = startOfMonth(calendarMonth)
-        const offset = firstDay.getDay()
-        const count = new Date(
-            calendarMonth.getFullYear(),
-            calendarMonth.getMonth() + 1,
-            0,
-        ).getDate()
-
-        return [
-            ...Array.from({ length: offset }, () => null),
-            ...Array.from({ length: count }, (_, index) =>
-                new Date(
-                    calendarMonth.getFullYear(),
-                    calendarMonth.getMonth(),
-                    index + 1,
-                ),
-            ),
-        ]
-    }, [calendarMonth])
-    const nights =
-        checkIn && checkOut
-            ? Math.max(
-                  0,
-                  Math.round(
-                      (new Date(`${checkOut}T00:00:00`).getTime() -
-                          new Date(`${checkIn}T00:00:00`).getTime()) /
-                          86_400_000,
-                  ),
-              )
-            : 0
+    const stayWindow = getStayWindow(fields)
+    const nights = stayWindow.nights
     const guestCount = roomGuests.reduce(
         (total, room) => total + room.adults + room.kids,
         0,
     )
-    const selectedRoomCount = roomGuests.filter((room) => room.stayId !== null).length
-    const dateLabel = !checkIn
-        ? 'Select dates'
-        : checkOut
-          ? `${dateSummary(checkIn)} – ${dateSummary(checkOut)}`
-          : `${dateSummary(checkIn)} – select check-out`
+    const selectedRoomCount = roomGuests.filter(
+        (room) => room.stayId !== null,
+    ).length
+    const dateLabel = stayWindow.valid
+        ? `${summaryDate(stayWindow.checkIn)} – ${summaryDate(stayWindow.checkOut)}`
+        : fields.checkInDate
+          ? `${summaryDate(stayWindow.checkIn)} – select check-out`
+          : 'Select dates'
     const bookingSummary = [
         dateLabel,
-        checkIn && checkOut
+        stayWindow.valid
             ? `${nights} night${nights === 1 ? '' : 's'}`
             : null,
         `${guestCount} guest${guestCount === 1 ? '' : 's'}`,
@@ -132,24 +88,24 @@ const BookingCalendarPanel = ({
     ]
         .filter(Boolean)
         .join(' · ')
-    const dateSummaryText = `${dateLabel}${
-        nights > 0 ? ` · ${nights} night${nights === 1 ? '' : 's'}` : ''
-    }`
-    const firstRoomTitle = roomChoices.find(
-        (choice) => choice.id === roomGuests[0]?.stayId,
-    )?.title
-    const roomSummaryText =
-        roomGuests.length === 1
-            ? `Room 1 · ${firstRoomTitle ?? 'Choose room or villa'} · ${guestCount} guest${
-                  guestCount === 1 ? '' : 's'
-              }`
-            : `${roomGuests.length} rooms · ${guestCount} guests · ${selectedRoomCount} selected`
+    const addedRoomTitles = roomGuests
+        .map((room) => roomChoices.find((choice) => choice.id === room.stayId)?.title)
+        .filter((title): title is string => Boolean(title))
+    const roomSummaryText = [
+        `${roomGuests.length} room${roomGuests.length === 1 ? '' : 's'}`,
+        `${guestCount} guest${guestCount === 1 ? '' : 's'}`,
+        addedRoomTitles.length
+            ? `Added: ${addedRoomTitles.join(', ')}`
+            : 'No rooms added yet',
+    ].join(' · ')
 
     const requestClose = useCallback(() => {
         if (isClosing) return
 
         setIsClosing(true)
-        if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+        if (closeTimerRef.current !== null) {
+            window.clearTimeout(closeTimerRef.current)
+        }
         closeTimerRef.current = window.setTimeout(() => {
             setIsClosing(false)
             onOpenChange(false)
@@ -191,23 +147,12 @@ const BookingCalendarPanel = ({
 
     useEffect(
         () => () => {
-            if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+            if (closeTimerRef.current !== null) {
+                window.clearTimeout(closeTimerRef.current)
+            }
         },
         [],
     )
-
-    const chooseDate = (date: Date) => {
-        const value = dateValue(date)
-        onDateChange()
-
-        if (!checkIn || checkOut || value <= checkIn) {
-            setCheckIn(value)
-            setCheckOut('')
-            return
-        }
-
-        setCheckOut(value)
-    }
 
     const updateGuestCount = (
         index: number,
@@ -219,15 +164,32 @@ const BookingCalendarPanel = ({
                 roomIndex === index
                     ? {
                           ...room,
-                          [key]: Math.max(key === 'adults' ? 1 : 0, room[key] + amount),
+                          [key]: Math.max(
+                              key === 'adults' ? 1 : 0,
+                              room[key] + amount,
+                          ),
                       }
                     : room,
             ),
         )
     }
 
+    const removeRoom = (index: number) => {
+        setRoomGuests((current) =>
+            current.filter((_, roomIndex) => roomIndex !== index),
+        )
+        setSelectedRoomIndex((current) =>
+            Math.max(
+                0,
+                current > index
+                    ? current - 1
+                    : Math.min(index, roomGuests.length - 2),
+            ),
+        )
+    }
+
     const addRoom = () => {
-        onSelectedRoomIndexChange(roomGuests.length)
+        setSelectedRoomIndex(roomGuests.length)
         setRoomGuests((current) => [
             ...current,
             { stayId: null, adults: 2, kids: 0 },
@@ -240,25 +202,28 @@ const BookingCalendarPanel = ({
                 aria-label="Booking summary"
                 aria-hidden={isOpen}
                 inert={isOpen}
-                className={`h-fit w-full rounded-2xl border border-[#d7e6ff] bg-[#f5f9ff] p-4 shadow-[0_10px_30px_rgba(8,117,249,0.08)] sm:p-5 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-20 max-lg:rounded-none max-lg:border-x-0 max-lg:border-b-0 max-lg:bg-[#f5f9ff]/95 max-lg:p-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom))] max-lg:shadow-[0_-10px_30px_rgba(15,23,42,0.12)] max-lg:backdrop-blur-sm max-lg:transition-transform max-lg:duration-200 motion-reduce:transition-none ${
-                    isOpen ? 'max-lg:translate-y-full' : ''
-                }`}
+                className="h-fit w-full rounded-2xl border border-[#d7e6ff] bg-[#f5f9ff] p-4 shadow-[0_10px_30px_rgba(8,117,249,0.08)] sm:p-5"
             >
-                <div className="max-lg:flex max-lg:items-center max-lg:justify-between max-lg:gap-3">
-                    <div className="min-w-0">
-                        <h2 className="text-sm font-semibold text-[#006dfc]">
-                            Your booking
-                        </h2>
-                        <p className="mt-1 text-xs leading-5 text-slate-600 max-lg:truncate">
-                            {bookingSummary}
-                        </p>
+                <div className="min-w-0">
+                    <h2 className="text-sm font-semibold text-[#006dfc]">
+                        Your booking
+                    </h2>
+                    <p className="mt-1 break-words text-xs leading-5 text-slate-600">
+                        {bookingSummary}
+                    </p>
 
-                        {!isOpen && notice && (
-                            <p role="status" className="mt-3 truncate text-xs leading-5 text-rose-600 max-lg:mt-1">
-                                {notice}
-                            </p>
-                        )}
-                    </div>
+                    {!isOpen && notice && (
+                        <p
+                            role="status"
+                            className={`mt-3 text-xs leading-5 ${
+                                noticeTone === 'success'
+                                    ? 'text-blue-700'
+                                    : 'text-rose-600'
+                            }`}
+                        >
+                            {notice}
+                        </p>
+                    )}
 
                     <button
                         ref={triggerRef}
@@ -266,7 +231,7 @@ const BookingCalendarPanel = ({
                         onClick={() => onOpenChange(true)}
                         aria-expanded={isOpen}
                         aria-controls="booking-drawer"
-                        className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#006dfc] px-4 py-3 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] motion-reduce:transition-none max-lg:mt-0 max-lg:min-h-11 max-lg:w-auto max-lg:shrink-0 max-lg:px-4 max-lg:py-2.5"
+                        className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#006dfc] px-4 py-3 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] motion-reduce:transition-none"
                     >
                         Edit booking
                         <ChevronDown
@@ -279,7 +244,7 @@ const BookingCalendarPanel = ({
                 </div>
             </aside>
 
-            {!isOpen && <span id="booking-drawer" hidden />}
+            {!isOpen && !isClosing && <span id="booking-drawer" hidden />}
 
             {(isOpen || isClosing) &&
                 createPortal(
@@ -287,12 +252,13 @@ const BookingCalendarPanel = ({
                         <div
                             aria-hidden="true"
                             onClick={requestClose}
-                            className={`fixed inset-0 z-30 bg-slate-950/25 backdrop-blur-[1px] ${
+                            className={`fixed inset-0 z-40 bg-slate-950/25 backdrop-blur-[1px] ${
                                 isClosing
                                     ? 'booking-backdrop-exit'
                                     : 'booking-backdrop-enter'
                             }`}
                         />
+                        <div className="pointer-events-none fixed inset-0 z-50 flex items-start justify-center overflow-hidden px-3 pb-3 pt-[4.5rem] sm:px-4 sm:pt-20">
                         <section
                             id="booking-drawer"
                             ref={drawerRef}
@@ -301,13 +267,13 @@ const BookingCalendarPanel = ({
                             aria-labelledby="booking-drawer-title"
                             data-lenis-prevent=""
                             tabIndex={-1}
-                            className={`fixed left-0 top-[4.5rem] z-40 max-h-[calc(100dvh-4.5rem)] w-full overflow-y-auto overscroll-contain rounded-r-2xl border border-l-0 border-[#d7e6ff] bg-[#f5f9ff] shadow-[0_28px_90px_-24px_rgba(15,23,42,0.45)] outline-none sm:w-[calc(100vw-2rem)] lg:top-24 lg:max-h-[calc(100dvh-6rem)] lg:w-[min(72rem,calc(100vw-2rem))] ${
+                            className={`pointer-events-auto flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-[#d7e6ff] bg-[#f5f9ff] shadow-[0_28px_90px_-24px_rgba(15,23,42,0.45)] outline-none ${
                                 isClosing
                                     ? 'booking-drawer-exit'
                                     : 'booking-drawer-enter'
                             }`}
                         >
-                            <div className="sticky top-0 z-10 flex items-start justify-between gap-3 rounded-tr-2xl border-b border-[#d7e6ff] bg-[#f5f9ff]/95 px-4 py-3 backdrop-blur-sm sm:px-6 sm:py-4">
+                            <div className="z-10 flex shrink-0 items-start justify-between gap-3 border-b border-[#d7e6ff] bg-[#f5f9ff]/95 px-4 py-3 backdrop-blur-sm sm:px-6 sm:py-4">
                                 <div className="min-w-0">
                                     <h2
                                         id="booking-drawer-title"
@@ -315,7 +281,7 @@ const BookingCalendarPanel = ({
                                     >
                                         Your booking
                                     </h2>
-                                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                                    <p className="mt-1 truncate text-xs leading-5 text-slate-600">
                                         {bookingSummary}
                                     </p>
                                 </div>
@@ -329,174 +295,44 @@ const BookingCalendarPanel = ({
                                 </button>
                             </div>
 
-                            {notice && (
+                            <div
+                                id="booking-panel-content"
+                                data-lenis-prevent=""
+                                className="booking-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
+                            >
+                                {notice && (
                                 <p
                                     role="status"
-                                    className="mx-4 mt-4 text-xs leading-5 text-rose-600 sm:mx-6"
+                                    className={`mx-4 mt-4 rounded-lg px-3 py-2 text-xs leading-5 ${
+                                        noticeTone === 'success'
+                                            ? 'bg-blue-50 text-blue-800'
+                                            : 'text-rose-600'
+                                    } sm:mx-6`}
                                 >
                                     {notice}
                                 </p>
-                            )}
+                                )}
 
-                            <div
-                                id="booking-panel-content"
-                                className="grid gap-5 px-4 py-4 sm:px-6 sm:py-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] lg:items-start lg:gap-8"
-                            >
+                                <div className="grid gap-5 px-4 py-4 sm:px-6 sm:py-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
                                 <section
                                     aria-labelledby="booking-dates-heading"
                                     className="min-w-0"
                                 >
                                     <h3
                                         id="booking-dates-heading"
-                                        className="text-xs font-semibold text-slate-900"
+                                        className="mb-3 text-xs font-semibold text-slate-900"
                                     >
                                         Dates
                                     </h3>
-                                    <p className="mt-0.5 text-[11px] text-slate-600">
-                                        {dateSummaryText}
-                                    </p>
-
-                                    <div className="mt-3 flex items-center justify-between">
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setCalendarMonth((month) =>
-                                                    new Date(
-                                                        month.getFullYear(),
-                                                        month.getMonth() - 1,
-                                                        1,
-                                                    ),
-                                                )
-                                            }
-                                            disabled={
-                                                calendarMonth <= startOfMonth(new Date())
-                                            }
-                                            aria-label="Previous month"
-                                            className="flex size-11 items-center justify-center rounded-full text-slate-600 transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:opacity-30"
-                                        >
-                                            <ChevronLeft className="size-5" aria-hidden="true" />
-                                        </button>
-                                        <h3 className="text-sm font-semibold text-slate-900">
-                                            {new Intl.DateTimeFormat('en', {
-                                                month: 'long',
-                                                year: 'numeric',
-                                            }).format(calendarMonth)}
-                                        </h3>
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setCalendarMonth((month) =>
-                                                    new Date(
-                                                        month.getFullYear(),
-                                                        month.getMonth() + 1,
-                                                        1,
-                                                    ),
-                                                )
-                                            }
-                                            aria-label="Next month"
-                                            className="flex size-11 items-center justify-center rounded-full text-slate-600 transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
-                                        >
-                                            <ChevronRight className="size-5" aria-hidden="true" />
-                                        </button>
-                                    </div>
-
-                                    <div className="grid grid-cols-7 gap-y-1 text-center">
-                                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(
-                                            (day) => (
-                                                <span
-                                                    key={day}
-                                                    className="py-1.5 text-xs font-medium text-slate-700"
-                                                >
-                                                    {day}
-                                                </span>
-                                            ),
-                                        )}
-                                        {days.map((day, index) => {
-                                            if (!day) return <span key={`empty-${index}`} />
-
-                                            const value = dateValue(day)
-                                            const weekend =
-                                                day.getDay() === 0 || day.getDay() >= 5
-                                            const selected = value === checkIn || value === checkOut
-                                            const inRange = Boolean(
-                                                checkIn &&
-                                                    checkOut &&
-                                                    value > checkIn &&
-                                                    value < checkOut,
-                                            )
-                                            const disabled = value < today
-
-                                            return (
-                                                <button
-                                                    key={value}
-                                                    type="button"
-                                                    disabled={disabled}
-                                                    onClick={() => chooseDate(day)}
-                                                    aria-label={new Intl.DateTimeFormat(
-                                                        'en',
-                                                        { dateStyle: 'full' },
-                                                    ).format(day)}
-                                                    aria-pressed={selected}
-                                                    className={`mx-auto flex size-10 items-center justify-center rounded-md text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:text-slate-300 sm:size-9 sm:text-[13px] ${
-                                                        selected
-                                                            ? 'bg-[#006dfc] font-semibold text-white'
-                                                            : inRange
-                                                              ? 'bg-blue-100 text-blue-900'
-                                                              : weekend
-                                                                ? 'bg-rose-100 text-slate-700 hover:bg-rose-200'
-                                                                : 'text-slate-700 hover:bg-white'
-                                                    }`}
-                                                >
-                                                    {day.getDate()}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-
-                                    <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 border-b border-slate-200 pb-3 text-[11px] text-slate-600">
-                                        <span className="inline-flex items-center gap-1">
-                                            <span className="size-2.5 rounded-sm border border-slate-300" />
-                                            Weekday&nbsp; Mon–Thu
-                                        </span>
-                                        <span className="inline-flex items-center gap-1">
-                                            <span className="size-2.5 rounded-sm bg-rose-200" />
-                                            Weekend&nbsp; Fri–Sun
-                                        </span>
-                                    </div>
-
-                                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] divide-x divide-slate-200 border-y border-slate-300 py-2.5 text-xs">
-                                        {[
-                                            { label: 'Check-in', value: checkIn },
-                                            { label: 'Check-out', value: checkOut },
-                                        ].map(({ label, value }) => (
-                                            <div
-                                                key={label}
-                                                className="min-w-0 px-1.5 first:pl-0 last:pr-0"
-                                            >
-                                                <p className="font-medium leading-tight text-slate-600">
-                                                    {label}
-                                                </p>
-                                                <p className="mt-1 flex min-w-0 items-center gap-1 whitespace-nowrap font-semibold leading-tight text-slate-900 sm:text-[13px]">
-                                                    <CalendarDays
-                                                        className="size-3.5 shrink-0 text-slate-500"
-                                                        aria-hidden="true"
-                                                    />
-                                                    {value ? dateSummary(value) : 'Select date'}
-                                                </p>
-                                            </div>
-                                        ))}
-                                        <div className="min-w-0 px-1.5 pr-0">
-                                            <p className="font-medium leading-tight text-slate-600">
-                                                Nights
-                                            </p>
-                                            <p className="mt-1 flex items-center gap-1 font-semibold leading-tight text-slate-900 sm:text-[13px]">
-                                                <CalendarDays
-                                                    className="size-3.5 shrink-0 text-slate-500"
-                                                    aria-hidden="true"
-                                                />
-                                                {nights || '—'}
-                                            </p>
-                                        </div>
+                                    <div className="booking-scrollbar lg:max-h-[min(54dvh,34rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-2">
+                                        <StayDateTimeFields
+                                            fields={fields}
+                                            onChange={onChange}
+                                            compact
+                                            scrollable={false}
+                                            unavailableDates={unavailableDates}
+                                            onUnavailableDate={onUnavailableDate}
+                                        />
                                     </div>
                                 </section>
 
@@ -510,76 +346,95 @@ const BookingCalendarPanel = ({
                                     >
                                         Rooms &amp; guests
                                     </h3>
-                                    <p className="mt-0.5 text-[11px] text-slate-600">
+                                    <p className="mt-0.5 break-words text-[11px] text-slate-600">
                                         {roomSummaryText}
                                     </p>
 
-                                    <div className="mt-3 overflow-visible">
+                                    <div className="mt-3 space-y-3">
                                         {roomGuests.map((room, index) => {
-                                            const villaAssignedElsewhere = roomGuests.some(
-                                                (otherRoom, otherIndex) =>
-                                                    otherIndex !== index &&
-                                                    roomChoices.some(
-                                                        (choice) =>
-                                                            choice.id === otherRoom.stayId &&
-                                                            choice.category === 'exclusive',
-                                                    ),
-                                            )
-                                            const otherRoomsAssigned = roomGuests.some(
-                                                (otherRoom, otherIndex) =>
-                                                    otherIndex !== index &&
-                                                    otherRoom.stayId !== null &&
-                                                    roomChoices.some(
-                                                        (choice) =>
-                                                            choice.id === otherRoom.stayId &&
-                                                            choice.category === 'public',
-                                                    ),
-                                            )
+                                            const villaAssignedElsewhere =
+                                                roomGuests.some(
+                                                    (otherRoom, otherIndex) =>
+                                                        otherIndex !== index &&
+                                                        roomChoices.some(
+                                                            (choice) =>
+                                                                choice.id ===
+                                                                    otherRoom.stayId &&
+                                                                choice.category ===
+                                                                    'exclusive',
+                                                        ),
+                                                )
+                                            const otherRoomsAssigned =
+                                                roomGuests.some(
+                                                    (otherRoom, otherIndex) =>
+                                                        otherIndex !== index &&
+                                                        otherRoom.stayId !== null &&
+                                                        roomChoices.some(
+                                                            (choice) =>
+                                                                choice.id ===
+                                                                    otherRoom.stayId &&
+                                                                choice.category ===
+                                                                    'public',
+                                                        ),
+                                                )
+
+                                            const selectedTitle = roomChoices.find(
+                                                (choice) => choice.id === room.stayId,
+                                            )?.title
+                                            const selectedUnavailable =
+                                                room.stayId !== null &&
+                                                unavailableRoomIds.includes(room.stayId)
 
                                             return (
                                                 <section
                                                     key={index}
                                                     aria-label={`Room ${index + 1} guests`}
-                                                    className={`border-b border-slate-200 py-3 last:border-0 ${
+                                                    className={`rounded-lg border px-3 py-3 ${
+                                                        room.stayId
+                                                            ? 'border-[#006dfc]/40 bg-blue-50/60'
+                                                            : 'border-slate-200 bg-white'
+                                                    } ${
                                                         selectedRoomIndex === index
-                                                            ? 'rounded-md bg-blue-50/60 px-2'
+                                                            ? 'ring-1 ring-[#006dfc]/30'
                                                             : ''
                                                     }`}
                                                 >
-                                                    <div className="mb-2 flex items-center justify-between gap-2">
-                                                        <label
-                                                            htmlFor={`booking-room-${index}`}
-                                                            className="text-xs font-medium text-slate-700"
-                                                        >
-                                                            Room {index + 1} / selected room
-                                                        </label>
-                                                        {roomGuests.length > 1 && (
-                                                            <button
+                                                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                            <label
+                                                                htmlFor={`booking-room-${index}`}
+                                                                className="text-xs font-semibold text-slate-800"
+                                                            >
+                                                                Room {index + 1}
+                                                            </label>
+                                                            {selectedTitle ? (
+                                                                <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-[#006dfc]/10 px-2 py-0.5 text-[11px] font-medium text-[#006dfc]">
+                                                                    <Check
+                                                                        className="size-3 shrink-0"
+                                                                        aria-hidden="true"
+                                                                    />
+                                                                    <span className="truncate">
+                                                                        Added · {selectedTitle}
+                                                                    </span>
+                                                                </span>
+                                                            ) : (
+                                                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                                                                    Not added
+                                                                </span>
+                                                            )}
+                                                            {selectedUnavailable ? (
+                                                                <span className="rounded-full bg-slate-300 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                                                                    Unavailable
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                        <div className="flex shrink-0 items-center gap-1">
+                                                            {roomGuests.length > 1 && (
+                                                                <button
                                                                 type="button"
-                                                                onClick={() => {
-                                                                    setRoomGuests((current) =>
-                                                                        current.filter(
-                                                                            (_, roomIndex) =>
-                                                                                roomIndex !== index,
-                                                                        ),
-                                                                    )
-                                                                    const nextSelectedIndex =
-                                                                        selectedRoomIndex > index
-                                                                            ? selectedRoomIndex - 1
-                                                                            : selectedRoomIndex ===
-                                                                                index
-                                                                              ? Math.min(
-                                                                                    index,
-                                                                                    roomGuests.length - 2,
-                                                                                )
-                                                                              : selectedRoomIndex
-                                                                    onSelectedRoomIndexChange(
-                                                                        Math.max(
-                                                                            0,
-                                                                            nextSelectedIndex,
-                                                                        ),
-                                                                    )
-                                                                }}
+                                                                onClick={() =>
+                                                                    removeRoom(index)
+                                                                }
                                                                 aria-label={`Remove room ${index + 1}`}
                                                                 className="inline-flex size-11 items-center justify-center rounded-full text-slate-500 transition hover:bg-white hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                                                             >
@@ -589,29 +444,35 @@ const BookingCalendarPanel = ({
                                                                 />
                                                             </button>
                                                         )}
+                                                        </div>
                                                     </div>
                                                     <select
                                                         id={`booking-room-${index}`}
                                                         value={room.stayId ?? ''}
                                                         onFocus={() =>
-                                                            onSelectedRoomIndexChange(index)
+                                                            setSelectedRoomIndex(index)
                                                         }
                                                         onChange={(event) => {
-                                                            onSelectedRoomIndexChange(index)
+                                                            const stayId =
+                                                                event.target.value || null
+                                                            setSelectedRoomIndex(index)
+                                                            if (!stayId) {
+                                                                removeRoom(index)
+                                                                return
+                                                            }
                                                             setRoomGuests((current) =>
                                                                 current.map((item, roomIndex) =>
                                                                     roomIndex === index
-                                                                        ? {
-                                                                              ...item,
-                                                                              stayId:
-                                                                                  event.target
-                                                                                      .value || null,
-                                                                          }
+                                                                        ? { ...item, stayId }
                                                                         : item,
                                                                 ),
                                                             )
                                                         }}
-                                                        className="mb-2 min-h-11 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[#006dfc] focus:outline-none focus:ring-1 focus:ring-[#006dfc]"
+                                                        className={`booking-input mb-2 ${
+                                                            room.stayId
+                                                                ? 'border-[#006dfc] font-medium text-slate-900'
+                                                                : 'text-slate-600'
+                                                        }`}
                                                     >
                                                         <option value="">
                                                             Choose room or villa
@@ -619,10 +480,18 @@ const BookingCalendarPanel = ({
                                                         {roomChoices.map((choice) => {
                                                             const selectedElsewhere =
                                                                 roomGuests.some(
-                                                                    (otherRoom, otherIndex) =>
-                                                                        otherIndex !== index &&
+                                                                    (
+                                                                        otherRoom,
+                                                                        otherIndex,
+                                                                    ) =>
+                                                                        otherIndex !==
+                                                                            index &&
                                                                         otherRoom.stayId ===
                                                                             choice.id,
+                                                                )
+                                                            const unavailable =
+                                                                unavailableRoomIds.includes(
+                                                                    choice.id,
                                                                 )
                                                             return (
                                                                 <option
@@ -630,6 +499,9 @@ const BookingCalendarPanel = ({
                                                                     value={choice.id}
                                                                     disabled={
                                                                         selectedElsewhere ||
+                                                                        (unavailable &&
+                                                                            room.stayId !==
+                                                                                choice.id) ||
                                                                         (choice.category ===
                                                                             'exclusive' &&
                                                                             otherRoomsAssigned) ||
@@ -639,6 +511,9 @@ const BookingCalendarPanel = ({
                                                                     }
                                                                 >
                                                                     {choice.title}
+                                                                    {unavailable
+                                                                        ? ' (unavailable)'
+                                                                        : ''}
                                                                 </option>
                                                             )
                                                         })}
@@ -654,7 +529,7 @@ const BookingCalendarPanel = ({
                                                                         ? 'Adults'
                                                                         : 'Kids'}
                                                                 </span>
-                                                                <span className="inline-flex items-center rounded-md border border-slate-200 bg-white">
+                                                                <span className="booking-stepper-shell">
                                                                     <button
                                                                         type="button"
                                                                         onClick={() =>
@@ -665,14 +540,14 @@ const BookingCalendarPanel = ({
                                                                             )
                                                                         }
                                                                         aria-label={`Decrease ${guestType} for room ${index + 1}`}
-                                                                        className="inline-flex size-11 items-center justify-center rounded-l-md text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#006dfc]"
+                                                                        className="booking-stepper-button"
                                                                     >
                                                                         <Minus
                                                                             className="size-4"
                                                                             aria-hidden="true"
                                                                         />
                                                                     </button>
-                                                                    <span className="min-w-8 text-center text-sm font-semibold text-slate-800">
+                                                                    <span className="booking-stepper-value">
                                                                         {room[guestType]}
                                                                     </span>
                                                                     <button
@@ -685,7 +560,7 @@ const BookingCalendarPanel = ({
                                                                             )
                                                                         }
                                                                         aria-label={`Increase ${guestType} for room ${index + 1}`}
-                                                                        className="inline-flex size-11 items-center justify-center rounded-r-md text-slate-600 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#006dfc]"
+                                                                        className="booking-stepper-button"
                                                                     >
                                                                         <Plus
                                                                             className="size-4"
@@ -709,18 +584,33 @@ const BookingCalendarPanel = ({
                                         + Add room
                                     </button>
                                 </section>
+                                </div>
                             </div>
 
-                            <div className="sticky bottom-0 z-10 border-t border-[#d7e6ff] bg-[#f5f9ff]/95 px-4 pb-4 pt-3 backdrop-blur-sm sm:px-6 sm:pb-5">
+                            <div className="z-10 shrink-0 border-t border-[#d7e6ff] bg-[#f5f9ff]/95 px-4 pb-4 pt-3 backdrop-blur-sm sm:px-6 sm:pb-5">
+                                {blockedReason && (
+                                    <p
+                                        role="alert"
+                                        className="mb-2 text-xs leading-5 text-rose-600"
+                                    >
+                                        {blockedReason}
+                                    </p>
+                                )}
                                 <button
                                     type="button"
                                     onClick={onCheckAvailability}
-                                    className="min-h-12 w-full rounded-lg bg-[#006dfc] px-4 py-3 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                    disabled={checkingAvailability || Boolean(blockedReason)}
+                                    className="min-h-12 w-full rounded-lg bg-[#006dfc] px-4 py-3 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                    Continue
+                                    {checkingAvailability
+                                        ? 'Checking availability'
+                                        : blockedReason
+                                          ? 'Unavailable'
+                                          : 'Continue'}
                                 </button>
                             </div>
                         </section>
+                        </div>
                     </>,
                     document.body,
                 )}

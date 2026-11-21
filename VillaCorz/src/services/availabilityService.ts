@@ -1,0 +1,50 @@
+import api from './api'
+import type { ApiEnvelope } from './types'
+
+export type BlockingInterval = {
+    service_id: number
+    check_in: string
+    check_out: string
+}
+
+export type ServiceAvailability = {
+    id: number
+    available: boolean
+    blocked_intervals: BlockingInterval[]
+}
+
+export type AvailabilityRange = {
+    as_of: string
+    basis: string
+    check_in: string
+    check_out: string
+    rooms: ServiceAvailability[]
+}
+
+export type BlockedDates = {
+    as_of: string
+    basis: string
+    service_id: number
+    unavailable_dates: string[]
+}
+
+export const getAvailabilityForRange = (
+    checkIn: string,
+    checkOut: string,
+    signal?: AbortSignal,
+) =>
+    api.get<ApiEnvelope<AvailabilityRange>>('/services/availability', {
+        params: { check_in: checkIn, check_out: checkOut },
+        signal,
+    })
+
+export const getBlockedDates = (
+    serviceId: number,
+    from: string,
+    to: string,
+    signal?: AbortSignal,
+) =>
+    api.get<ApiEnvelope<BlockedDates>>(
+        `/services/${serviceId}/blocked-dates`,
+        { params: { from, to }, signal },
+    )

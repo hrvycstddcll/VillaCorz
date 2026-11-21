@@ -5,6 +5,7 @@ namespace App\Services\Assistant;
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\User;
+use App\Support\StayTime;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -39,12 +40,12 @@ class CustomerAssistantContextBuilder
         string $message = '',
         ?array $userLocation = null,
     ): array {
-        $today = now()->startOfDay();
+        $today = now()->setTimezone(StayTime::TIMEZONE);
 
         $upcoming = Booking::query()
             ->where('user_id', $user->id)
             ->whereIn('status', ['pending_payment', 'confirmed'])
-            ->whereDate('check_out', '>=', $today->toDateString())
+            ->where('check_out', '>=', $today)
             ->with(['rooms', 'payment', 'latestCancellationRequest'])
             ->orderBy('check_in')
             ->orderBy('id')
@@ -118,7 +119,7 @@ class CustomerAssistantContextBuilder
      */
     private function bookingSummary(Booking $booking, Carbon $today): array
     {
-        $checkIn = $booking->check_in?->copy()->startOfDay();
+        $checkIn = $booking->check_in;
         $daysUntilCheckIn = $checkIn
             ? (int) floor(($checkIn->getTimestamp() - $today->getTimestamp()) / 86400)
             : null;
@@ -131,8 +132,8 @@ class CustomerAssistantContextBuilder
             'reference' => $booking->reference,
             'status' => $booking->status,
             'lifecycle' => $booking->lifecycle,
-            'check_in' => $booking->check_in?->format('Y-m-d'),
-            'check_out' => $booking->check_out?->format('Y-m-d'),
+            'check_in' => $booking->check_in ? StayTime::formatPht($booking->check_in, 'Y-m-d H:i P') : null,
+            'check_out' => $booking->check_out ? StayTime::formatPht($booking->check_out, 'Y-m-d H:i P') : null,
             'nights' => $booking->nights,
             'adults' => $booking->adults,
             'kids' => $booking->kids,
@@ -257,8 +258,10 @@ class CustomerAssistantContextBuilder
         }
 
         [$checkIn, $checkOut, $label] = $range;
-        $checkInDate = $checkIn->toDateString();
-        $checkOutDate = $checkOut->toDateString();
+        $checkInAt = StayTime::toCarbon($checkIn)->toDateTimeString();
+        $checkOutAt = StayTime::toCarbon($checkOut)->toDateTimeString();
+        $checkInDate = StayTime::formatPht($checkIn, 'Y-m-d H:i P');
+        $checkOutDate = StayTime::formatPht($checkOut, 'Y-m-d H:i P');
 
         $exclusiveServiceId = $services->firstWhere('kind', 'exclusive')?->id;
         $exclusiveServiceId = $exclusiveServiceId !== null ? (int) $exclusiveServiceId : null;
@@ -266,8 +269,8 @@ class CustomerAssistantContextBuilder
         $overlaps = DB::table('booking_rooms')
             ->join('bookings', 'bookings.id', '=', 'booking_rooms.booking_id')
             ->where('bookings.status', 'confirmed')
-            ->where('bookings.check_in', '<', $checkOutDate)
-            ->where('bookings.check_out', '>', $checkInDate)
+            ->where('bookings.check_in', '<', $checkOutAt)
+            ->where('bookings.check_out', '>', $checkInAt)
             ->whereNotNull('booking_rooms.service_id')
             ->pluck('booking_rooms.service_id')
             ->map(fn ($id) => (int) $id)

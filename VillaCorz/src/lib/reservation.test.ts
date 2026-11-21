@@ -1,4 +1,5 @@
 import { getReservationPrice } from './reservation'
+import { phtDateTimeToIso } from './stayDateTime'
 
 const stay = {
     price: 1000,
@@ -12,8 +13,8 @@ describe('getReservationPrice', () => {
     it('adds the weekday additional-head fee for each extra guest', () => {
         const result = getReservationPrice(
             stay,
-            '2026-11-16',
-            '2026-11-18',
+            phtDateTimeToIso('2026-11-16', '08:00'),
+            phtDateTimeToIso('2026-11-18', '08:00'),
             3,
         )
 
@@ -26,8 +27,8 @@ describe('getReservationPrice', () => {
     it('adds the weekend additional-head fee for each extra guest', () => {
         const result = getReservationPrice(
             stay,
-            '2026-11-13',
-            '2026-11-15',
+            phtDateTimeToIso('2026-11-13', '08:00'),
+            phtDateTimeToIso('2026-11-15', '08:00'),
             4,
         )
 
@@ -40,8 +41,8 @@ describe('getReservationPrice', () => {
     it('charges weekday and weekend head rates across a mixed stay', () => {
         const result = getReservationPrice(
             stay,
-            '2026-11-12',
-            '2026-11-16',
+            phtDateTimeToIso('2026-11-12', '08:00'),
+            phtDateTimeToIso('2026-11-16', '08:00'),
             3,
         )
 
@@ -53,8 +54,8 @@ describe('getReservationPrice', () => {
     it('does not charge a head fee at or below pax', () => {
         const result = getReservationPrice(
             stay,
-            '2026-11-16',
-            '2026-11-18',
+            phtDateTimeToIso('2026-11-16', '08:00'),
+            phtDateTimeToIso('2026-11-18', '08:00'),
             2,
         )
 
@@ -66,8 +67,8 @@ describe('getReservationPrice', () => {
     it('does not charge a head fee when pax is not set', () => {
         const result = getReservationPrice(
             { ...stay, pax: null },
-            '2026-11-16',
-            '2026-11-18',
+            phtDateTimeToIso('2026-11-16', '08:00'),
+            phtDateTimeToIso('2026-11-18', '08:00'),
             6,
         )
 
@@ -78,12 +79,36 @@ describe('getReservationPrice', () => {
     it('keeps the head fee separate from discounted room prices', () => {
         const result = getReservationPrice(
             { ...stay, price: 900 },
-            '2026-11-16',
-            '2026-11-18',
+            phtDateTimeToIso('2026-11-16', '08:00'),
+            phtDateTimeToIso('2026-11-18', '08:00'),
             3,
         )
 
         expect(result.total).toBe(1900)
         expect(result.additionalHeadTotal).toBe(100)
+    })
+
+    it('charges one full night for a same-day stay', () => {
+        const result = getReservationPrice(
+            stay,
+            phtDateTimeToIso('2026-11-16', '08:00'),
+            phtDateTimeToIso('2026-11-16', '22:00'),
+            2,
+        )
+
+        expect(result.nights).toBe(1)
+        expect(result.total).toBe(1000)
+    })
+
+    it('classifies nights by Philippine date even when UTC differs', () => {
+        const result = getReservationPrice(
+            stay,
+            phtDateTimeToIso('2026-11-13', '22:00'),
+            phtDateTimeToIso('2026-11-15', '08:00'),
+            2,
+        )
+
+        expect(result.nights).toBe(2)
+        expect(result.total).toBe(3000)
     })
 })

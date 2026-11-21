@@ -48,11 +48,11 @@
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;line-height:1.6;border-collapse:collapse;">
                                 <tr>
                                     <td style="padding:6px 0;color:#64748b;">Check-in</td>
-                                    <td style="padding:6px 0;text-align:right;font-weight:bold;">{{ $booking->check_in->format('D, M j, Y') }}</td>
+                                    <td style="padding:6px 0;text-align:right;font-weight:bold;">{{ \App\Support\StayTime::formatPht($booking->check_in) }} PHT</td>
                                 </tr>
                                 <tr>
                                     <td style="padding:6px 0;color:#64748b;">Check-out</td>
-                                    <td style="padding:6px 0;text-align:right;font-weight:bold;">{{ $booking->check_out->format('D, M j, Y') }}</td>
+                                    <td style="padding:6px 0;text-align:right;font-weight:bold;">{{ \App\Support\StayTime::formatPht($booking->check_out) }} PHT</td>
                                 </tr>
                                 <tr>
                                     <td style="padding:6px 0;color:#64748b;">Nights</td>

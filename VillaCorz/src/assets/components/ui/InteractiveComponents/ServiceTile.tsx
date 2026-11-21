@@ -1,5 +1,5 @@
-import { guestCapacity, money } from '../../../../lib/format'
-import { ImageOff } from 'lucide-react'
+import { money } from '../../../../lib/format'
+import { Check, ImageOff, X } from 'lucide-react'
 import star from '../../../images/star.png'
 
 export type ServiceTileStay = {
@@ -23,6 +23,8 @@ type RoomTileProps = {
     stay: ServiceTileStay
     isSelected: boolean
     isReservationSelected: boolean
+    selectedRoomNumber?: number
+    unavailable?: boolean
     onSelect: () => void
     onToggleReservation: () => void
 }
@@ -33,6 +35,7 @@ type ExclusiveTileProps = {
     isSelected: boolean
     activePhoto: string
     gallery: string[]
+    unavailable?: boolean
     onSelect: () => void
     onSelectPhoto: (image: string) => void
 }
@@ -88,7 +91,7 @@ const RatingBadge = ({ rating }: { rating: string }) => (
 
 const ServiceTile = (props: ServiceTileProps) => {
     if (props.variant === 'exclusive') {
-        const { stay, isSelected, activePhoto, gallery, onSelect, onSelectPhoto } = props
+        const { stay, isSelected, activePhoto, gallery, unavailable = false, onSelect, onSelectPhoto } = props
         const hasWeekdayOriginal =
             stay.originalPrice != null && stay.originalPrice > stay.price
         const weekendPrice = stay.weekendPrice ?? stay.price
@@ -98,7 +101,7 @@ const ServiceTile = (props: ServiceTileProps) => {
 
         return (
             <>
-                <div className="group relative overflow-hidden rounded-xl shadow-md ring-1 ring-black/5">
+                <div className={`group relative overflow-hidden rounded-xl shadow-md ring-1 ring-black/5 ${unavailable ? 'opacity-60 saturate-50' : ''}`}>
                     <button
                         type="button"
                         onClick={onSelect}
@@ -179,6 +182,11 @@ const ServiceTile = (props: ServiceTileProps) => {
                             </span>
                         </span>
                     </button>
+                    {unavailable ? (
+                        <span className="pointer-events-none absolute left-2 top-2 z-20 rounded-full bg-slate-900/80 px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm sm:text-[11px]">
+                            Unavailable
+                        </span>
+                    ) : null}
                     {stay.discountLabel ? <DiscountRibbon label={stay.discountLabel} /> : null}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 pb-2">
@@ -203,7 +211,15 @@ const ServiceTile = (props: ServiceTileProps) => {
         )
     }
 
-    const { stay, isSelected, isReservationSelected, onSelect, onToggleReservation } = props
+    const {
+        stay,
+        isSelected,
+        isReservationSelected,
+        selectedRoomNumber,
+        unavailable = false,
+        onSelect,
+        onToggleReservation,
+    } = props
 
     return (
         <article
@@ -211,7 +227,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                 isSelected || isReservationSelected
                     ? 'ring-2 ring-[#006dfc]'
                     : 'ring-black/5'
-            }`}
+            } ${unavailable ? 'opacity-60 saturate-50' : ''}`}
         >
             <div className="relative aspect-[5/4] w-full overflow-hidden bg-slate-100">
                 <button
@@ -249,6 +265,17 @@ const ServiceTile = (props: ServiceTileProps) => {
                 {stay.badge ? (
                     <span className="pointer-events-none absolute right-2 top-[5.75rem] z-20 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold leading-tight text-[#006dfc] shadow-sm sm:right-2.5 sm:top-[6.25rem] sm:text-[11px]">
                         {stay.badge}
+                    </span>
+                ) : null}
+                {isReservationSelected ? (
+                    <span className="pointer-events-none absolute left-2 top-2 z-20 inline-flex items-center gap-1 rounded-full bg-[#006dfc] px-2 py-1 text-[10px] font-semibold text-white shadow-sm sm:text-[11px]">
+                        <Check className="size-3 shrink-0" aria-hidden="true" />
+                        Added{selectedRoomNumber ? ` · Room ${selectedRoomNumber}` : ''}
+                    </span>
+                ) : null}
+                {unavailable ? (
+                    <span className={`pointer-events-none absolute left-2 z-20 rounded-full bg-slate-900/80 px-2 py-1 text-[10px] font-semibold text-white shadow-sm sm:text-[11px] ${isReservationSelected ? 'top-9' : 'top-2'}`}>
+                        Unavailable
                     </span>
                 ) : null}
 
@@ -308,15 +335,31 @@ const ServiceTile = (props: ServiceTileProps) => {
                             <button
                                 type="button"
                                 onClick={onToggleReservation}
+                                disabled={unavailable && !isReservationSelected}
                                 aria-label={
                                     isReservationSelected
-                                        ? `${stay.title} is already in your booking`
-                                        : `Add ${stay.title} to your booking, good for ${guestCapacity(stay)} guests`
+                                        ? `Remove ${stay.title} from your booking`
+                                        : unavailable
+                                          ? `${stay.title} is unavailable for these dates`
+                                          : `Add ${stay.title} to your booking, good for ${stay.capacity}`
                                 }
                                 aria-pressed={isReservationSelected}
-                                className="pointer-events-auto min-h-11 rounded-md bg-white px-3 py-2 text-xs font-semibold text-[#006dfc] shadow-sm transition-colors duration-200 hover:bg-[#006dfc] hover:text-white hover:shadow-md active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3.5"
+                                className={`pointer-events-auto inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-3 py-2 text-xs font-semibold shadow-sm transition-colors duration-200 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-70 sm:px-3.5 ${
+                                    isReservationSelected
+                                        ? 'bg-[#006dfc] text-white hover:bg-blue-700'
+                                        : 'bg-white text-[#006dfc] hover:bg-[#006dfc] hover:text-white'
+                                }`}
                             >
-                                {isReservationSelected ? 'Added' : 'Add room'}
+                                {isReservationSelected ? (
+                                    <>
+                                        <X className="size-3.5" aria-hidden="true" />
+                                        Remove
+                                    </>
+                                ) : unavailable ? (
+                                    'Unavailable'
+                                ) : (
+                                    'Add room'
+                                )}
                             </button>
                         </span>
                     </span>

@@ -8,6 +8,17 @@ import BookingCalendarPanel from '../ui/InteractiveComponents/BookingCalendarPan
 import ServiceReviews from '../ui/InteractiveComponents/ServiceReviews'
 import { money } from '../../../lib/format'
 import { getReservationPrice } from '../../../lib/reservation'
+import {
+    fieldsFromStay,
+    formatStayDateTime,
+    getStayWindow,
+    phtToday,
+    type StayDateFields,
+} from '../../../lib/stayDateTime'
+import {
+    getAvailabilityForRange,
+    getBlockedDates,
+} from '../../../services/availabilityService'
 import { getServices } from '../../../services/serviceService'
 import type { Service } from '../../../services/types'
 import wholeVilla from '../../images/wholevilla.png'
@@ -16,13 +27,18 @@ import { PublicAccommodationSection } from '../services/PublicAccommodationSecti
 import { ReservationView } from '../services/ReservationView'
 import { RoomDetailView } from '../services/RoomDetailView'
 import {
-    dateParts,
     toExclusiveStay,
     toStay,
     type ServicesRouteState,
     type Stay,
     type StayCategory,
 } from '../services/shared'
+
+const isAbortError = (error: unknown) =>
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'ERR_CANCELED'
 
 export default function Services({
     bookingOnly = false,
@@ -53,19 +69,49 @@ export default function Services({
     const [selectedRoomPhoto, setSelectedRoomPhoto] = useState(
         wholeVilla,
     )
-    const [checkIn, setCheckIn] = useState(
-        incomingReservation?.checkIn ?? incomingBooking?.checkIn ?? '',
+    const [stayFields, setStayFields] = useState<StayDateFields>(() =>
+        fieldsFromStay(
+            incomingReservation?.checkIn ?? incomingBooking?.checkIn ?? '',
+            incomingReservation?.checkOut ?? incomingBooking?.checkOut ?? '',
+        ),
     )
-    const [checkOut, setCheckOut] = useState(
-        incomingReservation?.checkOut ?? incomingBooking?.checkOut ?? '',
-    )
+    const stayWindow = useMemo(() => getStayWindow(stayFields), [stayFields])
+    const checkIn = stayWindow.checkIn
+    const checkOut = stayWindow.checkOut
+    const availabilityFrom = useMemo(() => phtToday(), [])
+    const availabilityTo = useMemo(() => {
+        const date = new Date(`${availabilityFrom}T00:00:00Z`)
+        date.setUTCDate(date.getUTCDate() + 89)
+        return date.toISOString().slice(0, 10)
+    }, [availabilityFrom])
+    const updateStayFields = (patch: Partial<StayDateFields>) => {
+        setStayFields((current) => ({ ...current, ...patch }))
+        showNotice('')
+        setAvailabilityByServiceId({})
+        setAvailabilityError('')
+        setCheckingAvailability(false)
+    }
     const [roomGuests, setRoomGuests] = useState<RoomGuests[]>(
         incomingReservation?.rooms ??
             incomingBooking?.rooms ?? [{ stayId: null, adults: 2, kids: 0 }],
     )
-    const [selectedRoomIndex, setSelectedRoomIndex] = useState(0)
     const [notice, setNotice] = useState('')
+    const [noticeTone, setNoticeTone] = useState<'success' | 'error'>('error')
+    const showNotice = (message: string, tone: 'success' | 'error' = 'error') => {
+        setNotice(message)
+        setNoticeTone(tone)
+    }
     const [isBookingPanelOpen, setIsBookingPanelOpen] = useState(false)
+    const [availabilityByServiceId, setAvailabilityByServiceId] = useState<
+        Record<number, boolean>
+    >({})
+    const [blockedDatesByServiceId, setBlockedDatesByServiceId] = useState<
+        Record<string, string[]>
+    >({})
+    const [availabilityError, setAvailabilityError] = useState('')
+    const [blockedDatesError, setBlockedDatesError] = useState('')
+    const [checkingAvailability, setCheckingAvailability] = useState(false)
+    const availabilityRequestRef = useRef(0)
 
     useEffect(() => {
         let active = true
@@ -150,16 +196,145 @@ export default function Services({
             return stay ? [stay] : []
         })
     }, [selectedRoomIds, publicRooms, exclusiveStay])
-    const hasDates = Boolean(checkIn && checkOut)
+
+    useEffect(() => {
+        if (services.length === 0 || reservationOnly) return
+
+        const controller = new AbortController()
+        let active = true
+
+        Promise.all(
+            services.map(async (service) => {
+                const response = await getBlockedDates(
+                    service.id,
+                    availabilityFrom,
+                    availabilityTo,
+                    controller.signal,
+                )
+                return [
+                    String(service.id),
+                    response.data.data.unavailable_dates,
+                ] as const
+            }),
+        )
+            .then((entries) => {
+                if (!active) return
+                setBlockedDatesByServiceId(Object.fromEntries(entries))
+                setBlockedDatesError('')
+            })
+            .catch((error: unknown) => {
+                if (!active || isAbortError(error)) return
+                setBlockedDatesByServiceId({})
+                setBlockedDatesError(
+                    'Unable to verify booked dates right now. Please try again.',
+                )
+            })
+
+        return () => {
+            active = false
+            controller.abort()
+        }
+    }, [availabilityFrom, availabilityTo, reservationOnly, services])
+
+    useEffect(() => {
+        const requestId = ++availabilityRequestRef.current
+
+        if (!stayWindow.valid || services.length === 0 || reservationOnly) {
+            return
+        }
+
+        const controller = new AbortController()
+
+        const timer = window.setTimeout(() => {
+            setCheckingAvailability(true)
+            getAvailabilityForRange(checkIn, checkOut, controller.signal)
+                .then((response) => {
+                    if (requestId !== availabilityRequestRef.current) return
+                    const next: Record<number, boolean> = {}
+                    for (const room of response.data.data.rooms) {
+                        next[room.id] = room.available
+                    }
+                    setAvailabilityByServiceId(next)
+                    setAvailabilityError('')
+                })
+                .catch((error: unknown) => {
+                    if (isAbortError(error)) return
+                    if (requestId !== availabilityRequestRef.current) return
+                    setAvailabilityByServiceId({})
+                    setAvailabilityError(
+                        'Unable to verify room availability right now. Please try again.',
+                    )
+                })
+                .finally(() => {
+                    if (requestId === availabilityRequestRef.current) {
+                        setCheckingAvailability(false)
+                    }
+                })
+        }, 250)
+
+        return () => {
+            window.clearTimeout(timer)
+            controller.abort()
+        }
+    }, [checkIn, checkOut, reservationOnly, services, stayWindow.valid])
+
+    const hasDates = stayWindow.valid
     const hasRooms = selectedStays.length > 0
     const activeBookingStep = !hasDates ? 0 : !hasRooms ? 1 : 2
-    const nights = useMemo(() => {
-        if (!checkIn || !checkOut) return 0
-        const difference =
-            new Date(`${checkOut}T00:00:00`).getTime() -
-            new Date(`${checkIn}T00:00:00`).getTime()
-        return Math.max(0, Math.round(difference / 86_400_000))
-    }, [checkIn, checkOut])
+    const nights = stayWindow.nights
+    const unavailableRoomIds = useMemo(
+        () =>
+            availabilityError
+                ? roomChoices.map((choice) => choice.id)
+                : roomChoices
+                      .filter(
+                          (choice) =>
+                              availabilityByServiceId[Number(choice.id)] === false,
+                      )
+                      .map((choice) => choice.id),
+        [availabilityByServiceId, availabilityError, roomChoices],
+    )
+    const blockedDatesScopeIds = useMemo(
+        () =>
+            selectedRoomIds.length > 0
+                ? selectedRoomIds
+                : roomChoices.map((choice) => choice.id),
+        [roomChoices, selectedRoomIds],
+    )
+    const unavailableDates = useMemo(
+        () =>
+            [
+                ...new Set(
+                    blockedDatesScopeIds.flatMap(
+                        (id) => blockedDatesByServiceId[id] ?? [],
+                    ),
+                ),
+            ].sort(),
+        [blockedDatesByServiceId, blockedDatesScopeIds],
+    )
+    const unavailableSelectedStays = useMemo(
+        () =>
+            selectedStays.filter((stay) =>
+                unavailableRoomIds.includes(stay.id),
+            ),
+        [selectedStays, unavailableRoomIds],
+    )
+    const unavailableSelectedDates = useMemo(
+        () =>
+            [stayFields.checkInDate, stayFields.checkOutDate].filter(
+                (date) => date && unavailableDates.includes(date),
+            ),
+        [stayFields.checkInDate, stayFields.checkOutDate, unavailableDates],
+    )
+    const blockedReason =
+        availabilityError ||
+        blockedDatesError ||
+        (unavailableSelectedStays.length > 0
+            ? `${unavailableSelectedStays.map((stay) => stay.title).join(', ')} already booked for these dates. Remove or replace the selected stay.`
+            : '') ||
+        (unavailableSelectedDates.length > 0
+            ? 'One of your selected dates is already booked. Choose another date.'
+            : '')
 
     const bookingSummary = useMemo(() => {
         if (!hasDates || nights < 1) {
@@ -262,7 +437,7 @@ export default function Services({
         setSelectedStay(stay)
         setActivePhoto(stay.image)
         setSelectedRoomPhoto(stay.image)
-        setNotice('')
+        showNotice('')
         setIsRoomDetailOpen(true)
     }
 
@@ -271,15 +446,11 @@ export default function Services({
             (room) => room.stayId === stay.id,
         )
         if (alreadySelectedIndex !== -1) {
-            setSelectedRoomIndex(alreadySelectedIndex)
-            setNotice(
+            showNotice(
                 `${stay.title} is already selected in Room ${alreadySelectedIndex + 1}.`,
             )
             return
         }
-
-        const emptyIndex = roomGuests.findIndex((room) => !room.stayId)
-        const targetIndex = emptyIndex === -1 ? roomGuests.length : emptyIndex
 
         setRoomGuests((current) => {
             if (current.length === 0) {
@@ -296,14 +467,47 @@ export default function Services({
 
             return [...current, { stayId: stay.id, adults: 2, kids: 0 }]
         })
-        setSelectedRoomIndex(targetIndex)
-        setNotice(`${stay.title} added to your booking.`)
+        showNotice(`${stay.title} added to your booking.`, 'success')
+    }
+
+    const removeStayFromBooking = (stay: Stay) => {
+        setRoomGuests((current) =>
+            current.filter((room) => room.stayId !== stay.id),
+        )
+        showNotice(`${stay.title} removed from your booking.`, 'success')
+    }
+
+    const toggleStayReservation = (stay: Stay) => {
+        if (selectedRoomIds.includes(stay.id)) {
+            removeStayFromBooking(stay)
+            return
+        }
+
+        reserveStay(stay)
     }
 
     const handleCheckAvailability = () => {
-        if (!checkIn || !checkOut || nights < 1) {
-            setNotice('Choose a valid check-in and check-out date to continue.')
-            setIsBookingPanelOpen(true)
+        if (!stayWindow.valid) {
+            showNotice(stayWindow.error)
+            return
+        }
+
+        if (checkingAvailability) {
+            showNotice('Checking live availability. Please wait.')
+            return
+        }
+
+        if (availabilityError || blockedDatesError) {
+            showNotice(
+                availabilityError ||
+                    blockedDatesError ||
+                    'Unable to verify availability. Please try again.',
+            )
+            return
+        }
+
+        if (blockedReason) {
+            showNotice(blockedReason)
             return
         }
 
@@ -317,12 +521,11 @@ export default function Services({
         }
 
         if (!roomGuests.some((room) => room.stayId)) {
-            setNotice('Choose a room before continuing to your reservation.')
-            setIsBookingPanelOpen(true)
+            showNotice('Choose a room before continuing to your reservation.')
             return
         }
 
-        setNotice('')
+        showNotice('')
         navigate('/reservation', {
             state: {
                 reservation: {
@@ -333,6 +536,10 @@ export default function Services({
                 },
             } satisfies ServicesRouteState,
         })
+    }
+
+    const handleUnavailableDate = (date: string) => {
+        showNotice(`${date} is already booked for this stay. Choose another date.`)
     }
 
     const showPublic = activeFilter !== 'exclusive'
@@ -351,32 +558,30 @@ export default function Services({
         {!bookingOnly && !reservationOnly && (
         <main className="min-h-svh overflow-x-clip bg-white px-4 pb-32 pt-24 font-poppins sm:px-7 sm:pt-28 lg:pb-12">
             <div className="mx-auto grid max-w-7xl items-start gap-7 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch lg:gap-9">
-                <div
-                    className="relative min-w-0 lg:self-stretch"
-                    inert={isBookingPanelOpen}
-                >
+                <div className="relative min-w-0 lg:self-stretch">
                     <div
                         aria-hidden="true"
                         className="pointer-events-none absolute -top-28 -bottom-12 -left-[100vw] right-0 hidden bg-[#006dfc] lg:block"
                     />
                     <div
-                        className="relative space-y-4 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:overscroll-contain lg:py-6 lg:pr-6 lg:pl-4"
+                        className="hide-scrollbar relative space-y-4 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:overscroll-contain lg:py-6 lg:pr-6 lg:pl-4"
                         data-lenis-prevent
                     >
                     <BookingCalendarPanel
-                        checkIn={checkIn}
-                        checkOut={checkOut}
-                        setCheckIn={setCheckIn}
-                        setCheckOut={setCheckOut}
+                        fields={stayFields}
+                        onChange={updateStayFields}
                         roomGuests={roomGuests}
                         setRoomGuests={setRoomGuests}
-                        selectedRoomIndex={selectedRoomIndex}
-                        onSelectedRoomIndexChange={setSelectedRoomIndex}
                         roomChoices={roomChoices}
                         notice={notice}
+                        noticeTone={noticeTone}
+                        unavailableRoomIds={unavailableRoomIds}
+                        unavailableDates={unavailableDates}
+                        blockedReason={blockedReason}
+                        checkingAvailability={checkingAvailability}
+                        onUnavailableDate={handleUnavailableDate}
                         isOpen={isBookingPanelOpen}
                         onOpenChange={setIsBookingPanelOpen}
-                        onDateChange={() => setNotice('')}
                         onCheckAvailability={handleCheckAvailability}
                     />
 
@@ -478,9 +683,9 @@ export default function Services({
                         <ol className="mt-3 space-y-3">
                             {[
                                 {
-                                    title: 'Set your dates',
+                                    title: 'Set your stay time',
                                     description:
-                                        'Choose check-in and check-out in the booking form.',
+                                        'Enter check-in and check-out date and time in PHT.',
                                 },
                                 {
                                     title: 'Pick your rooms',
@@ -574,7 +779,7 @@ export default function Services({
                             Choose your stay
                         </h1>
                         <p className="mt-1.5 max-w-2xl text-xs leading-5 text-slate-500 sm:text-sm">
-                            Add a private room or choose the whole villa. Set dates and guest counts in the booking panel.
+                            Add a private room or choose the whole villa. Set your check-in and check-out date and time in PHT.
                         </p>
                     </div>
 
@@ -609,8 +814,9 @@ export default function Services({
                         onRetry={() => setReloadKey((key) => key + 1)}
                         selectedStay={selectedStay}
                         selectedRoomIds={selectedRoomIds}
+                        unavailableRoomIds={unavailableRoomIds}
                         onSelectStay={selectStay}
-                        onReserve={reserveStay}
+                        onReserve={toggleStayReservation}
                     />
                 )}
 
@@ -619,13 +825,20 @@ export default function Services({
                         stay={exclusiveStay}
                         loading={roomsLoading}
                         selectedStay={selectedStay}
+                        selectedRoomIds={selectedRoomIds}
+                        unavailable={
+                            exclusiveStay
+                                ? unavailableRoomIds.includes(exclusiveStay.id)
+                                : false
+                        }
                         activePhoto={activePhoto}
                         onSelectStay={selectStay}
+                        onToggleReservation={toggleStayReservation}
                         onSelectPhoto={(image) => {
                             if (exclusiveStay) setSelectedStay(exclusiveStay)
                             setActivePhoto(image)
                             setSelectedRoomPhoto(image)
-                            setNotice('')
+                            showNotice('')
                             setIsRoomDetailOpen(false)
                         }}
                     />
@@ -644,9 +857,9 @@ export default function Services({
             >
                 <p className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-900">
                     <strong>Booking request:</strong>{' '}
-                    {dateParts(incomingBooking.checkIn).weekday}, {dateParts(incomingBooking.checkIn).monthYear} {dateParts(incomingBooking.checkIn).day}
+                    {formatStayDateTime(incomingBooking.checkIn)}
                     {' – '}
-                    {dateParts(incomingBooking.checkOut).weekday}, {dateParts(incomingBooking.checkOut).monthYear} {dateParts(incomingBooking.checkOut).day}
+                    {formatStayDateTime(incomingBooking.checkOut)}
                     {' · '}
                     {incomingBooking.rooms.reduce((total, room) => total + room.adults, 0)} adults,{' '}
                     {incomingBooking.rooms.reduce((total, room) => total + room.kids, 0)} kids
@@ -657,16 +870,20 @@ export default function Services({
         )}
         {bookingOnly && (
             <ServicesFooter
+                fields={stayFields}
+                onChange={updateStayFields}
                 checkIn={checkIn}
                 checkOut={checkOut}
-                setCheckIn={setCheckIn}
-                setCheckOut={setCheckOut}
+                nights={nights}
                 roomGuests={roomGuests}
                 setRoomGuests={setRoomGuests}
                 roomChoices={roomChoices}
                 notice={notice}
-                dateParts={dateParts}
-                onDateChange={() => setNotice('')}
+                unavailableRoomIds={unavailableRoomIds}
+                unavailableDates={unavailableDates}
+                blockedReason={blockedReason}
+                checkingAvailability={checkingAvailability}
+                onUnavailableDate={handleUnavailableDate}
                 onCheckAvailability={handleCheckAvailability}
             />
         )}
