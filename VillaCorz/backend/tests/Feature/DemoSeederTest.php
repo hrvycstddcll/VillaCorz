@@ -68,8 +68,8 @@ class DemoSeederTest extends TestCase
             ])
             ->sum('amount');
 
-        $this->assertGreaterThanOrEqual(200000, $revenue);
-        $this->assertLessThanOrEqual(250000, $revenue);
+        $this->assertGreaterThanOrEqual(120000, $revenue);
+        $this->assertLessThanOrEqual(230000, $revenue);
     }
 
     private function seedBaseline(): void

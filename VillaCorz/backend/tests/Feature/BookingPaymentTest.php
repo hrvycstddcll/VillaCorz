@@ -559,6 +559,89 @@ class BookingPaymentTest extends TestCase
             ->assertJsonPath('data.email_sent', true);
     }
 
+    public function test_the_spa_can_confirm_a_payment(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $payment = $this->createBooking($user);
+
+        $this->actingAs($user)
+            ->postJson("/api/payments/{$payment->reference}/confirm")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'paid')
+            ->assertJsonPath('data.booking_status', 'confirmed')
+            ->assertJsonPath('data.conflict', false)
+            ->assertJsonPath('data.already_paid', false)
+            ->assertJsonPath('data.email_sent', true);
+
+        $payment->refresh();
+
+        $this->assertSame('paid', $payment->status);
+        $this->assertSame('confirmed', $payment->booking->status);
+        Mail::assertSent(ReservationConfirmed::class, 1);
+    }
+
+    public function test_spa_payment_confirmation_is_idempotent(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $payment = $this->createBooking($user);
+
+        $this->actingAs($user)
+            ->postJson("/api/payments/{$payment->reference}/confirm")
+            ->assertOk()
+            ->assertJsonPath('data.already_paid', false);
+
+        $this->actingAs($user)
+            ->postJson("/api/payments/{$payment->reference}/confirm")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'paid')
+            ->assertJsonPath('data.already_paid', true);
+
+        $this->assertSame(
+            1,
+            PaymentEvent::query()->where('event', 'payment_paid')->count(),
+        );
+        Mail::assertSent(ReservationConfirmed::class, 1);
+    }
+
+    public function test_only_the_payment_owner_can_confirm_from_the_spa(): void
+    {
+        $owner = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $payment = $this->createBooking($owner);
+
+        $this->actingAs($otherUser)
+            ->postJson("/api/payments/{$payment->reference}/confirm")
+            ->assertForbidden();
+
+        $this->assertSame('pending', $payment->fresh()->status);
+    }
+
+    public function test_an_expired_payment_cannot_be_confirmed_from_the_spa(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $payment = $this->createBooking($user);
+        $payment->forceFill(['qr_expires_at' => now()->subMinute()])->save();
+
+        $this->actingAs($user)
+            ->postJson("/api/payments/{$payment->reference}/confirm")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'expired')
+            ->assertJsonPath('data.expired', true)
+            ->assertJsonPath('data.email_sent', false);
+
+        $payment->refresh();
+
+        $this->assertNull($payment->paid_at);
+        $this->assertSame('expired', $payment->booking->status);
+        Mail::assertNothingSent();
+    }
+
     public function test_back_to_back_bookings_are_allowed_without_a_buffer(): void
     {
         Mail::fake();

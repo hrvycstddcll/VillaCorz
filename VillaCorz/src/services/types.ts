@@ -329,6 +329,13 @@ export type PaymentStatus = {
     email_sent: boolean
 }
 
+export type PaymentConfirmationResult = PaymentStatus & {
+    conflict: boolean
+    expired: boolean
+    already_paid: boolean
+    message: string | null
+}
+
 export type ActivityLogUser = {
     id: number
     firstname: string

@@ -48,7 +48,7 @@ class DemoReseedSeeder extends Seeder
         ServiceReview::query()->delete();
     }
 
-    private function seedOperationalData(): void
+    protected function seedOperationalData(): void
     {
         $admin = User::where('email', 'dlord0260@gmail.com')->firstOrFail();
         $haydee = User::where('email', 'dacillohaydee@gmail.com')->firstOrFail();

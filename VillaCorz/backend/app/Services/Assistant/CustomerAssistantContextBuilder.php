@@ -7,6 +7,7 @@ use App\Models\Service;
 use App\Models\User;
 use App\Support\StayTime;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -19,6 +20,37 @@ class CustomerAssistantContextBuilder
     private const MAX_SERVICES = 20;
 
     private const DESCRIPTION_LIMIT = 240;
+
+    private const DEFAULT_CHECK_IN_TIME = '14:00';
+
+    private const DEFAULT_CHECK_OUT_TIME = '12:00';
+
+    private const MONTH_NUMBERS = [
+        'january' => 1,
+        'jan' => 1,
+        'february' => 2,
+        'feb' => 2,
+        'march' => 3,
+        'mar' => 3,
+        'april' => 4,
+        'apr' => 4,
+        'may' => 5,
+        'june' => 6,
+        'jun' => 6,
+        'july' => 7,
+        'jul' => 7,
+        'august' => 8,
+        'aug' => 8,
+        'september' => 9,
+        'sept' => 9,
+        'sep' => 9,
+        'october' => 10,
+        'oct' => 10,
+        'november' => 11,
+        'nov' => 11,
+        'december' => 12,
+        'dec' => 12,
+    ];
 
     private const VILLA = [
         'name' => 'VillaCorz',
@@ -243,7 +275,7 @@ class CustomerAssistantContextBuilder
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Service>  $services
+     * @param  Collection<int, Service>  $services
      * @return array<string, mixed>|null
      */
     private function availabilityCheck(
@@ -285,7 +317,6 @@ class CustomerAssistantContextBuilder
             $overlaps,
             $hasAnyOverlap,
             $blockedExclusive,
-            $exclusiveServiceId,
         ): array {
             $id = (int) $service->id;
             $available = $service->kind === 'exclusive'
@@ -340,7 +371,169 @@ class CustomerAssistantContextBuilder
             return [$checkIn, $checkIn->copy()->addDay(), 'today'];
         }
 
+        return $this->specificDateRange($text, $today);
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon, 2: string}|null
+     */
+    private function specificDateRange(string $text, Carbon $today): ?array
+    {
+        $dates = $this->extractDates($text, $today);
+
+        if ($dates === []) {
+            return null;
+        }
+
+        $checkInDate = array_shift($dates);
+        $checkOutDate = $dates === [] ? null : array_shift($dates);
+
+        $checkIn = $this->phtDate(
+            $checkInDate['year'],
+            $checkInDate['month'],
+            $checkInDate['day'],
+            self::DEFAULT_CHECK_IN_TIME,
+        );
+        $checkOut = $checkOutDate === null
+            ? $checkIn->copy()->addDay()->setTimeFromTimeString(self::DEFAULT_CHECK_OUT_TIME)
+            : $this->phtDate(
+                $checkOutDate['year'],
+                $checkOutDate['month'],
+                $checkOutDate['day'],
+                self::DEFAULT_CHECK_OUT_TIME,
+            );
+
+        if ($checkOut->lessThanOrEqualTo($checkIn)) {
+            $checkOut = $checkIn->copy()->addDay()->setTimeFromTimeString(self::DEFAULT_CHECK_OUT_TIME);
+        }
+
+        $label = $checkOutDate === null
+            ? $checkIn->format('M j, Y').' for one night'
+            : $checkIn->format('M j, Y').' – '.$checkOut->format('M j, Y');
+
+        return [$checkIn, $checkOut, $label];
+    }
+
+    /**
+     * @return list<array{year: int, month: int, day: int}>
+     */
+    private function extractDates(string $text, Carbon $today): array
+    {
+        $months = array_keys(self::MONTH_NUMBERS);
+        usort($months, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
+        $monthPattern = implode('|', array_map('preg_quote', $months));
+
+        $rangePattern = '/\b(?<range_month>'.$monthPattern.')\.?\s+(?<range_start>\d{1,2})(?:st|nd|rd|th)?\s*(?:-|–|—|to|through|until)\s*(?<range_end>\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(?<range_year>\d{4}))?/u';
+
+        if (preg_match($rangePattern, $text, $range) === 1) {
+            $month = self::MONTH_NUMBERS[$range['range_month']];
+            $yearText = $range['range_year'] ?? null;
+            $startYear = $this->resolveYear(
+                $month,
+                (int) $range['range_start'],
+                $yearText,
+                $today,
+            );
+
+            if ($startYear === null) {
+                return [];
+            }
+
+            $startDate = $this->phtDate($startYear, $month, (int) $range['range_start'], '00:00');
+            $endYear = $this->resolveYear(
+                $month,
+                (int) $range['range_end'],
+                $yearText,
+                $startDate,
+            );
+
+            if ($endYear === null) {
+                return [];
+            }
+
+            return [
+                ['year' => $startYear, 'month' => $month, 'day' => (int) $range['range_start']],
+                ['year' => $endYear, 'month' => $month, 'day' => (int) $range['range_end']],
+            ];
+        }
+
+        $datePattern = '/\b(?<month>'.$monthPattern.')\.?\s+(?<day>\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(?<year>\d{4}))?'
+            .'|\b(?<day_alt>\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(?<month_alt>'.$monthPattern.')\b(?:\s*,?\s*(?<year_alt>\d{4}))?'
+            .'|\b(?<iso_year>\d{4})-(?<iso_month>\d{2})-(?<iso_day>\d{2})\b/u';
+
+        preg_match_all($datePattern, $text, $matches, PREG_SET_ORDER);
+
+        $dates = [];
+        $reference = $today;
+
+        foreach ($matches as $match) {
+            if (($match['iso_year'] ?? '') !== '') {
+                $yearText = $match['iso_year'];
+                $month = (int) $match['iso_month'];
+                $day = (int) $match['iso_day'];
+            } elseif (($match['month'] ?? '') !== '') {
+                $yearText = $match['year'] ?? null;
+                $month = self::MONTH_NUMBERS[$match['month']];
+                $day = (int) $match['day'];
+            } else {
+                $yearText = $match['year_alt'] ?? null;
+                $month = self::MONTH_NUMBERS[$match['month_alt']];
+                $day = (int) $match['day_alt'];
+            }
+
+            $year = $this->resolveYear($month, $day, $yearText, $reference);
+
+            if ($year === null) {
+                continue;
+            }
+
+            $dates[] = ['year' => $year, 'month' => $month, 'day' => $day];
+            $reference = $this->phtDate($year, $month, $day, '00:00');
+        }
+
+        return $dates;
+    }
+
+    private function resolveYear(int $month, int $day, mixed $yearText, Carbon $reference): ?int
+    {
+        if (is_string($yearText) && $yearText !== '') {
+            $year = (int) $yearText;
+
+            if (! checkdate($month, $day, $year)) {
+                return null;
+            }
+
+            $candidate = $this->phtDate($year, $month, $day, '00:00');
+
+            return $candidate->greaterThanOrEqualTo($reference->copy()->startOfDay())
+                ? $year
+                : null;
+        }
+
+        for ($offset = 0; $offset <= 8; $offset++) {
+            $year = (int) $reference->year + $offset;
+
+            if (! checkdate($month, $day, $year)) {
+                continue;
+            }
+
+            $candidate = $this->phtDate($year, $month, $day, '00:00');
+
+            if ($candidate->lessThan($reference->copy()->startOfDay())) {
+                continue;
+            }
+
+            return $year;
+        }
+
         return null;
+    }
+
+    private function phtDate(int $year, int $month, int $day, string $time): Carbon
+    {
+        [$hour, $minute] = array_map('intval', explode(':', $time));
+
+        return Carbon::create($year, $month, $day, $hour, $minute, 0, StayTime::TIMEZONE);
     }
 
     /**
