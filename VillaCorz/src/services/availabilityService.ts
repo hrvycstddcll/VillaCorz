@@ -1,3 +1,4 @@
+import { normalizePaidDays } from '../lib/stayDateTime'
 import api from './api'
 import type { ApiEnvelope } from './types'
 
@@ -18,6 +19,7 @@ export type AvailabilityRange = {
     basis: string
     check_in: string
     check_out: string
+    paid_days?: number
     rooms: ServiceAvailability[]
 }
 
@@ -30,11 +32,11 @@ export type BlockedDates = {
 
 export const getAvailabilityForRange = (
     checkIn: string,
-    checkOut: string,
+    paidDays: number,
     signal?: AbortSignal,
 ) =>
     api.get<ApiEnvelope<AvailabilityRange>>('/services/availability', {
-        params: { check_in: checkIn, check_out: checkOut },
+        params: { check_in: checkIn, paid_days: normalizePaidDays(paidDays) },
         signal,
     })
 

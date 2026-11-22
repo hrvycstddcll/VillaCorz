@@ -7,6 +7,8 @@ use App\Models\BookingRoom;
 use App\Models\Payment;
 use App\Models\Service;
 use App\Models\User;
+use App\Support\StayPolicy;
+use App\Support\StayTime;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
@@ -57,8 +59,13 @@ class DemoCustomerSeeder extends Seeder
         ])->orderBy('id')->get();
 
         foreach ($reviewers as $i => $user) {
-            $checkIn = now()->subDays(40 + ($i * 5))->startOfDay();
-            $checkOut = $checkIn->copy()->addDays(2);
+            $paidDays = 2;
+            $checkIn = StayTime::parseLocal(
+                now()->subDays(40 + ($i * 5))->toDateString(),
+                StayPolicy::defaultCheckInTime(),
+            );
+            $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
+            $total = $this->stayTotal($service, $checkIn, $paidDays);
             $reference = 'VC-DEMO-R'.$service->id.'-U'.$user->id;
 
             if (Booking::where('reference', $reference)->exists()) {
@@ -73,11 +80,12 @@ class DemoCustomerSeeder extends Seeder
                 'contact_phone' => null,
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
-                'nights' => 2,
+                'paid_days' => $paidDays,
+                'nights' => $paidDays,
                 'adults' => 2,
                 'kids' => 0,
-                'subtotal' => (float) $service->price * 2,
-                'total' => (float) $service->price * 2,
+                'subtotal' => $total,
+                'total' => $total,
                 'currency' => 'PHP',
                 'status' => 'confirmed',
                 'payment_method' => 'GCash',
@@ -94,7 +102,7 @@ class DemoCustomerSeeder extends Seeder
                 'kids' => 0,
                 'weekday_price' => $service->price,
                 'weekend_price' => $service->weekend_price ?? $service->price,
-                'line_total' => (float) $service->price * 2,
+                'line_total' => $total,
             ]);
 
             $token = 'seed-demo-token-'.strtolower($reference);
@@ -103,7 +111,7 @@ class DemoCustomerSeeder extends Seeder
                 'reference' => 'PAY-'.$reference,
                 'provider' => 'demo',
                 'method' => 'GCash',
-                'amount' => $service->price * 2,
+                'amount' => $total,
                 'currency' => 'PHP',
                 'status' => 'paid',
                 'idempotency_key' => 'demo-'.strtolower($reference),
@@ -203,13 +211,19 @@ class DemoCustomerSeeder extends Seeder
         User $user,
         Service $service,
         string $reference,
-        Carbon $checkOut,
+        Carbon $checkOutDate,
     ): void {
         if (Booking::where('reference', $reference)->exists()) {
             return;
         }
 
-        $checkIn = $checkOut->copy()->subDays(2);
+        $paidDays = 2;
+        $checkIn = StayTime::parseLocal(
+            $checkOutDate->copy()->subDays($paidDays)->toDateString(),
+            StayPolicy::defaultCheckInTime(),
+        );
+        $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
+        $total = $this->stayTotal($service, $checkIn, $paidDays);
 
         $booking = Booking::create([
             'user_id' => $user->id,
@@ -219,11 +233,12 @@ class DemoCustomerSeeder extends Seeder
             'contact_phone' => null,
             'check_in' => $checkIn,
             'check_out' => $checkOut,
-            'nights' => 2,
+            'paid_days' => $paidDays,
+            'nights' => $paidDays,
             'adults' => 2,
             'kids' => 0,
-            'subtotal' => (float) $service->price * 2,
-            'total' => (float) $service->price * 2,
+            'subtotal' => $total,
+            'total' => $total,
             'currency' => 'PHP',
             'status' => 'confirmed',
             'payment_method' => 'GCash',
@@ -240,7 +255,7 @@ class DemoCustomerSeeder extends Seeder
             'kids' => 0,
             'weekday_price' => $service->price,
             'weekend_price' => $service->weekend_price ?? $service->price,
-            'line_total' => (float) $service->price * 2,
+            'line_total' => $total,
         ]);
 
         $token = 'seed-demo-token-'.strtolower($reference);
@@ -249,7 +264,7 @@ class DemoCustomerSeeder extends Seeder
             'reference' => 'PAY-'.$reference,
             'provider' => 'demo',
             'method' => 'GCash',
-            'amount' => (float) $service->price * 2,
+            'amount' => $total,
             'currency' => 'PHP',
             'status' => 'paid',
             'idempotency_key' => 'demo-'.strtolower($reference),
@@ -259,5 +274,18 @@ class DemoCustomerSeeder extends Seeder
             'paid_at' => $checkIn->copy()->subDays(10),
         ]);
 
+    }
+
+    private function stayTotal(Service $service, mixed $checkIn, int $paidDays): float
+    {
+        $weekdayPrice = (float) $service->price;
+        $weekendPrice = (float) ($service->weekend_price ?? $service->price);
+        $total = 0.0;
+
+        foreach (StayPolicy::windows($checkIn, $paidDays) as $window) {
+            $total += $window['is_weekend'] ? $weekendPrice : $weekdayPrice;
+        }
+
+        return round($total, 2);
     }
 }

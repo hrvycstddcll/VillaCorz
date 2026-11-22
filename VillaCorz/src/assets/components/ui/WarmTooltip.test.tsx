@@ -1,0 +1,71 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { WarmTooltip } from './WarmTooltip'
+
+const makeRect = (top: number, left: number, width = 40, height = 20): DOMRect => ({
+    top,
+    left,
+    width,
+    height,
+    bottom: top + height,
+    right: left + width,
+    x: left,
+    y: top,
+    toJSON: () => ({}),
+}) as DOMRect
+
+const renderTooltip = () => {
+    render(
+        <WarmTooltip content="Help text" delay={0}>
+            <button type="button">Hover me</button>
+        </WarmTooltip>,
+    )
+    return screen.getByRole('button').parentElement as HTMLElement
+}
+
+describe('WarmTooltip positioning', () => {
+    afterEach(() => {
+        vi.restoreAllMocks()
+    })
+
+    it('positions the themed tooltip above the hovered trigger with a pointer', async () => {
+        const trigger = renderTooltip()
+        vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(makeRect(200, 300))
+
+        fireEvent.mouseEnter(trigger)
+
+        const tooltip = await screen.findByRole('tooltip')
+        expect(tooltip.style.position).toBe('fixed')
+        expect(tooltip.style.left).toBe('210px')
+        expect(tooltip.style.top).toBe('142px')
+        expect(tooltip).toHaveStyle({ backgroundColor: '#ffffff', color: '#0f172a' })
+        expect(tooltip).toHaveClass('border', 'text-left', 'font-medium')
+        expect(tooltip.querySelector('[aria-hidden="true"]')).toHaveClass('-bottom-1', 'border-b', 'border-r')
+    })
+
+    it('repositions the open tooltip after scrolling', async () => {
+        const trigger = renderTooltip()
+        const rect = vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(makeRect(200, 300))
+
+        fireEvent.mouseEnter(trigger)
+        const tooltip = await screen.findByRole('tooltip')
+        expect(tooltip.style.left).toBe('210px')
+        expect(tooltip.style.top).toBe('142px')
+
+        rect.mockReturnValue(makeRect(120, 500))
+        fireEvent.scroll(window)
+
+        await waitFor(() => expect(tooltip.style.left).toBe('410px'))
+        expect(tooltip.style.top).toBe('62px')
+    })
+
+    it('does not render at the origin for a zero-sized trigger', async () => {
+        const trigger = renderTooltip()
+        vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(makeRect(0, 0, 0, 0))
+
+        fireEvent.mouseEnter(trigger)
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    })
+})

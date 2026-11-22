@@ -272,11 +272,11 @@
   }
 
   .booking-field-label {
-    @apply mb-1 block text-[11px] font-medium text-slate-600;
+    @apply mb-1 block text-xs font-medium text-slate-600 sm:text-sm lg:text-base;
   }
 
   .booking-input {
-    @apply min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition;
+    @apply min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-slate-800 outline-none transition sm:text-sm lg:text-base;
   }
 
   .booking-input:focus {
@@ -332,7 +332,7 @@
   .booking-stepper-value {
     min-width: 2rem;
     text-align: center;
-    font-size: 0.875rem;
+    @apply text-sm sm:text-base;
     font-weight: 600;
     color: #1e293b;
   }

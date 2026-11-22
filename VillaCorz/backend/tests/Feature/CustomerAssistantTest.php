@@ -53,7 +53,10 @@ class CustomerAssistantTest extends TestCase
         string $reference,
         int $daysFromToday,
     ): Booking {
-        $checkIn = now()->startOfDay()->addDays($daysFromToday);
+        $checkIn = StayTime::parseLocal(
+            now()->setTimezone(StayTime::TIMEZONE)->startOfDay()->addDays($daysFromToday)->toDateString(),
+            '10:00',
+        );
 
         $booking = Booking::create([
             'user_id' => $user->id,
@@ -62,8 +65,9 @@ class CustomerAssistantTest extends TestCase
             'contact_email' => 'private-guest-'.uniqid().'@example.com',
             'contact_phone' => '+639171234567',
             'check_in' => $checkIn,
-            'check_out' => $checkIn->copy()->addDays(2),
+            'check_out' => \App\Support\StayPolicy::checkOutFor($checkIn, 2),
             'nights' => 2,
+            'paid_days' => 2,
             'adults' => 2,
             'kids' => 0,
             'subtotal' => 5000,
@@ -234,14 +238,14 @@ class CustomerAssistantTest extends TestCase
 
         $date = $this->nextDate(11, 23);
         $checkIn = StayTime::formatPht(
-            $date->copy()->setTimeFromTimeString('14:00'),
+            $date->copy()->setTimeFromTimeString('10:00'),
             'Y-m-d H:i P',
         );
         $checkOut = StayTime::formatPht(
-            $date->copy()->addDay()->setTimeFromTimeString('12:00'),
+            $date->copy()->addDay()->setTimeFromTimeString('08:00'),
             'Y-m-d H:i P',
         );
-        $label = 'Nov 23, '.$date->year.' for one night';
+        $label = 'Nov 23, '.$date->year.' for one paid day';
 
         $this->actingAs($customer)->postJson('/api/customer-assistant/chat', [
             'message' => 'What room is available in nov. 23?',
@@ -269,11 +273,11 @@ class CustomerAssistantTest extends TestCase
         $start = $this->nextDate(11, 23);
         $end = $start->copy()->addDays(2);
         $checkIn = StayTime::formatPht(
-            $start->copy()->setTimeFromTimeString('14:00'),
+            $start->copy()->setTimeFromTimeString('10:00'),
             'Y-m-d H:i P',
         );
         $checkOut = StayTime::formatPht(
-            $end->copy()->setTimeFromTimeString('12:00'),
+            $end->copy()->setTimeFromTimeString('08:00'),
             'Y-m-d H:i P',
         );
         $label = $start->format('M j, Y').' – '.$end->format('M j, Y');

@@ -9,6 +9,8 @@ use App\Models\ServiceReview;
 use App\Models\ServiceReviewImage;
 use App\Models\User;
 use App\Services\CloudinaryService;
+use App\Support\StayPolicy;
+use App\Support\StayTime;
 use Illuminate\Database\Seeder;
 use Illuminate\Http\UploadedFile;
 use Throwable;
@@ -60,8 +62,13 @@ class DemoReviewSeeder extends Seeder
                     continue;
                 }
 
-                $checkOut = now()->subDays(6 + ($slot * 3))->startOfDay();
-                $checkIn = $checkOut->copy()->subDays(2);
+                $paidDays = 2;
+                $checkIn = StayTime::parseLocal(
+                    now()->subDays(6 + ($slot * 3))->subDays($paidDays)->toDateString(),
+                    StayPolicy::defaultCheckInTime(),
+                );
+                $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
+                $total = $this->stayTotal($room, $checkIn, $paidDays);
                 $reference = 'VC-REVIEW-R'.$room->id.'-U'.$customer->id;
 
                 $booking = Booking::firstOrCreate(
@@ -73,11 +80,12 @@ class DemoReviewSeeder extends Seeder
                         'contact_phone' => null,
                         'check_in' => $checkIn,
                         'check_out' => $checkOut,
-                        'nights' => 2,
+                        'paid_days' => $paidDays,
+                        'nights' => $paidDays,
                         'adults' => 2,
                         'kids' => 0,
-                        'subtotal' => (float) $room->price * 2,
-                        'total' => (float) $room->price * 2,
+                        'subtotal' => $total,
+                        'total' => $total,
                         'currency' => 'PHP',
                         'status' => 'confirmed',
                         'payment_method' => 'GCash',
@@ -98,7 +106,7 @@ class DemoReviewSeeder extends Seeder
                         'kids' => 0,
                         'weekday_price' => $room->price,
                         'weekend_price' => $room->weekend_price ?? $room->price,
-                        'line_total' => (float) $room->price * 2,
+                        'line_total' => $total,
                     ],
                 );
 
@@ -128,6 +136,19 @@ class DemoReviewSeeder extends Seeder
                 }
             }
         }
+    }
+
+    private function stayTotal(Service $room, mixed $checkIn, int $paidDays): float
+    {
+        $weekdayPrice = (float) $room->price;
+        $weekendPrice = (float) ($room->weekend_price ?? $room->price);
+        $total = 0.0;
+
+        foreach (StayPolicy::windows($checkIn, $paidDays) as $window) {
+            $total += $window['is_weekend'] ? $weekendPrice : $weekdayPrice;
+        }
+
+        return round($total, 2);
     }
 
     private function localImages(): array

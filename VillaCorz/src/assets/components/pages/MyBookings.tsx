@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getApiErrorMessage } from '../../../lib/apiError'
 import { money } from '../../../lib/format'
-import { formatStayDateTime } from '../../../lib/stayDateTime'
+import { formatPaidDays, formatStayDateTime } from '../../../lib/stayDateTime'
 import {
     cancelBooking,
     getBookings,
@@ -10,6 +10,7 @@ import {
 import type { Booking, BookingRoom, CancellationRequest } from '../../../services/types'
 import BookingRoomsModal from '../ui/ModalComponents/BookingRoomsModal'
 import CancelRequestModal from '../ui/ModalComponents/CancelRequestModal'
+import { stateMascots } from '../ui/ModalComponents/stateModalConfig'
 
 const formatDate = (value: string) =>
     formatStayDateTime(value, {
@@ -21,6 +22,11 @@ const formatDate = (value: string) =>
     })
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+
+const stayLengthLabel = (booking: Booking) =>
+    booking.paid_days != null
+        ? formatPaidDays(booking.paid_days)
+        : `${booking.nights} night${booking.nights === 1 ? '' : 's'}`
 
 const MyBookings = () => {
     const navigate = useNavigate()
@@ -263,6 +269,14 @@ const MyBookings = () => {
                     </div>
                 ) : visibleBookings.length === 0 ? (
                     <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+                        <img
+                            src={stateMascots.empty}
+                            alt=""
+                            aria-hidden="true"
+                            className="mx-auto size-24 object-contain"
+                            loading="lazy"
+                            decoding="async"
+                        />
                         <p className="text-base font-semibold text-slate-700">
                             {activeTab === 'all'
                                 ? 'No confirmed bookings yet'
@@ -375,7 +389,7 @@ const MyBookings = () => {
                                     <div>
                                         <p className="text-xs text-slate-500">Stay</p>
                                         <p className="font-semibold text-slate-800">
-                                            {booking.nights} night{booking.nights === 1 ? '' : 's'} ·{' '}
+                                            {stayLengthLabel(booking)} ·{' '}
                                             {booking.adults + booking.kids} guest
                                             {booking.adults + booking.kids === 1 ? '' : 's'}
                                         </p>

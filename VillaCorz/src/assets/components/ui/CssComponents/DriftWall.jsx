@@ -55,7 +55,6 @@ const DriftWall = ({
   const offsetsRef = useRef([]);
   const velocitiesRef = useRef([]);
   const hoveredColRef = useRef(-1);
-  const wallHoveredRef = useRef(false);
   const pointerRef = useRef({ x: 0, y: 0 });
   const pointerDampedRef = useRef({ x: 0, y: 0 });
   const lastTsRef = useRef(null);
@@ -172,11 +171,15 @@ const DriftWall = ({
         for (let c = 0; c < trackRefs.current.length; c++) {
           const meta = columnMeta[c];
           if (!meta) continue;
-          const paused = wallHoveredRef.current && pauseOnHover;
-          const factor = paused || hoveredColRef.current === c ? 0 : 1;
-          const target = baseVelocities[c] * factor;
+          const frozen = pauseOnHover && hoveredColRef.current === c;
 
-          const ease = 1 - Math.exp(-dt / (target === 0 ? 0.16 : 0.28));
+          if (frozen) {
+            velocitiesRef.current[c] = 0;
+            continue;
+          }
+
+          const target = baseVelocities[c];
+          const ease = 1 - Math.exp(-dt / 0.28);
           velocitiesRef.current[c] += (target - velocitiesRef.current[c]) * ease;
           let next = (offsetsRef.current[c] ?? 0) + velocitiesRef.current[c] * dt;
           next = ((next % meta.copyHeight) + meta.copyHeight) % meta.copyHeight;
@@ -204,10 +207,19 @@ const DriftWall = ({
     };
   }, [baseVelocities, columnMeta, pauseOnHover, parallax, reduced, applyPlaneTransform]);
 
+  const activateColumn = useCallback(index => {
+    hoveredColRef.current = index;
+  }, []);
   const activate = useCallback((id, index) => {
     activeIdRef.current = id;
     hoveredColRef.current = index;
     setActiveId(id);
+  }, []);
+  const releaseColumn = useCallback(index => {
+    if (hoveredColRef.current !== index) return;
+    hoveredColRef.current = -1;
+    activeIdRef.current = null;
+    setActiveId(null);
   }, []);
   const release = useCallback(() => {
     activeIdRef.current = null;
@@ -225,8 +237,8 @@ const DriftWall = ({
           y: (e.clientY - rect.top) / rect.height - 0.5
         };
       }
-      const hit = document.elementFromPoint(e.clientX, e.clientY);
-      const tile = hit && hit.closest ? hit.closest('[data-tile-id]') : null;
+      const target = e.target instanceof Element ? e.target : null;
+      const tile = target ? target.closest('[data-tile-id]') : null;
       if (!tile) return;
       const id = tile.dataset.tileId;
       if (id === activeIdRef.current) return;
@@ -238,7 +250,6 @@ const DriftWall = ({
   );
 
   const handlePointerLeaveWall = useCallback(() => {
-    wallHoveredRef.current = false;
     pointerRef.current = { x: 0, y: 0 };
     release();
   }, [release]);
@@ -272,6 +283,8 @@ const DriftWall = ({
       className: `drift-wall__tile${activeId === id ? ' is-active' : ''}`,
       'data-tile-id': id,
       'data-col': colIndex,
+      onPointerEnter: () => activate(id, colIndex),
+      onPointerDown: () => activate(id, colIndex),
       onFocus: () => activate(id, colIndex),
       onBlur: release
     };
@@ -303,9 +316,6 @@ const DriftWall = ({
       className={rootClass}
       style={cssVars}
       onPointerMove={handlePointerMove}
-      onPointerEnter={() => {
-        wallHoveredRef.current = true;
-      }}
       onPointerLeave={handlePointerLeaveWall}
       role="group"
       aria-label={ariaLabel}
@@ -315,7 +325,12 @@ const DriftWall = ({
           const meta = columnMeta[c];
           const copies = Array.from({ length: meta.copies });
           return (
-            <div className="drift-wall__col" key={`col-${c}`}>
+            <div
+              className="drift-wall__col"
+              key={`col-${c}`}
+              onPointerEnter={() => activateColumn(c)}
+              onPointerLeave={() => releaseColumn(c)}
+            >
               <div className="drift-wall__track" ref={el => (trackRefs.current[c] = el)}>
                 {copies.map((_, copyIndex) =>
                   col.map((item, itemIndex) => renderTile(item, `${c}-${copyIndex}-${itemIndex}`, c))

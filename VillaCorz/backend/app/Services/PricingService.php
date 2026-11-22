@@ -3,26 +3,25 @@
 namespace App\Services;
 
 use App\Models\Service;
-use App\Support\StayTime;
+use App\Support\StayPolicy;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
 
 class PricingService
 {
     /**
-     * Quote a stay from the authoritative database prices.
+     * Quote a stay from authoritative database prices.
      *
-     * Weekend nights follow the same rule as the frontend: Friday, Saturday
-     * and Sunday use the weekend price. Every other night uses the weekday
-     * price. Discounts are applied before the nightly totals are added.
-     *
-     * Guests above an offer's pax are treated as additional heads and are
-     * charged the offer's per-night additional-head rate. That fee is never
+     * Each paid day is a 22-hour occupancy window starting at the guest's
+     * check-in clock time. Weekend pricing applies when the paid-day start
+     * (PHT) falls on Friday, Saturday, or Sunday. Discounts are applied
+     * before paid-day totals are added. Additional-head fees are never
      * discounted.
      *
      * @param  Collection<int, Service>  $services
      * @param  array<int, int>  $guestsByServiceId
      * @return array{
+     *     paid_days: int,
      *     nights: int,
      *     rooms: array<int, array{
      *         service: Service,
@@ -41,14 +40,12 @@ class PricingService
     public function quote(
         Collection $services,
         DateTimeInterface|string $checkIn,
-        DateTimeInterface|string $checkOut,
+        int $paidDays,
         array $guestsByServiceId = [],
     ): array
     {
-        $start = StayTime::toCarbon($checkIn)->setTimezone(StayTime::TIMEZONE)->startOfDay();
-        $end = StayTime::toCarbon($checkOut)->setTimezone(StayTime::TIMEZONE)->startOfDay();
-        $nights = max(1, (int) $start->diffInDays($end));
-        $billableEnd = $start->addDays($nights);
+        $paidDays = max(1, min($paidDays, StayPolicy::maxPaidDays()));
+        $windows = StayPolicy::windows($checkIn, $paidDays);
 
         $rooms = [];
         $subtotal = 0.0;
@@ -83,17 +80,16 @@ class PricingService
             $lineTotal = 0.0;
             $additionalHeadTotal = 0.0;
 
-            for ($date = $start; $date->lt($billableEnd); $date = $date->addDay()) {
-                $dayOfWeek = (int) $date->format('w');
-                $isWeekend = in_array($dayOfWeek, [0, 5, 6], true);
-                $nightlyPrice = $isWeekend ? $weekendPrice : $weekdayPrice;
-                $nightlyAdditionalHeadPrice = $isWeekend
+            foreach ($windows as $window) {
+                $isWeekend = (bool) $window['is_weekend'];
+                $dayPrice = $isWeekend ? $weekendPrice : $weekdayPrice;
+                $dayAdditionalHeadPrice = $isWeekend
                     ? $additionalHeadWeekendPrice
                     : $additionalHeadWeekdayPrice;
-                $nightlyAdditionalHeadTotal = $additionalHeads * $nightlyAdditionalHeadPrice;
+                $dayAdditionalHeadTotal = $additionalHeads * $dayAdditionalHeadPrice;
 
-                $lineTotal += $nightlyPrice + $nightlyAdditionalHeadTotal;
-                $additionalHeadTotal += $nightlyAdditionalHeadTotal;
+                $lineTotal += $dayPrice + $dayAdditionalHeadTotal;
+                $additionalHeadTotal += $dayAdditionalHeadTotal;
             }
 
             $lineTotal = round($lineTotal, 2);
@@ -115,7 +111,8 @@ class PricingService
         $subtotal = round($subtotal, 2);
 
         return [
-            'nights' => $nights,
+            'paid_days' => $paidDays,
+            'nights' => $paidDays,
             'rooms' => $rooms,
             'subtotal' => $subtotal,
             'total' => $subtotal,

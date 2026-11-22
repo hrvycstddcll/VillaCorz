@@ -8,6 +8,8 @@ use App\Models\ServiceImage;
 use App\Models\ServiceReview;
 use App\Models\ServiceReviewImage;
 use App\Models\User;
+use App\Support\StayPolicy;
+use App\Support\StayTime;
 use Database\Seeders\DemoCleanReseedSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +40,14 @@ class DemoCleanReseedSeederTest extends TestCase
 
         foreach (ServiceReview::with('booking')->get() as $review) {
             $this->assertTrue($review->isVerified());
+            $booking = $review->booking;
+            $this->assertNotNull($booking);
+            $this->assertNotNull($booking->paid_days);
+            $this->assertTrue(StayPolicy::isValidStay(
+                $booking->check_in,
+                $booking->check_out,
+                (int) $booking->paid_days,
+            ));
         }
 
         foreach ([
@@ -193,8 +203,12 @@ class DemoCleanReseedSeederTest extends TestCase
     private function seedReviews(): void
     {
         foreach ([3 => 3, 6 => 4] as $serviceId => $userId) {
-            $checkOut = now()->subDays(10 + $serviceId)->startOfDay();
-            $checkIn = $checkOut->copy()->subDays(2);
+            $paidDays = 2;
+            $checkIn = StayTime::parseLocal(
+                now()->subDays(10 + $serviceId)->subDays($paidDays)->toDateString(),
+                StayPolicy::defaultCheckInTime(),
+            );
+            $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
 
             $booking = Booking::forceCreate([
                 'user_id' => $userId,
@@ -204,7 +218,8 @@ class DemoCleanReseedSeederTest extends TestCase
                 'contact_phone' => null,
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
-                'nights' => 2,
+                'paid_days' => $paidDays,
+                'nights' => $paidDays,
                 'adults' => 2,
                 'kids' => 0,
                 'subtotal' => 6000,

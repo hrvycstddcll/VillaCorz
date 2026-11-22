@@ -202,7 +202,8 @@ const Gallery = () => {
                         speed={42}
                         direction="up"
                         variance={0.45}
-                        parallax={0.6}
+                        parallax={0}
+                        pauseOnHover
                         lift={64}
                         fade={0.6}
                         dim={0.55}
@@ -215,7 +216,7 @@ const Gallery = () => {
 
             {activeItem && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-[#02040d]/95 p-4 backdrop-blur-md sm:p-8"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-[2px] sm:p-6"
                     role="presentation"
                     onClick={(event) => {
                         if (event.target === event.currentTarget) closeLightbox()
@@ -227,40 +228,55 @@ const Gallery = () => {
                         aria-modal="true"
                         aria-labelledby="gallery-lightbox-title"
                         aria-describedby="gallery-lightbox-description"
-                        className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#080c1c] shadow-2xl"
+                        className="flex max-h-[92dvh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-[#cfe1f7] bg-white shadow-[0_18px_60px_rgba(15,23,42,0.14)]"
                     >
-                        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-8">
-                            <div>
-                                <p className="font-poppins text-[10px] font-semibold uppercase tracking-[0.24em] text-[#93c5fd]">
-                                    Guest photo {activeIndex !== null ? activeIndex + 1 : 1} of {items.length}
-                                </p>
-                                <h3 id="gallery-lightbox-title" className="mt-1 font-jakarta text-[50px] font-bold text-white">
-                                    {activeItem.title}
-                                </h3>
+                        <div className="flex items-center justify-between gap-4 border-b border-[#e2e8f0] px-5 py-4 sm:px-7">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-3">
+                                    <span className="h-px w-8 bg-[#006dfc]" aria-hidden="true" />
+                                    <p className="font-poppins text-[10px] font-semibold uppercase tracking-[0.28em] text-[#006dfc]">
+                                        VillaCorz guest gallery
+                                    </p>
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                                    <h3
+                                        id="gallery-lightbox-title"
+                                        className="truncate font-jakarta text-2xl font-bold tracking-[-0.04em] text-slate-950 sm:text-3xl"
+                                    >
+                                        {activeItem.title}
+                                    </h3>
+                                    <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 font-jakarta text-[11px] font-semibold tabular-nums text-[#006dfc] ring-1 ring-inset ring-[#cfe1f7]">
+                                        {String((activeIndex ?? 0) + 1).padStart(2, '0')} / {String(items.length).padStart(2, '0')}
+                                    </span>
+                                </div>
                             </div>
                             <button
                                 ref={closeButtonRef}
                                 type="button"
                                 onClick={closeLightbox}
                                 aria-label="Close photo viewer"
-                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white transition-colors hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#93c5fd]"
+                                className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-[#cfe1f7] bg-white/95 text-[#006dfc] shadow-sm transition-colors hover:border-[#006dfc] hover:bg-[#006dfc] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                             >
                                 <X className="h-5 w-5" aria-hidden="true" />
                             </button>
                         </div>
 
-                        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-                            <div className="relative flex min-h-[18rem] flex-1 items-center justify-center bg-black/40 sm:min-h-[28rem] lg:min-h-[36rem]">
-                                <img
-                                    src={activeItem.image}
-                                    alt={activeItem.title}
-                                    className="max-h-[34rem] w-full object-contain"
-                                />
+                        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+                            <div className="relative h-[min(44svh,20rem)] shrink-0 overflow-hidden bg-gradient-to-br from-[#f4f9ff] to-[#dbeaff] sm:h-[min(58svh,34rem)] lg:h-auto lg:min-h-0 lg:flex-1">
+                                <div className="absolute inset-3 flex items-center justify-center sm:inset-6 lg:inset-8">
+                                    <div className="flex h-full w-full max-w-5xl items-center justify-center overflow-hidden rounded-2xl bg-white/90 p-2 shadow-[0_10px_30px_rgba(15,23,42,0.1)] ring-1 ring-[#bfd7f5] sm:p-3">
+                                        <img
+                                            src={activeItem.image}
+                                            alt={activeItem.title}
+                                            className="h-full w-full rounded-xl object-contain"
+                                        />
+                                    </div>
+                                </div>
                                 <button
                                     type="button"
                                     onClick={() => stepLightbox(-1)}
                                     aria-label="Previous photo"
-                                    className="absolute left-3 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white transition-colors hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#93c5fd] sm:left-5"
+                                    className="absolute left-3 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-[#cfe1f7] bg-white/95 text-[#006dfc] shadow-sm transition-colors hover:border-[#006dfc] hover:bg-[#006dfc] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:left-5"
                                 >
                                     <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                                 </button>
@@ -268,7 +284,7 @@ const Gallery = () => {
                                     type="button"
                                     onClick={() => stepLightbox(1)}
                                     aria-label="Next photo"
-                                    className="absolute right-3 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white transition-colors hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#93c5fd] sm:right-5"
+                                    className="absolute right-3 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-[#cfe1f7] bg-white/95 text-[#006dfc] shadow-sm transition-colors hover:border-[#006dfc] hover:bg-[#006dfc] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:right-5"
                                 >
                                     <ChevronRight className="h-5 w-5" aria-hidden="true" />
                                 </button>
@@ -276,36 +292,45 @@ const Gallery = () => {
 
                             <div
                                 id="gallery-lightbox-description"
-                                className="w-full shrink-0 border-t border-white/10 px-6 py-6 sm:px-8 lg:w-80 lg:border-l lg:border-t-0"
+                                className="flex w-full shrink-0 flex-col border-t border-[#e2e8f0] bg-white px-6 py-6 sm:px-8 lg:w-88 lg:border-l lg:border-t-0"
                             >
-                                <div className="flex items-center gap-1" aria-label={`${activeItem.rating} out of 5 stars`}>
+                                <div className="flex items-center gap-3">
+                                    <span className="h-px w-8 bg-[#006dfc]" aria-hidden="true" />
+                                    <p className="font-poppins text-[10px] font-semibold uppercase tracking-[0.28em] text-[#006dfc]">
+                                        Guest story
+                                    </p>
+                                </div>
+                                <div className="mt-4 flex items-center gap-1" aria-label={`${activeItem.rating} out of 5 stars`}>
                                     {Array.from({ length: 5 }).map((_, index) => (
                                         <Star
                                             key={index}
-                                            className={`h-4 w-4 ${index < activeItem.rating ? 'fill-[#fbbf24] text-[#fbbf24]' : 'text-slate-600'}`}
+                                            className={`h-4 w-4 ${index < activeItem.rating ? 'fill-[#006dfc] text-[#006dfc]' : 'text-[#bfd7f5]'}`}
                                             aria-hidden="true"
                                         />
                                     ))}
                                 </div>
                                 {activeItem.quote && (
-                                    <p className="mt-5 font-instrument text-xl leading-relaxed text-white">
+                                    <blockquote className="mt-5 font-jakarta text-lg leading-relaxed text-slate-800 sm:text-xl">
                                         “{activeItem.quote}”
-                                    </p>
+                                    </blockquote>
                                 )}
-                                <p className="mt-5 font-poppins text-sm font-semibold text-slate-200">
-                                    {activeItem.author}
-                                </p>
-                                <p className="mt-1 font-poppins text-xs text-slate-400">
-                                    {activeItem.serviceName}
-                                </p>
-                                {formatDate(activeItem.createdAt) && (
+                                <div className="mt-auto pt-8">
+                                    <div className="h-px w-12 bg-[#006dfc]" aria-hidden="true" />
+                                    <p className="mt-4 font-poppins text-sm font-semibold text-slate-950">
+                                        {activeItem.author}
+                                    </p>
                                     <p className="mt-1 font-poppins text-xs text-slate-500">
-                                        {formatDate(activeItem.createdAt)}
+                                        {activeItem.serviceName}
                                     </p>
-                                )}
-                                <p className="mt-6 font-poppins text-[11px] text-slate-500">
-                                    Use arrow keys to browse and Escape to close.
-                                </p>
+                                    {formatDate(activeItem.createdAt) && (
+                                        <p className="mt-1 font-poppins text-xs text-slate-400">
+                                            {formatDate(activeItem.createdAt)}
+                                        </p>
+                                    )}
+                                    <p className="mt-6 rounded-xl border border-[#cfe1f7] bg-[#eff6ff] px-3 py-2 font-poppins text-[11px] leading-relaxed text-slate-600">
+                                        Use arrow keys to browse and Escape to close.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>

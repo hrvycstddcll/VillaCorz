@@ -7,6 +7,8 @@ use App\Models\BookingRoom;
 use App\Models\Payment;
 use App\Models\Service;
 use App\Models\User;
+use App\Support\StayPolicy;
+use App\Support\StayTime;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
@@ -62,21 +64,24 @@ class DemoDemandSeeder extends Seeder
                 }
 
                 $service = $pool[crc32($reference) % $pool->count()];
-                $nights = 1 + (crc32('nights-'.$reference) % 3);
+                $paidDays = 1 + (crc32('paid-days-'.$reference) % 3);
                 $leadDays = 3 + (crc32('lead-'.$reference) % 19);
-                $checkIn = $date->copy()->addDays($leadDays);
-                $checkOut = $checkIn->copy()->addDays($nights);
+                $checkIn = StayTime::parseLocal(
+                    $date->copy()->addDays($leadDays)->toDateString(),
+                    StayPolicy::defaultCheckInTime(),
+                );
+                $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
                 $createdAt = $date->copy()
                     ->setTime(8 + (crc32('hour-'.$reference) % 13), crc32('minute-'.$reference) % 60);
                 $customer = $customers[crc32('customer-'.$reference) % $customers->count()];
-                $total = $this->bookingTotal($service, $checkIn, $nights);
+                $total = $this->bookingTotal($service, $checkIn, $paidDays);
 
                 $candidates[] = [
                     'index' => $index,
                     'reference' => $reference,
                     'service' => $service,
                     'customer' => $customer,
-                    'nights' => $nights,
+                    'paid_days' => $paidDays,
                     'check_in' => $checkIn,
                     'check_out' => $checkOut,
                     'created_at' => $createdAt,
@@ -113,7 +118,7 @@ class DemoDemandSeeder extends Seeder
                 $reference = $candidate['reference'];
                 $service = $candidate['service'];
                 $customer = $candidate['customer'];
-                $nights = $candidate['nights'];
+                $paidDays = $candidate['paid_days'];
                 $checkIn = $candidate['check_in'];
                 $checkOut = $candidate['check_out'];
                 $createdAt = $candidate['created_at'];
@@ -129,7 +134,8 @@ class DemoDemandSeeder extends Seeder
                     'contact_phone' => null,
                     'check_in' => $checkIn,
                     'check_out' => $checkOut,
-                    'nights' => $nights,
+                    'paid_days' => $paidDays,
+                    'nights' => $paidDays,
                     'adults' => 2,
                     'kids' => 0,
                     'subtotal' => $total,
@@ -237,17 +243,14 @@ class DemoDemandSeeder extends Seeder
         Booking::query()->whereIn('id', $bookingIds)->delete();
     }
 
-    private function bookingTotal(Service $service, Carbon $checkIn, int $nights): float
+    private function bookingTotal(Service $service, mixed $checkIn, int $paidDays): float
     {
         $weekdayPrice = (float) $service->price;
         $weekendPrice = (float) ($service->weekend_price ?? $service->price);
         $total = 0.0;
 
-        for ($night = 0; $night < $nights; $night++) {
-            $nightDate = $checkIn->copy()->addDays($night);
-            $total += in_array((int) $nightDate->dayOfWeek, [0, 5, 6], true)
-                ? $weekendPrice
-                : $weekdayPrice;
+        foreach (StayPolicy::windows($checkIn, $paidDays) as $window) {
+            $total += $window['is_weekend'] ? $weekendPrice : $weekdayPrice;
         }
 
         return round($total, 2);

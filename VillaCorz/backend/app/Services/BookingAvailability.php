@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\Service;
+use App\Support\StayPolicy;
 use App\Support\StayTime;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
@@ -15,13 +16,13 @@ class BookingAvailability
     public function assertAvailable(
         array $serviceIds,
         DateTimeInterface|string $checkIn,
-        DateTimeInterface|string $checkOut,
+        int $paidDays,
         ?int $exclusiveServiceId = null,
         ?int $ignoreBookingId = null,
     ): void {
         if ($this->blockingIntervals(
             $checkIn,
-            $checkOut,
+            $paidDays,
             $serviceIds,
             $exclusiveServiceId,
             $ignoreBookingId,
@@ -34,20 +35,23 @@ class BookingAvailability
 
     public function blockingIntervals(
         DateTimeInterface|string $checkIn,
-        DateTimeInterface|string $checkOut,
+        int $paidDays,
         ?array $serviceIds = null,
         ?int $exclusiveServiceId = null,
         ?int $ignoreBookingId = null,
     ): array {
-        $checkIn = StayTime::toCarbon($checkIn)->toDateTimeString();
-        $checkOut = StayTime::toCarbon($checkOut)->toDateTimeString();
+        $checkInAt = StayTime::toCarbon($checkIn)->utc();
+        $blockingEnd = StayPolicy::blockingEndFor($checkInAt, $paidDays);
+        $checkInString = $checkInAt->toDateTimeString();
+        $blockingEndString = $blockingEnd->toDateTimeString();
+        $turnoverHours = StayPolicy::turnoverHours();
 
         $query = DB::table('booking_rooms')
             ->join('bookings', 'bookings.id', '=', 'booking_rooms.booking_id')
             ->select('booking_rooms.service_id', 'bookings.check_in', 'bookings.check_out')
             ->where('bookings.status', 'confirmed')
-            ->where('bookings.check_in', '<', $checkOut)
-            ->where('bookings.check_out', '>', $checkIn);
+            ->where('bookings.check_in', '<', $blockingEndString)
+            ->whereRaw('DATE_ADD(bookings.check_out, INTERVAL ? HOUR) > ?', [$turnoverHours, $checkInString]);
 
         if ($ignoreBookingId !== null) {
             $query->where('bookings.id', '!=', $ignoreBookingId);
@@ -76,13 +80,17 @@ class BookingAvailability
                 'service_id' => (int) $row->service_id,
                 'check_in' => CarbonImmutable::parse($row->check_in)->utc()->toIso8601String(),
                 'check_out' => CarbonImmutable::parse($row->check_out)->utc()->toIso8601String(),
+                'blocking_end' => CarbonImmutable::parse($row->check_out)
+                    ->utc()
+                    ->addHours($turnoverHours)
+                    ->toIso8601String(),
             ])
             ->all();
     }
 
     public function availabilityForRange(
         DateTimeInterface|string $checkIn,
-        DateTimeInterface|string $checkOut,
+        int $paidDays,
     ): array {
         $services = Service::query()
             ->where('status', 'active')
@@ -92,7 +100,7 @@ class BookingAvailability
             ->where('kind', 'exclusive')
             ->value('id');
         $exclusiveServiceId = $exclusiveServiceId !== null ? (int) $exclusiveServiceId : null;
-        $intervals = $this->blockingIntervals($checkIn, $checkOut);
+        $intervals = $this->blockingIntervals($checkIn, $paidDays);
 
         return $services
             ->map(function (Service $service) use ($intervals, $exclusiveServiceId) {
@@ -128,7 +136,7 @@ class BookingAvailability
         $exclusiveServiceId = $exclusiveServiceId !== null ? (int) $exclusiveServiceId : null;
         $dates = [];
 
-        foreach ($this->blockingIntervals($from, $to) as $interval) {
+        foreach ($this->blockingIntervalsForWindow($from, $to) as $interval) {
             if ($service->kind !== 'exclusive'
                 && $interval['service_id'] !== (int) $service->id
                 && $interval['service_id'] !== $exclusiveServiceId) {
@@ -140,7 +148,10 @@ class BookingAvailability
             }
         }
 
-        return array_keys($dates);
+        $result = array_keys($dates);
+        sort($result);
+
+        return $result;
     }
 
     public function assertBookingAvailable(Booking $booking): void
@@ -158,39 +169,63 @@ class BookingAvailability
         $exclusiveServiceId = Service::query()
             ->where('kind', 'exclusive')
             ->value('id');
+        $paidDays = (int) ($booking->paid_days ?? $booking->nights ?? 1);
 
         $this->assertAvailable(
             $serviceIds,
             $booking->check_in,
-            $booking->check_out,
+            $paidDays,
             $exclusiveServiceId !== null ? (int) $exclusiveServiceId : null,
             $booking->id,
         );
     }
 
+    private function blockingIntervalsForWindow(
+        DateTimeInterface|string $from,
+        DateTimeInterface|string $to,
+    ): array {
+        $fromAt = StayTime::toCarbon($from)->utc()->toDateTimeString();
+        $toAt = StayTime::toCarbon($to)->utc()->toDateTimeString();
+        $turnoverHours = StayPolicy::turnoverHours();
+
+        return DB::table('booking_rooms')
+            ->join('bookings', 'bookings.id', '=', 'booking_rooms.booking_id')
+            ->select('booking_rooms.service_id', 'bookings.check_in', 'bookings.check_out')
+            ->where('bookings.status', 'confirmed')
+            ->where('bookings.check_in', '<', $toAt)
+            ->whereRaw('DATE_ADD(bookings.check_out, INTERVAL ? HOUR) > ?', [$turnoverHours, $fromAt])
+            ->get()
+            ->map(fn ($row) => [
+                'service_id' => (int) $row->service_id,
+                'check_in' => CarbonImmutable::parse($row->check_in)->utc()->toIso8601String(),
+                'check_out' => CarbonImmutable::parse($row->check_out)->utc()->toIso8601String(),
+                'blocking_end' => CarbonImmutable::parse($row->check_out)
+                    ->utc()
+                    ->addHours($turnoverHours)
+                    ->toIso8601String(),
+            ])
+            ->all();
+    }
+
     private function datesForInterval(array $interval): array
     {
-        $start = StayTime::localDate($interval['check_in']);
-        $end = StayTime::localDate($interval['check_out']);
-        $checkoutTime = StayTime::toCarbon($interval['check_out'])
+        $start = CarbonImmutable::parse($interval['check_in'])
             ->setTimezone(StayTime::TIMEZONE)
-            ->format('H:i');
+            ->startOfDay();
+        $blockingEnd = CarbonImmutable::parse($interval['blocking_end'] ?? $interval['check_out'])
+            ->setTimezone(StayTime::TIMEZONE);
 
-        if ($checkoutTime <= '08:00') {
-            $end = CarbonImmutable::parse($end, StayTime::TIMEZONE)
-                ->subDay()
-                ->toDateString();
-        }
+        // Block only arrival dates while the occupancy/turnover window is active.
+        $lastStart = $blockingEnd->subSecond()->startOfDay();
 
-        if ($end < $start) {
+        if ($lastStart->lt($start)) {
             return [];
         }
 
         $dates = [];
-        $cursor = CarbonImmutable::parse($start, StayTime::TIMEZONE);
-        $lastDate = CarbonImmutable::parse($end, StayTime::TIMEZONE);
+        $cursor = $start;
 
-        while ($cursor->lessThanOrEqualTo($lastDate)) {
+        while ($cursor->lessThanOrEqualTo($lastStart)) {
             $dates[] = $cursor->toDateString();
             $cursor = $cursor->addDay();
         }

@@ -21,8 +21,8 @@ class AvailabilityTest extends TestCase
         $this->seedBooking($service, $date, 'confirmed');
 
         $this->getJson('/api/services/availability?'.http_build_query([
-            'check_in' => StayTime::parseLocal($date, '18:00')->toIso8601String(),
-            'check_out' => StayTime::parseLocal($date, '22:00')->toIso8601String(),
+            'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+            'paid_days' => 1,
         ]))
             ->assertOk()
             ->assertJsonPath('data.rooms.0.id', $service->id)
@@ -37,22 +37,23 @@ class AvailabilityTest extends TestCase
         $this->seedBooking($service, $date, 'pending_payment');
 
         $this->getJson('/api/services/availability?'.http_build_query([
-            'check_in' => StayTime::parseLocal($date, '18:00')->toIso8601String(),
-            'check_out' => StayTime::parseLocal($date, '22:00')->toIso8601String(),
+            'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+            'paid_days' => 1,
         ]))
             ->assertOk()
             ->assertJsonPath('data.rooms.0.available', true);
     }
 
-    public function test_back_to_back_booking_remains_available(): void
+    public function test_back_to_back_booking_remains_available_after_turnover(): void
     {
         $service = $this->makeRoomService();
         $date = now()->setTimezone(StayTime::TIMEZONE)->addDay()->toDateString();
         $this->seedBooking($service, $date, 'confirmed');
+        $nextDate = now()->setTimezone(StayTime::TIMEZONE)->addDays(2)->toDateString();
 
         $this->getJson('/api/services/availability?'.http_build_query([
-            'check_in' => StayTime::parseLocal($date, '20:00')->toIso8601String(),
-            'check_out' => StayTime::parseLocal($date, '22:00')->toIso8601String(),
+            'check_in' => StayTime::parseLocal($nextDate, '10:00')->toIso8601String(),
+            'paid_days' => 1,
         ]))
             ->assertOk()
             ->assertJsonPath('data.rooms.0.available', true);
@@ -89,8 +90,8 @@ class AvailabilityTest extends TestCase
         $this->seedBooking($room, $date, 'confirmed');
 
         $this->getJson('/api/services/availability?'.http_build_query([
-            'check_in' => StayTime::parseLocal($date, '18:00')->toIso8601String(),
-            'check_out' => StayTime::parseLocal($date, '22:00')->toIso8601String(),
+            'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+            'paid_days' => 1,
         ]))
             ->assertOk()
             ->assertJsonPath('data.rooms.0.id', $room->id)
@@ -122,15 +123,17 @@ class AvailabilityTest extends TestCase
             'role' => 'customer',
         ]);
 
+        $checkIn = StayTime::parseLocal($date, '10:00');
         $booking = Booking::create([
             'user_id' => $user->id,
             'reference' => 'BK-'.uniqid(),
             'contact_name' => 'Existing Guest',
             'contact_email' => $user->email,
             'contact_phone' => '+639171234567',
-            'check_in' => StayTime::parseLocal($date, '08:00'),
-            'check_out' => StayTime::parseLocal($date, '20:00'),
+            'check_in' => $checkIn,
+            'check_out' => \App\Support\StayPolicy::checkOutFor($checkIn, 1),
             'nights' => 1,
+            'paid_days' => 1,
             'adults' => 2,
             'kids' => 0,
             'subtotal' => 1500,

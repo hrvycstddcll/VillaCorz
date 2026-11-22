@@ -728,6 +728,7 @@ const Reports = () => {
                         ) : rows.length === 0 ? (
                             <AdminEmptyState
                                 icon={RefreshCw}
+                                state="empty"
                                 heading="No matching records"
                                 subtitle="Change the date range or filters to see more entries."
                                 ctaLabel="Clear filters"

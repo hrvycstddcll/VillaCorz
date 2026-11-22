@@ -9,6 +9,7 @@ use App\Models\PaymentEvent;
 use App\Models\Service;
 use App\Rules\PhoneNumberRule;
 use App\Services\ActivityLogger;
+use App\Support\StayPolicy;
 use App\Support\StayTime;
 use App\Services\BookingAvailability;
 use App\Services\PricingService;
@@ -81,20 +82,15 @@ class BookingController extends Controller
         $validated = $request->validate([
             'check_in' => [
                 'required',
+                'string',
                 function (string $attribute, mixed $value, Closure $fail) {
-                    if (! StayTime::isValidApiValue($value)) {
-                        $fail('The '.$attribute.' must be a valid date and time.');
+                    if (! is_string($value) || preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/', $value) !== 1) {
+                        $fail('The '.$attribute.' must be a valid ISO datetime.');
                     }
                 },
             ],
-            'check_out' => [
-                'required',
-                function (string $attribute, mixed $value, Closure $fail) {
-                    if (! StayTime::isValidApiValue($value)) {
-                        $fail('The '.$attribute.' must be a valid date and time.');
-                    }
-                },
-            ],
+            'paid_days' => ['required', 'integer', 'min:1', 'max:'.StayPolicy::maxPaidDays()],
+            'nights' => ['nullable', 'integer', 'min:1', 'max:'.StayPolicy::maxPaidDays()],
             'rooms' => ['required', 'array', 'min:1', 'max:10'],
             'rooms.*.service_id' => ['required', 'integer', 'exists:services,id'],
             'rooms.*.adults' => ['required', 'integer', 'min:1', 'max:60'],
@@ -105,18 +101,13 @@ class BookingController extends Controller
             'payment_method' => ['required', 'string', 'max:40'],
         ]);
 
+        $paidDays = (int) ($validated['paid_days'] ?? $validated['nights'] ?? 1);
         $checkIn = StayTime::parseApi($validated['check_in']);
-        $checkOut = StayTime::parseApi($validated['check_out']);
+        $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
 
         if ($checkIn->lessThan(CarbonImmutable::now('UTC'))) {
             throw ValidationException::withMessages([
                 'check_in' => 'Check-in cannot be in the past.',
-            ]);
-        }
-
-        if ($checkOut->lessThanOrEqualTo($checkIn)) {
-            throw ValidationException::withMessages([
-                'check_out' => 'Check-out must be later than check-in.',
             ]);
         }
 
@@ -154,7 +145,7 @@ class BookingController extends Controller
 
         $requestHash = hash('sha256', json_encode([
             'check_in' => $checkIn->toIso8601String(),
-            'check_out' => $checkOut->toIso8601String(),
+            'paid_days' => $paidDays,
             'rooms' => $roomsInput,
             'contact_name' => $validated['contact_name'],
             'contact_email' => $validated['contact_email'],
@@ -176,6 +167,7 @@ class BookingController extends Controller
                 $validated,
                 $checkIn,
                 $checkOut,
+                $paidDays,
                 $contactPhone,
                 $roomsInput,
                 $serviceIds,
@@ -217,7 +209,7 @@ class BookingController extends Controller
                 $availability->assertAvailable(
                     $serviceIds,
                     $checkIn,
-                    $checkOut,
+                    $paidDays,
                     $exclusiveServiceId !== null ? (int) $exclusiveServiceId : null,
                 );
 
@@ -230,13 +222,13 @@ class BookingController extends Controller
                 $quote = $pricing->quote(
                     $services->values(),
                     $checkIn,
-                    $checkOut,
+                    $paidDays,
                     $guestsByServiceId,
                 );
 
-                if ($quote['nights'] < 1) {
+                if ($quote['paid_days'] < 1) {
                     throw ValidationException::withMessages([
-                        'check_out' => 'The stay must be at least one night.',
+                        'paid_days' => 'The stay must be at least one paid day.',
                     ]);
                 }
 
@@ -253,6 +245,7 @@ class BookingController extends Controller
                     'check_in' => $checkIn,
                     'check_out' => $checkOut,
                     'nights' => $quote['nights'],
+                    'paid_days' => $quote['paid_days'],
                     'adults' => $adults,
                     'kids' => $kids,
                     'subtotal' => $quote['subtotal'],
@@ -303,6 +296,7 @@ class BookingController extends Controller
                     'metadata' => [
                         'check_in' => $checkIn->toIso8601String(),
                         'check_out' => $checkOut->toIso8601String(),
+                        'paid_days' => $quote['paid_days'],
                     ],
                 ]);
 
@@ -628,6 +622,8 @@ public function cancel(Request $request, string $reference): JsonResponse
             default => 'booked',
         };
 
+        $paidDays = (int) ($booking->paid_days ?? $booking->nights ?? 1);
+
         return [
             'reference' => $booking->reference,
             'status' => $booking->status,
@@ -635,7 +631,8 @@ public function cancel(Request $request, string $reference): JsonResponse
             'completed_at' => $booking->completed_at?->toIso8601String(),
             'check_in' => $booking->check_in?->toIso8601String(),
             'check_out' => $booking->check_out?->toIso8601String(),
-            'nights' => $booking->nights,
+            'paid_days' => $paidDays,
+            'nights' => $paidDays,
             'adults' => $booking->adults,
             'kids' => $booking->kids,
             'subtotal' => (string) $booking->subtotal,

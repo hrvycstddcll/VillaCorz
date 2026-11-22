@@ -18,6 +18,7 @@ class Booking extends Model
         'check_in',
         'check_out',
         'nights',
+        'paid_days',
         'adults',
         'kids',
         'subtotal',
@@ -37,6 +38,7 @@ class Booking extends Model
         'check_in' => 'datetime',
         'check_out' => 'datetime',
         'nights' => 'integer',
+        'paid_days' => 'integer',
         'adults' => 'integer',
         'kids' => 'integer',
         'subtotal' => 'decimal:2',
@@ -80,6 +82,17 @@ class Booking extends Model
     public function latestCancellationRequest(): HasOne
     {
         return $this->hasOne(CancellationRequest::class)->latestOfMany();
+    }
+
+    public function getPaidDaysAttribute($value): ?int
+    {
+        if ($value !== null) {
+            return (int) $value;
+        }
+
+        $nights = $this->attributes['nights'] ?? null;
+
+        return $nights === null ? null : (int) $nights;
     }
 
     public function isPendingPayment(): bool

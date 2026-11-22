@@ -18,7 +18,7 @@ class BookingPaymentTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_weekend_nights_use_the_weekend_price(): void
+    public function test_weekend_paid_days_use_the_weekend_price(): void
     {
         $service = $this->makeRoomService([
             'price' => 1000,
@@ -27,16 +27,17 @@ class BookingPaymentTest extends TestCase
 
         $quote = app(PricingService::class)->quote(
             collect([$service]),
-            '2026-11-13', // Friday
-            '2026-11-16', // Monday
+            StayTime::parseLocal('2026-11-13', '10:00'), // Friday
+            3,
         );
 
         // Friday, Saturday and Sunday all bill at the weekend rate.
+        $this->assertSame(3, $quote['paid_days']);
         $this->assertSame(3, $quote['nights']);
         $this->assertSame(4500.0, $quote['total']);
     }
 
-    public function test_weekday_nights_use_the_weekday_price(): void
+    public function test_weekday_paid_days_use_the_weekday_price(): void
     {
         $service = $this->makeRoomService([
             'price' => 1000,
@@ -45,15 +46,15 @@ class BookingPaymentTest extends TestCase
 
         $quote = app(PricingService::class)->quote(
             collect([$service]),
-            '2026-11-16', // Monday
-            '2026-11-18', // Wednesday
+            StayTime::parseLocal('2026-11-16', '10:00'), // Monday
+            2,
         );
 
-        $this->assertSame(2, $quote['nights']);
+        $this->assertSame(2, $quote['paid_days']);
         $this->assertSame(2000.0, $quote['total']);
     }
 
-    public function test_weekend_boundary_only_charges_weekend_nights(): void
+    public function test_weekend_boundary_only_charges_weekend_paid_days(): void
     {
         $service = $this->makeRoomService([
             'price' => 1000,
@@ -62,16 +63,16 @@ class BookingPaymentTest extends TestCase
 
         $quote = app(PricingService::class)->quote(
             collect([$service]),
-            '2026-11-12', // Thursday
-            '2026-11-16', // Monday
+            StayTime::parseLocal('2026-11-12', '10:00'), // Thursday
+            4,
         );
 
         // Thursday is weekday, then Friday/Saturday/Sunday are weekend.
-        $this->assertSame(4, $quote['nights']);
+        $this->assertSame(4, $quote['paid_days']);
         $this->assertSame(5500.0, $quote['total']);
     }
 
-    public function test_same_day_stay_charges_one_full_night(): void
+    public function test_one_paid_day_charges_one_full_day(): void
     {
         $service = $this->makeRoomService([
             'price' => 1000,
@@ -80,11 +81,11 @@ class BookingPaymentTest extends TestCase
 
         $quote = app(PricingService::class)->quote(
             collect([$service]),
-            StayTime::parseLocal('2026-11-16', '08:00'),
-            StayTime::parseLocal('2026-11-16', '22:00'),
+            StayTime::parseLocal('2026-11-16', '10:00'),
+            1,
         );
 
-        $this->assertSame(1, $quote['nights']);
+        $this->assertSame(1, $quote['paid_days']);
         $this->assertSame(1000.0, $quote['total']);
     }
 
@@ -101,15 +102,15 @@ class BookingPaymentTest extends TestCase
 
         $quote = app(PricingService::class)->quote(
             collect([$service]),
-            '2026-11-16', // Monday
-            '2026-11-18', // Wednesday
+            StayTime::parseLocal('2026-11-16', '10:00'), // Monday
+            2,
         );
 
-        // 2000 less 10% = 1800 per weekday night.
+        // 2000 less 10% = 1800 per weekday paid day.
         $this->assertSame(3600.0, $quote['total']);
     }
 
-    public function test_additional_heads_are_charged_per_weekday_night(): void
+    public function test_additional_heads_are_charged_per_weekday_paid_day(): void
     {
         $service = $this->makeRoomService([
             'price' => 1000,
@@ -119,18 +120,18 @@ class BookingPaymentTest extends TestCase
 
         $quote = app(PricingService::class)->quote(
             collect([$service]),
-            '2026-11-16', // Monday
-            '2026-11-18', // Wednesday
+            StayTime::parseLocal('2026-11-16', '10:00'), // Monday
+            2,
             [$service->id => 3],
         );
 
-        $this->assertSame(2, $quote['nights']);
+        $this->assertSame(2, $quote['paid_days']);
         $this->assertSame(1, $quote['rooms'][0]['additional_heads']);
         $this->assertSame(100.0, $quote['rooms'][0]['additional_head_total']);
         $this->assertSame(2100.0, $quote['total']);
     }
 
-    public function test_additional_heads_are_charged_per_weekend_night(): void
+    public function test_additional_heads_are_charged_per_weekend_paid_day(): void
     {
         $service = $this->makeRoomService([
             'price' => 1000,
@@ -140,18 +141,18 @@ class BookingPaymentTest extends TestCase
 
         $quote = app(PricingService::class)->quote(
             collect([$service]),
-            '2026-11-13', // Friday
-            '2026-11-15', // Sunday
+            StayTime::parseLocal('2026-11-13', '10:00'), // Friday
+            2,
             [$service->id => 4],
         );
 
-        $this->assertSame(2, $quote['nights']);
+        $this->assertSame(2, $quote['paid_days']);
         $this->assertSame(2, $quote['rooms'][0]['additional_heads']);
         $this->assertSame(400.0, $quote['rooms'][0]['additional_head_total']);
         $this->assertSame(3400.0, $quote['total']);
     }
 
-    public function test_additional_head_rates_follow_mixed_weekday_and_weekend_nights(): void
+    public function test_additional_head_rates_follow_mixed_weekday_and_weekend_paid_days(): void
     {
         $service = $this->makeRoomService([
             'price' => 1000,
@@ -161,12 +162,12 @@ class BookingPaymentTest extends TestCase
 
         $quote = app(PricingService::class)->quote(
             collect([$service]),
-            '2026-11-12', // Thursday
-            '2026-11-16', // Monday
+            StayTime::parseLocal('2026-11-12', '10:00'), // Thursday
+            4,
             [$service->id => 3],
         );
 
-        $this->assertSame(4, $quote['nights']);
+        $this->assertSame(4, $quote['paid_days']);
         $this->assertSame(350.0, $quote['rooms'][0]['additional_head_total']);
         $this->assertSame(5850.0, $quote['total']);
     }
@@ -181,8 +182,8 @@ class BookingPaymentTest extends TestCase
 
         $quote = app(PricingService::class)->quote(
             collect([$service]),
-            '2026-11-16',
-            '2026-11-18',
+            StayTime::parseLocal('2026-11-16', '10:00'),
+            2,
             [$service->id => 4],
         );
 
@@ -201,8 +202,8 @@ class BookingPaymentTest extends TestCase
 
         $quote = app(PricingService::class)->quote(
             collect([$service]),
-            '2026-11-16',
-            '2026-11-18',
+            StayTime::parseLocal('2026-11-16', '10:00'),
+            2,
             [$service->id => 6],
         );
 
@@ -223,12 +224,12 @@ class BookingPaymentTest extends TestCase
 
         $quote = app(PricingService::class)->quote(
             collect([$service]),
-            '2026-11-16',
-            '2026-11-18',
+            StayTime::parseLocal('2026-11-16', '10:00'),
+            2,
             [$service->id => 3],
         );
 
-        // Two weekday nights: (1000 - 100) + 50 per night.
+        // Two weekday paid days: (1000 - 100) + 50 per day.
         $this->assertSame(100.0, $quote['rooms'][0]['additional_head_total']);
         $this->assertSame(1900.0, $quote['total']);
     }
@@ -242,13 +243,12 @@ class BookingPaymentTest extends TestCase
             'pax' => 2,
         ]);
 
-        $checkIn = now()->next('Monday')->startOfDay();
-        $checkOut = $checkIn->copy()->addDays(2);
+        $checkIn = StayTime::parseLocal(now()->next('Monday')->toDateString(), '10:00');
 
         $response = $this->actingAs($user)
             ->postJson('/api/bookings', $this->bookingPayload($service, [
-                'check_in' => $checkIn->toDateString(),
-                'check_out' => $checkOut->toDateString(),
+                'check_in' => $checkIn->toIso8601String(),
+                'paid_days' => 2,
                 'rooms' => [
                     [
                         'service_id' => $service->id,
@@ -263,6 +263,7 @@ class BookingPaymentTest extends TestCase
         $response
             ->assertCreated()
             ->assertJsonPath('data.total', '2100.00')
+            ->assertJsonPath('data.paid_days', 2)
             ->assertJsonPath('data.rooms.0.additional_heads', 1)
             ->assertJsonPath('data.rooms.0.additional_head_total', '100.00');
 
@@ -284,12 +285,12 @@ class BookingPaymentTest extends TestCase
         $user = User::factory()->create();
         $service = $this->makeRoomService();
         $checkIn = StayTime::parseLocal('2026-12-01', '22:30');
-        $checkOut = StayTime::parseLocal('2026-12-03', '08:00');
+        $checkOut = StayTime::parseLocal('2026-12-03', '20:30');
 
         $this->actingAs($user)
             ->postJson('/api/bookings', $this->bookingPayload($service, [
                 'check_in' => $checkIn->toIso8601String(),
-                'check_out' => $checkOut->toIso8601String(),
+                'paid_days' => 2,
             ]), ['Idempotency-Key' => 'booking-key-pht-instant'])
             ->assertCreated();
 
@@ -297,10 +298,11 @@ class BookingPaymentTest extends TestCase
             'idempotency_key' => 'booking-key-pht-instant',
             'check_in' => $checkIn->toDateTimeString(),
             'check_out' => $checkOut->toDateTimeString(),
+            'paid_days' => 2,
         ]);
     }
 
-    public function test_same_idempotency_key_with_a_different_time_is_rejected(): void
+    public function test_same_idempotency_key_with_different_paid_days_is_rejected(): void
     {
         $user = User::factory()->create();
         $service = $this->makeRoomService();
@@ -309,8 +311,8 @@ class BookingPaymentTest extends TestCase
         $this->actingAs($user)->postJson(
             '/api/bookings',
             $this->bookingPayload($service, [
-                'check_in' => StayTime::parseLocal($date, '08:00')->toIso8601String(),
-                'check_out' => StayTime::parseLocal($date, '12:00')->toIso8601String(),
+                'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+                'paid_days' => 1,
             ]),
             ['Idempotency-Key' => 'time-sensitive-key'],
         )->assertCreated();
@@ -318,8 +320,8 @@ class BookingPaymentTest extends TestCase
         $this->actingAs($user)->postJson(
             '/api/bookings',
             $this->bookingPayload($service, [
-                'check_in' => StayTime::parseLocal($date, '08:00')->toIso8601String(),
-                'check_out' => StayTime::parseLocal($date, '14:00')->toIso8601String(),
+                'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+                'paid_days' => 2,
             ]),
             ['Idempotency-Key' => 'time-sensitive-key'],
         )->assertStatus(409);
@@ -649,11 +651,12 @@ class BookingPaymentTest extends TestCase
         $user = User::factory()->create();
         $service = $this->makeRoomService();
         $date = now()->setTimezone(StayTime::TIMEZONE)->addDays(10)->toDateString();
+        $nextDate = now()->setTimezone(StayTime::TIMEZONE)->addDays(11)->toDateString();
 
         $this->actingAs($user)
             ->postJson('/api/bookings', $this->bookingPayload($service, [
-                'check_in' => StayTime::parseLocal($date, '08:00')->toIso8601String(),
-                'check_out' => StayTime::parseLocal($date, '14:00')->toIso8601String(),
+                'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+                'paid_days' => 1,
             ]), ['Idempotency-Key' => 'adjacent-a'])
             ->assertCreated();
 
@@ -662,8 +665,8 @@ class BookingPaymentTest extends TestCase
 
         $this->actingAs($user)
             ->postJson('/api/bookings', $this->bookingPayload($service, [
-                'check_in' => StayTime::parseLocal($date, '14:00')->toIso8601String(),
-                'check_out' => StayTime::parseLocal($date, '20:00')->toIso8601String(),
+                'check_in' => StayTime::parseLocal($nextDate, '10:00')->toIso8601String(),
+                'paid_days' => 1,
             ]), ['Idempotency-Key' => 'adjacent-b'])
             ->assertCreated();
 
@@ -684,8 +687,8 @@ class BookingPaymentTest extends TestCase
 
         $this->actingAs($user)
             ->postJson('/api/bookings', $this->bookingPayload($service, [
-                'check_in' => StayTime::parseLocal($date, '08:00')->toIso8601String(),
-                'check_out' => StayTime::parseLocal($date, '14:00')->toIso8601String(),
+                'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+                'paid_days' => 1,
             ]), ['Idempotency-Key' => 'overlap-a'])
             ->assertCreated();
 
@@ -696,7 +699,7 @@ class BookingPaymentTest extends TestCase
         $this->actingAs($user)
             ->postJson('/api/bookings', $this->bookingPayload($service, [
                 'check_in' => StayTime::parseLocal($date, '12:00')->toIso8601String(),
-                'check_out' => StayTime::parseLocal($date, '18:00')->toIso8601String(),
+                'paid_days' => 1,
             ]), ['Idempotency-Key' => 'overlap-b'])
             ->assertStatus(422)
             ->assertJsonValidationErrors('rooms');
@@ -715,15 +718,15 @@ class BookingPaymentTest extends TestCase
 
         $this->actingAs($firstUser)
             ->postJson('/api/bookings', $this->bookingPayload($service, [
-                'check_in' => StayTime::parseLocal($date, '08:00')->toIso8601String(),
-                'check_out' => StayTime::parseLocal($date, '14:00')->toIso8601String(),
+                'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+                'paid_days' => 1,
             ]), ['Idempotency-Key' => 'race-overlap-a'])
             ->assertCreated();
 
         $this->actingAs($secondUser)
             ->postJson('/api/bookings', $this->bookingPayload($service, [
                 'check_in' => StayTime::parseLocal($date, '12:00')->toIso8601String(),
-                'check_out' => StayTime::parseLocal($date, '18:00')->toIso8601String(),
+                'paid_days' => 1,
             ]), ['Idempotency-Key' => 'race-overlap-b'])
             ->assertCreated();
 
@@ -750,8 +753,8 @@ class BookingPaymentTest extends TestCase
         $checkIn = now()->addDays(9)->startOfDay();
 
         $payload = $this->bookingPayload($service, [
-            'check_in' => $checkIn->toDateString(),
-            'check_out' => $checkIn->copy()->addDays(2)->toDateString(),
+            'check_in' => StayTime::parseLocal($checkIn->toDateString(), '10:00')->toIso8601String(),
+            'paid_days' => 2,
         ]);
 
         $this->actingAs($firstUser)
@@ -780,8 +783,8 @@ class BookingPaymentTest extends TestCase
         $checkIn = now()->addDays(14)->startOfDay();
 
         $payload = $this->bookingPayload($service, [
-            'check_in' => $checkIn->toDateString(),
-            'check_out' => $checkIn->copy()->addDays(2)->toDateString(),
+            'check_in' => StayTime::parseLocal($checkIn->toDateString(), '10:00')->toIso8601String(),
+            'paid_days' => 2,
         ]);
 
         $this->actingAs($firstUser)
@@ -848,8 +851,8 @@ class BookingPaymentTest extends TestCase
         $checkIn = now()->addDays(20)->startOfDay();
 
         $payload = $this->bookingPayload($service, [
-            'check_in' => $checkIn->toDateString(),
-            'check_out' => $checkIn->copy()->addDays(2)->toDateString(),
+            'check_in' => StayTime::parseLocal($checkIn->toDateString(), '10:00')->toIso8601String(),
+            'paid_days' => 2,
         ]);
 
         $this->actingAs($owner)
@@ -887,8 +890,8 @@ class BookingPaymentTest extends TestCase
         // Cancel window: 6 days before check-in is rejected, exactly 7 is allowed.
         $lateCheckIn = now()->addDays(6)->startOfDay();
         $latePayload = $this->bookingPayload($service, [
-            'check_in' => $lateCheckIn->toDateString(),
-            'check_out' => $lateCheckIn->copy()->addDays(2)->toDateString(),
+            'check_in' => StayTime::parseLocal($lateCheckIn->toDateString(), '10:00')->toIso8601String(),
+            'paid_days' => 2,
         ]);
         $this->actingAs($owner)
             ->postJson('/api/bookings', $latePayload, ['Idempotency-Key' => 'late-a'])
@@ -901,8 +904,8 @@ class BookingPaymentTest extends TestCase
 
         $edgeCheckIn = now()->addDays(14)->startOfDay();
         $edgePayload = $this->bookingPayload($service, [
-            'check_in' => $edgeCheckIn->toDateString(),
-            'check_out' => $edgeCheckIn->copy()->addDays(2)->toDateString(),
+            'check_in' => StayTime::parseLocal($edgeCheckIn->toDateString(), '10:00')->toIso8601String(),
+            'paid_days' => 2,
         ]);
         $this->actingAs($owner)
             ->postJson('/api/bookings', $edgePayload, ['Idempotency-Key' => 'edge-a'])
@@ -937,6 +940,7 @@ class BookingPaymentTest extends TestCase
             'check_in' => $checkOut->copy()->subDays(2),
             'check_out' => $checkOut,
             'nights' => 2,
+            'paid_days' => 2,
             'adults' => 2,
             'kids' => 0,
             'subtotal' => 3000,
@@ -1016,13 +1020,11 @@ class BookingPaymentTest extends TestCase
             ->setTimezone(StayTime::TIMEZONE)
             ->addDays(5)
             ->toDateString();
-        $checkIn = StayTime::parseLocal($checkInDate, '08:00');
+        $checkIn = StayTime::parseLocal($checkInDate, '10:00');
 
-        return array_merge([
+        $payload = array_merge([
             'check_in' => $checkIn->toIso8601String(),
-            'check_out' => StayTime::parseLocal($checkInDate, '18:00')
-                ->addDays(2)
-                ->toIso8601String(),
+            'paid_days' => 3,
             'rooms' => [
                 [
                     'service_id' => $service->id,
@@ -1035,6 +1037,13 @@ class BookingPaymentTest extends TestCase
             'contact_phone' => '+63 900 000 0000',
             'payment_method' => 'GCash',
         ], $overrides);
+
+        if (array_key_exists('check_out', $payload) && ! array_key_exists('paid_days', $overrides)) {
+            $payload['paid_days'] = \App\Support\StayPolicy::paidDaysFor($payload['check_in'], $payload['check_out']);
+        }
+        unset($payload['check_out']);
+
+        return $payload;
     }
 
     /**

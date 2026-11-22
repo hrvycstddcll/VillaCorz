@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Service;
 use App\Services\BookingAvailability;
+use App\Support\StayPolicy;
 use App\Support\StayTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -17,25 +18,16 @@ class AvailabilityController extends Controller
     {
         $validated = $request->validate([
             'check_in' => ['required', 'string', function ($attribute, $value, $fail) {
-                if (! StayTime::isValidApiValue($value)) {
-                    $fail('The '.$attribute.' must be an ISO datetime or Y-m-d date.');
+                if (! is_string($value) || preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/', $value) !== 1) {
+                    $fail('The '.$attribute.' must be a valid ISO datetime.');
                 }
             }],
-            'check_out' => ['required', 'string', function ($attribute, $value, $fail) {
-                if (! StayTime::isValidApiValue($value)) {
-                    $fail('The '.$attribute.' must be an ISO datetime or Y-m-d date.');
-                }
-            }],
+            'paid_days' => ['required', 'integer', 'min:1', 'max:'.StayPolicy::maxPaidDays()],
         ]);
 
         $checkIn = StayTime::parseApi($validated['check_in']);
-        $checkOut = StayTime::parseApi($validated['check_out']);
-
-        if (! $checkOut->greaterThan($checkIn)) {
-            throw ValidationException::withMessages([
-                'check_out' => 'The check-out must be later than the check-in.',
-            ]);
-        }
+        $paidDays = (int) $validated['paid_days'];
+        $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
 
         if ($checkIn->lessThan(now()->utc())) {
             throw ValidationException::withMessages([
@@ -50,7 +42,8 @@ class AvailabilityController extends Controller
                 'basis' => 'confirmed bookings only',
                 'check_in' => $checkIn->toIso8601String(),
                 'check_out' => $checkOut->toIso8601String(),
-                'rooms' => $availability->availabilityForRange($checkIn, $checkOut),
+                'paid_days' => $paidDays,
+                'rooms' => $availability->availabilityForRange($checkIn, $paidDays),
             ],
         ]);
     }

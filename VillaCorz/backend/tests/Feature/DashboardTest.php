@@ -8,6 +8,9 @@ use App\Models\PageView;
 use App\Models\Payment;
 use App\Models\Service;
 use App\Models\User;
+use App\Support\StayPolicy;
+use App\Support\StayTime;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -30,6 +33,7 @@ class DashboardTest extends TestCase
                     'holiday' => null,
                 ]],
                 'backtest' => null,
+                'multipliers' => ['weekend' => 1.22, 'holiday' => 1.45],
             ], $overrides)),
         ]);
     }
@@ -61,8 +65,12 @@ class DashboardTest extends TestCase
 
     private function seedPaidBooking(User $user, Service $service): Booking
     {
-        $checkIn = now()->subDays(3)->startOfDay();
-        $checkOut = $checkIn->copy()->addDays(2);
+        $paidDays = 2;
+        $checkIn = StayTime::parseLocal(
+            now()->subDays(3)->toDateString(),
+            StayPolicy::defaultCheckInTime(),
+        );
+        $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
 
         $booking = Booking::create([
             'user_id' => $user->id,
@@ -71,7 +79,8 @@ class DashboardTest extends TestCase
             'contact_email' => $user->email,
             'check_in' => $checkIn,
             'check_out' => $checkOut,
-            'nights' => 2,
+            'paid_days' => $paidDays,
+            'nights' => $paidDays,
             'adults' => 2,
             'kids' => 0,
             'subtotal' => (float) $service->price * 2,
@@ -144,7 +153,7 @@ class DashboardTest extends TestCase
         $this->assertArrayHasKey('contact_messages', $data['action_center']);
         $this->assertArrayHasKey('occupancy', $data['operational']);
         $this->assertCount(7, $data['revenue_by_weekday']);
-        $this->assertSame('sarimax', $data['pricing_insights']['model']);
+        $this->assertSame('sarimax', $data['demand_forecast']['model']);
     }
 
     public function test_dashboard_reflects_a_paid_booking_in_the_range(): void
@@ -169,32 +178,147 @@ class DashboardTest extends TestCase
         $this->assertTrue($references->contains($booking->reference));
     }
 
-    public function test_price_increase_recommendations_have_a_minimum_five_hundred_peso_increase(): void
+    public function test_occupancy_forecast_uses_paid_stay_room_nights_and_has_no_price_output(): void
     {
-        $this->fakeSarimaxForecast([
-            'forecast' => [[
-                'date' => now()->addDay()->toDateString(),
-                'expected_bookings' => 0,
-                'expected_occupancy' => 0,
+        $forecast = array_map(
+            fn (int $offset) => [
+                'date' => now()->addDays($offset + 1)->toDateString(),
+                'expected_bookings' => 2,
+                'expected_occupancy' => 50,
                 'factor' => 1,
                 'is_weekend' => false,
-                'holiday' => 'Test holiday',
-            ]],
-        ]);
+                'holiday' => null,
+            ],
+            range(0, 59),
+        );
+        $this->fakeSarimaxForecast(['forecast' => $forecast]);
         $admin = $this->makeUser('admin');
+        $customer = $this->makeUser('customer');
         $service = $this->makeService();
+        $this->seedPaidBooking($customer, $service);
 
         $response = $this->actingAs($admin)
+            ->getJson('/api/dashboard?forecast_preset=14')
+            ->assertOk();
+
+        $demandForecast = $response->json('data.demand_forecast');
+        $this->assertSame('sarimax', $demandForecast['model']);
+        $this->assertCount(14, $demandForecast['forecast']);
+        $this->assertEquals(2.0, (float) $demandForecast['forecast'][0]['expected_room_nights']);
+        $this->assertEquals(50.0, (float) $demandForecast['forecast'][0]['expected_occupancy']);
+        $this->assertArrayNotHasKey('recommendations', $demandForecast);
+        $this->assertArrayNotHasKey('suggested_price', $demandForecast);
+
+        Http::assertSent(function ($request) {
+            $history = $request->data()['history'] ?? [];
+
+            return str_contains($request->url(), '/forecast')
+                && collect($history)->contains(fn (array $point) => $point['bookings'] > 0);
+        });
+    }
+
+    public function test_forecast_history_counts_paid_day_windows_by_pht_start_date(): void
+    {
+        $this->fakeSarimaxForecast();
+        $admin = $this->makeUser('admin');
+        $customer = $this->makeUser('customer');
+        $service = $this->makeService();
+        $paidDays = 2;
+        $checkInDate = now()->subDays(3)->toDateString();
+        $checkIn = StayTime::parseLocal($checkInDate, '01:00');
+        $checkOut = StayPolicy::checkOutFor($checkIn, $paidDays);
+
+        $booking = Booking::create([
+            'user_id' => $customer->id,
+            'reference' => 'VC-DASH-PHT-' . uniqid(),
+            'contact_name' => trim($customer->firstname . ' ' . $customer->lastname),
+            'contact_email' => $customer->email,
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'paid_days' => $paidDays,
+            'nights' => $paidDays,
+            'adults' => 2,
+            'kids' => 0,
+            'subtotal' => 5000,
+            'total' => 5000,
+            'currency' => 'PHP',
+            'status' => 'confirmed',
+            'payment_method' => 'GCash',
+        ]);
+
+        BookingRoom::create([
+            'booking_id' => $booking->id,
+            'service_id' => $service->id,
+            'service_name' => $service->name,
+            'kind' => $service->kind,
+            'adults' => 2,
+            'kids' => 0,
+            'weekday_price' => $service->price,
+            'weekend_price' => $service->weekend_price ?? $service->price,
+            'line_total' => 5000,
+        ]);
+
+        Payment::create([
+            'booking_id' => $booking->id,
+            'reference' => 'PAY-' . $booking->reference,
+            'provider' => 'demo',
+            'method' => 'GCash',
+            'amount' => 5000,
+            'currency' => 'PHP',
+            'status' => 'paid',
+            'qr_token_hash' => hash('sha256', uniqid()),
+            'qr_url' => 'http://localhost/pay/x',
+            'paid_at' => now()->subDays(2),
+        ]);
+
+        $this->actingAs($admin)->getJson('/api/dashboard')->assertOk();
+
+        Http::assertSent(function ($request) use ($checkInDate) {
+            $history = collect($request->data()['history'] ?? [])->keyBy('date');
+            $previousDate = Carbon::parse($checkInDate)->subDay()->toDateString();
+
+            return str_contains($request->url(), '/forecast')
+                && ($history[$checkInDate]['bookings'] ?? 0) === 1
+                && ($history[$previousDate]['bookings'] ?? 0) === 0;
+        });
+    }
+
+    public function test_dashboard_sends_as_of_date_and_passes_through_wape(): void
+    {
+        $this->fakeSarimaxForecast([
+            'backtest' => [
+                'window_days' => 3,
+                'model' => 'sarimax',
+                'mae' => 1.5,
+                'mape' => 12.34,
+                'wape' => 9.87,
+                'points' => [[
+                    'date' => now()->subDay()->toDateString(),
+                    'actual_bookings' => 10,
+                    'predicted_bookings' => 9,
+                ]],
+            ],
+            'multipliers' => ['weekend' => 1.31, 'holiday' => 1.62],
+        ]);
+
+        $response = $this->actingAs($this->makeUser('admin'))
             ->getJson('/api/dashboard')
             ->assertOk();
 
-        $recommendation = collect($response->json('data.pricing_insights.recommendations'))
-            ->firstWhere('service_id', $service->id);
+        $accuracy = $response->json('data.demand_forecast.accuracy');
+        $this->assertEquals(12.3, (float) $accuracy['mape']);
+        $this->assertEquals(9.9, (float) $accuracy['wape']);
+        $this->assertSame('sarimax', $accuracy['model']);
+        $this->assertEquals(10.0, (float) $accuracy['points'][0]['actual_room_nights']);
 
-        $this->assertIsArray($recommendation);
-        $this->assertSame('increase', $recommendation['direction']);
-        $this->assertEquals(3000.0, (float) $recommendation['suggested_price']);
-        $this->assertEquals(20.0, (float) $recommendation['change_percent']);
+        $factors = collect($response->json('data.demand_forecast.factors'))->keyBy('key');
+        $this->assertStringContainsString('31%', $factors['weekends']['impact']);
+        $this->assertStringContainsString('62%', $factors['holidays']['impact']);
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), '/forecast')
+                && $request->data()['as_of_date'] === now()->toDateString();
+        });
     }
 
     public function test_dashboard_returns_more_than_five_recent_reservations_for_show_more(): void

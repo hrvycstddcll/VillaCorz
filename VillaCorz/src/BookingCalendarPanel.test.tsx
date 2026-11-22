@@ -11,18 +11,41 @@ import type { RoomGuests } from './assets/components/ui/InteractiveComponents/Se
 
 const onCheckAvailability = vi.fn()
 
+const dayLabel = (value: string) =>
+    new Intl.DateTimeFormat('en-PH', {
+        dateStyle: 'full',
+        timeZone: 'UTC',
+    }).format(new Date(`${value}T00:00:00Z`))
+
+const clickDrawerDate = (
+    drawer: HTMLElement,
+    value: string,
+) => {
+    let button = within(drawer).queryByRole('button', { name: dayLabel(value) })
+    if (!button) {
+        fireEvent.click(
+            within(drawer).getByRole('button', { name: 'Next month' }),
+        )
+        button = within(drawer).getByRole('button', { name: dayLabel(value) })
+    }
+    fireEvent.click(button)
+}
+
 const initialFields: StayDateFields = fieldsFromStay(
-    phtDateTimeToIso('2026-12-01', '08:00'),
-    phtDateTimeToIso('2026-12-03', '22:00'),
+    phtDateTimeToIso('2026-12-01', '10:00'),
+    phtDateTimeToIso('2026-12-03', '08:00'),
+    2,
 )
 
 const Harness = ({
+    hasSelectedRooms = true,
     notice = '',
     noticeTone = 'error',
     unavailableRoomIds = [],
     unavailableDates = [],
     blockedReason = '',
 }: {
+    hasSelectedRooms?: boolean
     notice?: string
     noticeTone?: 'success' | 'error'
     unavailableRoomIds?: string[]
@@ -31,13 +54,17 @@ const Harness = ({
 } = {}) => {
     const [fields, setFields] = useState(initialFields)
     const [roomGuests, setRoomGuests] = useState<RoomGuests[]>([
-        { stayId: '1', adults: 2, kids: 0 },
+        { stayId: hasSelectedRooms ? '1' : null, adults: 2, kids: 0 },
     ])
     const [isOpen, setIsOpen] = useState(false)
+    const selectedRoomIds = roomGuests.flatMap((room) =>
+        room.stayId ? [room.stayId] : [],
+    )
 
     return (
         <BookingCalendarPanel
             fields={fields}
+            hasSelectedRooms={selectedRoomIds.length > 0}
             onChange={(patch) =>
                 setFields((current) => ({ ...current, ...patch }))
             }
@@ -77,8 +104,33 @@ describe('BookingCalendarPanel', () => {
         expect(editButton).toHaveAttribute('aria-expanded', 'false')
         expect(editButton).toHaveAttribute('aria-controls', 'booking-drawer')
         expect(screen.getByText(/Your booking/)).toBeInTheDocument()
+        expect(screen.getByText(/2 paid days/)).toBeInTheDocument()
         expect(screen.queryByRole('dialog')).toBeNull()
         expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull()
+    })
+
+    it('replaces the calendar with the choosing mascot until a room is selected', async () => {
+        render(<Harness hasSelectedRooms={false} />)
+
+        const drawer = await openDrawer()
+
+        expect(within(drawer).getByText('Step 1 of 2 · Choose a room')).toBeInTheDocument()
+        expect(
+            within(drawer).getByRole('heading', { name: 'Choose a room first' }),
+        ).toBeInTheDocument()
+        expect(within(drawer).queryByLabelText('Check-in date')).toBeNull()
+        expect(
+            within(drawer).getByRole('button', { name: 'Choose a room first' }),
+        ).toBeDisabled()
+
+        fireEvent.click(within(drawer).getByRole('button', { name: 'Choose a room' }))
+        expect(within(drawer).getByRole('combobox', { name: 'Room 1' })).toHaveFocus()
+
+        fireEvent.change(within(drawer).getByRole('combobox', { name: 'Room 1' }), {
+            target: { value: '1' },
+        })
+        expect(within(drawer).getByText('Step 2 of 2 · Pick dates')).toBeInTheDocument()
+        expect(within(drawer).getByLabelText('Check-in date')).toBeInTheDocument()
     })
 
     it('opens the modal with dates and the added room ready to edit', async () => {
@@ -88,14 +140,21 @@ describe('BookingCalendarPanel', () => {
 
         expect(drawer).toHaveFocus()
         expect(document.querySelector('aside')).toHaveAttribute('inert')
-        expect(within(drawer).getByRole('heading', { name: 'Dates' })).toBeInTheDocument()
+        expect(
+            within(drawer).getByRole('heading', { name: 'Dates & paid days' }),
+        ).toBeInTheDocument()
         expect(
             within(drawer).getByRole('heading', { name: 'Rooms & guests' }),
         ).toBeInTheDocument()
         expect(within(drawer).getByLabelText('Check-in date')).toHaveValue('2026-12-01')
-        expect(within(drawer).getByLabelText('Check-in time')).toHaveValue('08:00')
-        expect(within(drawer).getByLabelText('Check-out date')).toHaveValue('2026-12-03')
-        expect(within(drawer).getByLabelText('Check-out time')).toHaveValue('22:00')
+        expect(within(drawer).getByLabelText('Check-in time')).toHaveValue('10:00')
+        expect(within(drawer).getByText('Select check-in date')).toBeInTheDocument()
+        expect(within(drawer).getByText('Check-out (derived)')).toBeInTheDocument()
+        expect(within(drawer).queryByLabelText('Number of paid days')).toBeNull()
+        expect(
+            within(drawer).queryByRole('button', { name: /paid days/i }),
+        ).toBeNull()
+        expect(within(drawer).queryByLabelText('Check-out date')).toBeNull()
         expect(within(drawer).getByRole('combobox', { name: 'Room 1' })).toHaveValue('1')
         expect(within(drawer).getByText('Added · Ocean Room')).toBeInTheDocument()
         expect(
@@ -128,10 +187,27 @@ describe('BookingCalendarPanel', () => {
 
         expect(
             within(drawer).getByText(
-                /PHT \(UTC\+8\) · 24-hour HH:MM in the fields/,
+                'PHT (UTC+8) · 24-hour HH:MM in the check-in field',
             ),
         ).toBeInTheDocument()
         expect(within(drawer).queryByRole('button', { name: /preset/i })).toBeNull()
+    })
+
+    it('changes paid days from the calendar by choosing a check-out date', async () => {
+        render(<Harness />)
+
+        const drawer = await openDrawer()
+        clickDrawerDate(drawer, '2026-12-01')
+        expect(
+            within(drawer).getByText('Select check-out date'),
+        ).toBeInTheDocument()
+
+        clickDrawerDate(drawer, '2026-12-04')
+
+        expect(
+            within(drawer).getByText('Select check-in date'),
+        ).toBeInTheDocument()
+        expect(within(drawer).getAllByText(/3 paid days/).length).toBeGreaterThan(0)
     })
 
     it('continues the reservation from the modal', async () => {
@@ -204,7 +280,7 @@ describe('BookingCalendarPanel', () => {
         )
 
         const drawer = await openDrawer()
-        const status = within(drawer).getByRole('status')
+        const status = within(drawer).getByText('Room 5 added to your booking.')
 
         expect(status).toHaveTextContent('Room 5 added to your booking.')
         expect(status).toHaveClass('text-blue-800')
