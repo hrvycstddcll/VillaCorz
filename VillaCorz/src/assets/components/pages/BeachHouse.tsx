@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
-import villaFrontSvg from '../../images/3dvillafront.svg?raw'
-import villaSvg from '../../images/3dvilla.svg?raw'
-import villaIcon from '../../images/villaicon.png'
+import { useEffect, useMemo, useState } from 'react'
+
+const villaFrontSvgUrl = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364134/villacorz/ui/src/assets/images/3dvillafront.svg'
+const villaSvgUrl = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364131/villacorz/ui/src/assets/images/3dvilla.svg'
+const villaIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364268/villacorz/ui/src/assets/images/villaicon.png'
 
 const rooms = [
     { id: 1, title: 'Room 1', pax: 'GOOD FOR 2–4 PAX' },
@@ -21,9 +22,29 @@ const tooltipPositions: Record<number, { top: string; left: string }> = {
 
 const BeachHouse = () => {
     const [activeRoom, setActiveRoom] = useState<number | null>(null)
+    const [villaFrontMarkup, setVillaFrontMarkup] = useState('')
+    const [villaSvgMarkup, setVillaSvgMarkup] = useState('')
+
+    useEffect(() => {
+        let active = true
+        Promise.all([
+            fetch(villaFrontSvgUrl).then((response) => response.text()),
+            fetch(villaSvgUrl).then((response) => response.text()),
+        ])
+            .then(([front, map]) => {
+                if (!active) return
+                setVillaFrontMarkup(front)
+                setVillaSvgMarkup(map)
+            })
+            .catch(() => {})
+        return () => {
+            active = false
+        }
+    }, [])
 
     const animatedVillaSvg = useMemo(() => {
-        return villaSvg
+        if (!villaSvgMarkup) return ''
+        return villaSvgMarkup
             .replace(/fill="#F7F4EA"/g, 'fill="#ECECEC"')
             .replace(/fill:rgb\(247, 244, 234\)/g, 'fill:rgb(236, 236, 236)')
             .replace(/translate\(301,199\)/g, 'translate(301,235)')
@@ -36,7 +57,7 @@ const BeachHouse = () => {
                 '<g class="vc-guest" transform="$1"',
             )
             .replace(/<g stroke="#3F8B66"/g, '<g class="vc-tree" stroke="#3F8B66"')
-    }, [])
+    }, [villaSvgMarkup])
 
     return (
         <section
@@ -68,7 +89,7 @@ const BeachHouse = () => {
                     <div className="flex w-full flex-col items-center gap-6 rounded-3xl bg-[#ECECEC] p-6 lg:w-[30%]">
                         <div
                             className="w-full max-w-[220px]"
-                            dangerouslySetInnerHTML={{ __html: villaFrontSvg }}
+                            dangerouslySetInnerHTML={{ __html: villaFrontMarkup }}
                         />
                         <div className="flex w-full flex-col gap-3">
                             {rooms.map((room) => (

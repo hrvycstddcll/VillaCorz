@@ -7,7 +7,7 @@ import {
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { AirVent, BadgePercent, ShieldCheck, Users } from 'lucide-react'
-import logoUrl from '../../VillaCorz-SVGLogo.svg'
+const logoUrl = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364127/villacorz/ui/src/assets/VillaCorz-SVGLogo.svg'
 
 import CountUp from '../ui/CountUp'
 import AccordionGallery from '../ui/AccordionGallery'

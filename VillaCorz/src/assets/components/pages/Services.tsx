@@ -26,7 +26,7 @@ import {
 } from '../../../services/availabilityService'
 import { getServices } from '../../../services/serviceService'
 import type { Service } from '../../../services/types'
-import wholeVilla from '../../images/wholevilla.png'
+const wholeVilla = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364279/villacorz/ui/src/assets/images/wholevilla.png'
 import { ExclusiveAccommodationSection } from '../services/ExclusiveAccommodationSection'
 import { PublicAccommodationSection } from '../services/PublicAccommodationSection'
 import { ReservationView } from '../services/ReservationView'

@@ -3,9 +3,9 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
 gsap.registerPlugin(ScrollTrigger)
-import fromSeaImg from '../../images/fromsea.png'
-import wholeVillaImg from '../../images/wholevilla2.png'
-import room1Img from '../../images/room1.png'
+const fromSeaImg = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364187/villacorz/ui/src/assets/images/fromsea.png'
+const wholeVillaImg = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364298/villacorz/ui/src/assets/images/wholevilla2.png'
+const room1Img = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364212/villacorz/ui/src/assets/images/room1.png'
 
 type Panel = {
     label: string
