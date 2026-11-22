@@ -9,11 +9,16 @@ const fields = fieldsFromStay(
     2,
 )
 
-const renderFooter = (hasSelectedRooms: boolean, onBrowseRooms = vi.fn()) => {
+const renderFooter = (
+    hasSelectedRooms: boolean,
+    onBrowseRooms = vi.fn(),
+    datesEnabled = hasSelectedRooms,
+) => {
     render(
         <ServicesFooter
             fields={fields}
             hasSelectedRooms={hasSelectedRooms}
+            datesEnabled={datesEnabled}
             onChange={vi.fn()}
             checkIn={fields.checkInDate}
             checkOut="2026-12-03T00:00:00.000Z"
@@ -60,5 +65,20 @@ describe('ServicesFooter', () => {
         )
 
         expect(screen.getByLabelText('Check-in date')).toBeInTheDocument()
+    })
+
+    it('shows the date picker when dates are enabled without a room', () => {
+        renderFooter(false, vi.fn(), true)
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Choose check-in date, time, and paid days',
+            }),
+        )
+
+        expect(screen.getByLabelText('Check-in date')).toBeInTheDocument()
+        expect(
+            screen.queryByRole('heading', { name: 'Choose a room first' }),
+        ).toBeNull()
     })
 })

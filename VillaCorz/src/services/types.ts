@@ -301,6 +301,19 @@ export type DashboardSummary = {
             impact: string
         }>
     }
+    room_recommendations: Array<{
+        service_id: number
+        name: string
+        current_price: number
+        suggested_price: number
+        change_percent: number
+        direction: 'increase' | 'decrease' | 'hold'
+        confidence: 'low' | 'medium' | 'high'
+        current_occupancy: number
+        forward_occupancy: number
+        demand_score: number
+        reasons: string[]
+    }>
 }
 export type CreateBookingInput = {
     check_in: string

@@ -15,6 +15,7 @@ import {
     getDashboard,
     type DashboardForecastOptions,
 } from '../../../services/dashboardService'
+import { adjustServicePrice } from '../../../services/serviceService'
 import type {
     AdminReportKind,
     DashboardRecentBooking,
@@ -30,6 +31,7 @@ import AdminEmptyState from '../admin/AdminEmptyState'
 import AdminStatStrip from '../admin/AdminStatStrip'
 import AdminTable, { type AdminTableColumn } from '../admin/AdminTable'
 import AdminFilterPills from '../admin/AdminFilterPills'
+import ConfirmDialog from '../offers/ConfirmDialog'
 import AdminPageHeader from '../ui/InteractiveComponents/AdminPageHeader'
 import { WarmTooltip } from '../ui/WarmTooltip'
 
@@ -38,6 +40,7 @@ type Range = (typeof ranges)[number]
 const forecastPresets = ['14', '30', '60'] as const
 const backtestRanges = [7, 14, 30] as const
 type AnalysisView = 'accuracy' | 'forecast'
+type PriceRecommendation = DashboardSummary['room_recommendations'][number]
 
 const numberFormatter = new Intl.NumberFormat('en-PH')
 const revenueChartSeries: DashboardChartSeries[] = [
@@ -306,6 +309,31 @@ const RecentBookingsSkeleton = () => (
     </div>
 )
 
+const RecommendationsSkeleton = () => (
+    <div role="status" aria-label="Loading recommendations" className="mt-3">
+        <span className="sr-only">Loading recommendations</span>
+        <ul className="grid gap-4 sm:grid-cols-2" aria-hidden="true">
+            {Array.from({ length: 4 }).map((_, i) => (
+                <li
+                    key={i}
+                    className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm"
+                >
+                    <div className="flex items-start justify-between gap-3">
+                        <Skeleton className="h-4 w-32 rounded-sm" />
+                        <Skeleton className="h-3 w-12 rounded-sm" />
+                    </div>
+                    <Skeleton className="mt-2 h-3 w-full max-w-xs rounded-sm" />
+                    <Skeleton className="mt-1 h-3 w-4/5 max-w-[16rem] rounded-sm" />
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                        <Skeleton className="h-4 w-36 rounded-sm" />
+                        <Skeleton className="h-8 w-28 rounded-lg" />
+                    </div>
+                </li>
+            ))}
+        </ul>
+    </div>
+)
+
 const Dashboard = () => {
     const [searchParams, setSearchParams] = useSearchParams()
     const range = parseRange(searchParams.get('range'))
@@ -327,6 +355,11 @@ const Dashboard = () => {
     } | null>(null)
     const [analysisView, setAnalysisView] = useState<AnalysisView>('accuracy')
     const [showAllBookings, setShowAllBookings] = useState(false)
+    const [selectedPriceRecommendation, setSelectedPriceRecommendation] =
+        useState<PriceRecommendation | null>(null)
+    const [priceAdjustmentLoading, setPriceAdjustmentLoading] = useState(false)
+    const [priceAdjustmentError, setPriceAdjustmentError] = useState('')
+    const [priceAdjustmentNotice, setPriceAdjustmentNotice] = useState('')
 
     const requestKey = [
         range,
@@ -385,6 +418,7 @@ const Dashboard = () => {
     const bookings = useMemo(() => data?.recent_bookings ?? [], [data])
     const funnelSteps = data?.funnel.steps ?? []
     const demandForecast = data?.demand_forecast
+    const recommendations = data?.room_recommendations ?? []
     const accuracyPoints = useMemo(
         () => demandForecast?.accuracy?.points ?? [],
         [demandForecast],
@@ -414,6 +448,35 @@ const Dashboard = () => {
         },
         [data],
     )
+    const closePriceAdjustment = () => {
+        setSelectedPriceRecommendation(null)
+        setPriceAdjustmentError('')
+    }
+    const confirmPriceAdjustment = useCallback(async () => {
+        const recommendation = selectedPriceRecommendation
+        if (!recommendation) return
+
+        setPriceAdjustmentLoading(true)
+        setPriceAdjustmentError('')
+        setPriceAdjustmentNotice('')
+        try {
+            const { data: envelope } = await adjustServicePrice(
+                recommendation.service_id,
+                recommendation.suggested_price,
+            )
+            setPriceAdjustmentNotice(
+                envelope.message ?? 'The price was updated.',
+            )
+            setSelectedPriceRecommendation(null)
+            setRefreshToken((token) => token + 1)
+        } catch (adjustmentFailure) {
+            setPriceAdjustmentError(
+                getApiErrorMessage(adjustmentFailure, 'Unable to update the price.'),
+            )
+        } finally {
+            setPriceAdjustmentLoading(false)
+        }
+    }, [selectedPriceRecommendation])
     const bookingColumns: AdminTableColumn<DashboardRecentBooking>[] = [
         {
             key: 'guest',
@@ -1417,6 +1480,126 @@ const Dashboard = () => {
                     </AdminCard>
                 </section>
 
+                {priceAdjustmentNotice && (
+                    <p role="status" className="text-sm text-emerald-700">
+                        {priceAdjustmentNotice}
+                    </p>
+                )}
+
+                <AdminCard>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                Suggested actions
+                            </p>
+                            <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
+                                Price recommendations
+                            </h3>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                                Increases are at least ₱500; no price
+                                changes without confirmation.
+                            </p>
+                        </div>
+                        <span className="font-mono text-xs tabular-nums text-slate-500">
+                            {recommendations.length} offers
+                        </span>
+                    </div>
+                    {loading ? (
+                        <RecommendationsSkeleton />
+                    ) : error ? (
+                        <div className="flex flex-wrap items-center gap-3 py-8">
+                            <p className="text-sm text-slate-600">
+                                Recommendations unavailable.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setRefreshToken((token) => token + 1)
+                                }
+                                className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    ) : recommendations.length === 0 ? (
+                        <p className="py-8 text-sm text-slate-500">
+                            No active offers are available to price.
+                        </p>
+                    ) : (
+                        <ul
+                            aria-label="Room recommendations"
+                            className="mt-3 grid gap-4 sm:grid-cols-2"
+                        >
+                            {recommendations.map((recommendation) => (
+                                <li
+                                    key={recommendation.service_id}
+                                    className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm"
+                                >
+                                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                                        <p className="text-sm font-semibold text-slate-900">
+                                            {recommendation.name}
+                                        </p>
+                                        <span
+                                            className={`font-mono text-[10px] font-medium uppercase tracking-wide ${recommendation.direction === 'increase'
+                                                    ? 'text-emerald-700'
+                                                    : recommendation.direction === 'decrease'
+                                                        ? 'text-amber-700'
+                                                        : 'text-slate-500'
+                                                }`}
+                                        >
+                                            {recommendation.direction === 'hold'
+                                                ? 'Hold'
+                                                : `${recommendation.change_percent > 0 ? '+' : ''}${recommendation.change_percent}%`}
+                                        </span>
+                                    </div>
+                                    <p className="mt-1 text-[11px] leading-5 text-slate-500">
+                                        {recommendation.reasons.join(' · ')}
+                                    </p>
+                                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                        <p className="font-mono text-xs tabular-nums text-slate-800">
+                                            {money(recommendation.current_price)}
+                                            <span className="mx-1.5 text-slate-400">
+                                                →
+                                            </span>
+                                            <strong>
+                                                {money(recommendation.suggested_price)}
+                                            </strong>
+                                            <span className="ml-2 text-[9px] uppercase tracking-wide text-slate-500">
+                                                {recommendation.confidence}{' '}
+                                                confidence
+                                            </span>
+                                        </p>
+                                        {recommendation.direction === 'hold' ? (
+                                            <span className="text-[10px] text-slate-500">
+                                                No adjustment suggested
+                                            </span>
+                                        ) : (
+                                            <WarmTooltip
+                                                content="Review before applying to new bookings."
+                                                side="top"
+                                                size="sm"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setPriceAdjustmentError('')
+                                                        setSelectedPriceRecommendation(
+                                                            recommendation,
+                                                        )
+                                                    }}
+                                                    className={`inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-semibold text-[#006dfc] hover:bg-slate-50 ${focusRing}`}
+                                                >
+                                                    Review adjustment
+                                                </button>
+                                            </WarmTooltip>
+                                        )}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </AdminCard>
+
                 <section className="grid gap-8 lg:grid-cols-2">
                     <AdminCard>
                         <div className="flex items-center gap-1.5">
@@ -1847,6 +2030,19 @@ const Dashboard = () => {
                     </AdminCard>
                 </section>
             </div>
+            {selectedPriceRecommendation && (
+                <ConfirmDialog
+                    title={`Adjust ${selectedPriceRecommendation.name} base price?`}
+                    description={`Change the base price from ${money(selectedPriceRecommendation.current_price)} to ${money(selectedPriceRecommendation.suggested_price)} (${selectedPriceRecommendation.change_percent > 0 ? '+' : ''}${selectedPriceRecommendation.change_percent}%). This only affects new reservations; existing bookings remain unchanged. The update will not be made unless you confirm.`}
+                    confirmLabel="Confirm price update"
+                    loadingLabel="Saving price…"
+                    confirmVariant="primary"
+                    loading={priceAdjustmentLoading}
+                    error={priceAdjustmentError}
+                    onCancel={closePriceAdjustment}
+                    onConfirm={() => void confirmPriceAdjustment()}
+                />
+            )}
         </main>
     )
 }

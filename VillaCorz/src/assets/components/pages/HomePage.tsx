@@ -77,7 +77,7 @@ const HomePage = () => {
         <section
             ref={rootRef}
             id="home"
-            className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-black pb-36 pt-16 sm:pb-28 sm:pt-20"
+            className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-black pb-28 pt-16 sm:pb-24 sm:pt-20"
         >
             <div
                 className="absolute inset-0 bg-cover bg-center"

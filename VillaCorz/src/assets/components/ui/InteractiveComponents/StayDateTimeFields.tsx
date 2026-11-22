@@ -224,7 +224,7 @@ const StayDateTimeFields = ({
             aria-labelledby={compact ? undefined : 'stay-datetime-heading'}
             className={
                 compact
-                    ? `min-w-0 font-poppins ${scrollable ? 'max-h-[70vh] overflow-y-auto pr-1' : ''}`
+                    ? `min-w-0 font-poppins ${scrollable ? 'max-h-[min(58svh,430px)] overflow-y-auto pr-1' : ''}`
                     : 'rounded-2xl border border-[#d7e6ff] bg-[#f5f9ff] p-4 font-poppins shadow-[0_10px_30px_rgba(8,117,249,0.08)] sm:p-5'
             }
         >
@@ -319,7 +319,7 @@ const StayDateTimeFields = ({
                                             onClick={() => selectDate(day.value)}
                                             aria-label={`${dayLabel(day.value)}${unavailable ? ', unavailable' : ''}`}
                                             aria-pressed={selected && !unavailable}
-                                            className={`mx-auto flex size-9 items-center justify-center rounded-md font-jakarta text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:text-slate-300 sm:size-10 sm:text-sm lg:size-11 ${
+                                            className={`mx-auto flex size-8 items-center justify-center rounded-md font-jakarta text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:text-slate-300 sm:size-9 sm:text-sm ${
                                                 unavailable
                                                     ? 'bg-slate-300 text-slate-500 line-through'
                                                     : selected

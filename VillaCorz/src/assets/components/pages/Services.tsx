@@ -4,6 +4,7 @@ import ServicesFooter, {
     type RoomGuests,
 } from '../ui/InteractiveComponents/ServicesFooter'
 import BookingCalendarPanel from '../ui/InteractiveComponents/BookingCalendarPanel'
+import HomeAvailabilityPanel from '../ui/InteractiveComponents/HomeAvailabilityPanel'
 import ServiceReviews from '../ui/InteractiveComponents/ServiceReviews'
 import { money } from '../../../lib/format'
 import { getReservationPrice } from '../../../lib/reservation'
@@ -479,7 +480,12 @@ export default function Services({
 
             return [...current, { stayId: stay.id, adults: 2, kids: 0 }]
         })
-        showNotice(`${stay.title} added. Choose your dates next.`, 'success')
+        showNotice(
+            bookingOnly
+                ? `${stay.title} added. Check availability to edit your booking.`
+                : `${stay.title} added. Choose your dates next.`,
+            'success',
+        )
     }
 
     const removeStayFromBooking = (stay: Stay) => {
@@ -500,7 +506,11 @@ export default function Services({
 
     const handleCheckAvailability = () => {
         if (!hasSelectedRooms) {
-            showNotice('Choose a room before choosing dates.')
+            showNotice(
+                bookingOnly
+                    ? 'Choose an available room above first.'
+                    : 'Choose a room before choosing dates.',
+            )
             return
         }
 
@@ -929,6 +939,7 @@ export default function Services({
             <ServicesFooter
                 fields={stayFields}
                 hasSelectedRooms={hasSelectedRooms}
+                datesEnabled={bookingOnly}
                 onChange={updateStayFields}
                 checkIn={checkIn}
                 checkOut={checkOut}
@@ -944,6 +955,22 @@ export default function Services({
                 onUnavailableDate={handleUnavailableDate}
                 onCheckAvailability={handleCheckAvailability}
                 onBrowseRooms={() => navigate('/services')}
+                availabilityResults={
+                    bookingOnly && hasDates ? (
+                        <HomeAvailabilityPanel
+                            checkIn={checkIn}
+                            paidDays={paidDays}
+                            choices={roomChoices}
+                            availabilityByServiceId={availabilityByServiceId}
+                            selectedRoomIds={selectedRoomIds}
+                            checkingAvailability={checkingAvailability}
+                            availabilityError={availabilityError}
+                            roomsLoading={roomsLoading}
+                            roomsError={roomsError}
+                            onToggleRoom={toggleStayReservation}
+                        />
+                    ) : undefined
+                }
             />
         )}
         </>

@@ -178,7 +178,7 @@ class DashboardTest extends TestCase
         $this->assertTrue($references->contains($booking->reference));
     }
 
-    public function test_occupancy_forecast_uses_paid_stay_room_nights_and_has_no_price_output(): void
+    public function test_occupancy_forecast_uses_paid_stay_room_nights_and_returns_room_recommendations(): void
     {
         $forecast = array_map(
             fn (int $offset) => [
@@ -187,7 +187,7 @@ class DashboardTest extends TestCase
                 'expected_occupancy' => 50,
                 'factor' => 1,
                 'is_weekend' => false,
-                'holiday' => null,
+                'holiday' => $offset < 4 ? 'Fixture holiday' : null,
             ],
             range(0, 59),
         );
@@ -208,6 +208,14 @@ class DashboardTest extends TestCase
         $this->assertEquals(50.0, (float) $demandForecast['forecast'][0]['expected_occupancy']);
         $this->assertArrayNotHasKey('recommendations', $demandForecast);
         $this->assertArrayNotHasKey('suggested_price', $demandForecast);
+
+        $recommendations = $response->json('data.room_recommendations');
+        $this->assertCount(1, $recommendations);
+        $this->assertSame('Seaview Room', $recommendations[0]['name']);
+        $this->assertSame('increase', $recommendations[0]['direction']);
+        $this->assertEquals(3000.0, (float) $recommendations[0]['suggested_price']);
+        $this->assertEquals(20.0, (float) $recommendations[0]['change_percent']);
+        $this->assertNotEmpty($recommendations[0]['reasons']);
 
         Http::assertSent(function ($request) {
             $history = $request->data()['history'] ?? [];
