@@ -8,6 +8,7 @@ import {
     MessageSquareText,
     RefreshCw,
     Star,
+    X,
 } from 'lucide-react'
 import { money } from '../../../lib/format'
 import { getApiErrorMessage } from '../../../lib/apiError'
@@ -73,6 +74,18 @@ const statusTone = (status: string) => {
 }
 
 const formatPercent = (value: number) => `${value.toFixed(1)}%`
+
+const formatChartDate = (value: string) => {
+    const parsed = new Date(`${value}T00:00:00Z`)
+    return Number.isNaN(parsed.getTime())
+        ? value
+        : new Intl.DateTimeFormat('en-PH', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+              timeZone: 'UTC',
+          }).format(parsed)
+}
 
 const modelLabel = (model: string) =>
     model.toLowerCase() === 'sarimax'
@@ -369,6 +382,15 @@ const Dashboard = () => {
         includeWeekends,
         refreshToken,
     ].join('|')
+    const [revenueSelection, setRevenueSelection] = useState<{
+        key: string
+        index: number
+    } | null>(null)
+    const selectedRevenueIndex =
+        revenueSelection?.key === requestKey ? revenueSelection.index : null
+    const selectRevenueIndex = (index: number | null) => {
+        setRevenueSelection(index === null ? null : { key: requestKey, index })
+    }
 
     useEffect(() => {
         let active = true
@@ -547,6 +569,10 @@ const Dashboard = () => {
             })),
         [data],
     )
+    const selectedRevenuePoint =
+        selectedRevenueIndex === null
+            ? null
+            : data?.series[selectedRevenueIndex] ?? null
     const accuracyChartPoints = useMemo<DashboardChartPoint[]>(
         () =>
             accuracyPoints.map((point) => ({
@@ -907,24 +933,93 @@ const Dashboard = () => {
                             ) : (
 
 
-                                <DashboardLineChart
+                                <>
+                                    <DashboardLineChart
 
 
-                                    points={revenueChartPoints}
+                                        points={revenueChartPoints}
 
 
-                                    series={revenueChartSeries}
+                                        series={revenueChartSeries}
 
 
-                                    ariaLabel={`Daily revenue for the last ${range} days`}
+                                        ariaLabel={`Daily revenue for the last ${range} days`}
 
 
-                                    formatValue={money}
+                                        formatValue={money}
 
 
-                                />
+                                        strokeWidth={2}
 
 
+                                        selectedIndex={selectedRevenueIndex}
+
+
+                                        onSelectPoint={selectRevenueIndex}
+
+
+                                    />
+
+                                    {!selectedRevenuePoint && (
+                                        <p className="mt-2 text-center text-[11px] text-slate-500">
+                                            Click anywhere on the chart to inspect a day
+                                        </p>
+                                    )}
+
+                                    {selectedRevenuePoint && (
+                                        <div
+                                            aria-live="polite"
+                                            className="mt-3 rounded-xl border border-[rgba(0,0,0,0.08)] bg-slate-50/70 p-3"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                                        Selected day
+                                                    </p>
+                                                    <p className="mt-0.5 font-jakarta-serif text-sm font-semibold text-slate-900">
+                                                        {formatChartDate(selectedRevenuePoint.date)}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => selectRevenueIndex(null)}
+                                                    aria-label="Close day details"
+                                                    className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 ${focusRing}`}
+                                                >
+                                                    <X className="size-4" aria-hidden="true" />
+                                                </button>
+                                            </div>
+                                            <dl className="mt-3 grid grid-cols-3 gap-2">
+                                                {[
+                                                    {
+                                                        label: 'Revenue',
+                                                        value: money(selectedRevenuePoint.revenue),
+                                                    },
+                                                    {
+                                                        label: 'Bookings',
+                                                        value: numberFormatter.format(selectedRevenuePoint.bookings),
+                                                    },
+                                                    {
+                                                        label: 'Visits',
+                                                        value: numberFormatter.format(selectedRevenuePoint.visits),
+                                                    },
+                                                ].map((item) => (
+                                                    <div
+                                                        key={item.label}
+                                                        className="rounded-lg bg-white px-2.5 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.025)]"
+                                                    >
+                                                        <dt className="text-[10px] font-medium text-slate-500">
+                                                            {item.label}
+                                                        </dt>
+                                                        <dd className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-slate-900">
+                                                            {item.value}
+                                                        </dd>
+                                                    </div>
+                                                ))}
+                                            </dl>
+                                        </div>
+                                    )}
+                                </>
                             )}
 
 

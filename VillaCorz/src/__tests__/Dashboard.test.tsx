@@ -268,6 +268,54 @@ describe('Dashboard', () => {
         ).toBeInTheDocument()
     })
 
+    it('reveals a selected revenue day with its existing booking and visit data', async () => {
+        render(
+            <MemoryRouter>
+                <Dashboard />
+            </MemoryRouter>,
+        )
+
+        const revenueChart = await screen.findByRole('group', {
+            name: 'Daily revenue for the last 30 days',
+        })
+        expect(
+            screen.getByText(/Click anywhere on the chart to inspect a day/),
+        ).toBeInTheDocument()
+
+        fireEvent.click(
+            within(revenueChart).getByRole('button', {
+                name: /11-16, Revenue:/,
+            }),
+        )
+
+        const panel = screen
+            .getByText('Selected day')
+            .closest('[aria-live="polite"]') as HTMLElement
+        expect(within(panel).getByText('November 16, 2026')).toBeInTheDocument()
+        expect(within(panel).getByText('Bookings')).toBeInTheDocument()
+        expect(within(panel).getByText('Visits')).toBeInTheDocument()
+        expect(within(panel).getByText('2')).toBeInTheDocument()
+        expect(within(panel).getByText('20')).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Close day details' }))
+        expect(screen.queryByText('Selected day')).not.toBeInTheDocument()
+    }, 30000)
+
+    it('summarises forecast occupancy and paid days', async () => {
+        render(
+            <MemoryRouter>
+                <Dashboard />
+            </MemoryRouter>,
+        )
+
+        await screen.findByRole('heading', { name: 'Demand outlook' })
+
+        expect(screen.getByText('72.0%')).toBeInTheDocument()
+        expect(screen.getByText('36')).toBeInTheDocument()
+        expect(screen.getByText('Day 1')).toBeInTheDocument()
+        expect(screen.getByText(/WAPE 9.8%/)).toBeInTheDocument()
+    })
+
     it('shows room recommendations and only changes a price after confirmation', async () => {
         vi.mocked(adjustServicePrice).mockResolvedValue({
             data: {
