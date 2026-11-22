@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 type AdminPageHeaderProps = {
     eyebrow: string
     title: string
+    titleClassName?: string
     subtitle?: string
     action?: ReactNode
     hero?: {
@@ -29,6 +30,7 @@ const heroValueClass =
 const AdminPageHeader = ({
     eyebrow,
     title,
+    titleClassName,
     subtitle,
     action,
     hero,
@@ -38,7 +40,11 @@ const AdminPageHeader = ({
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 {eyebrow}
             </p>
-            <h1 className="mt-2 text-balance font-jakarta-serif text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+            <h1
+                className={`mt-2 text-balance font-jakarta-serif text-3xl font-bold tracking-tight sm:text-4xl ${
+                    titleClassName ?? 'text-slate-950'
+                }`}
+            >
                 {title}
             </h1>
             {subtitle && (
