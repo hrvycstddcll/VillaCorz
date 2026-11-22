@@ -16,7 +16,7 @@ const makeRect = (top: number, left: number, width = 40, height = 20): DOMRect =
 
 const renderTooltip = () => {
     render(
-        <WarmTooltip content="Help text" side="bottom" delay={0}>
+        <WarmTooltip content="Help text" delay={0}>
             <button type="button">Hover me</button>
         </WarmTooltip>,
     )
@@ -28,7 +28,7 @@ describe('WarmTooltip positioning', () => {
         vi.restoreAllMocks()
     })
 
-    it('positions the tooltip beside the hovered trigger', async () => {
+    it('positions the themed tooltip above the hovered trigger with a pointer', async () => {
         const trigger = renderTooltip()
         vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(makeRect(200, 300))
 
@@ -37,7 +37,10 @@ describe('WarmTooltip positioning', () => {
         const tooltip = await screen.findByRole('tooltip')
         expect(tooltip.style.position).toBe('fixed')
         expect(tooltip.style.left).toBe('210px')
-        expect(tooltip.style.top).toBe('228px')
+        expect(tooltip.style.top).toBe('142px')
+        expect(tooltip).toHaveStyle({ backgroundColor: '#ffffff', color: '#0f172a' })
+        expect(tooltip).toHaveClass('border', 'text-left', 'font-medium')
+        expect(tooltip.querySelector('[aria-hidden="true"]')).toHaveClass('-bottom-1', 'border-b', 'border-r')
     })
 
     it('repositions the open tooltip after scrolling', async () => {
@@ -47,13 +50,13 @@ describe('WarmTooltip positioning', () => {
         fireEvent.mouseEnter(trigger)
         const tooltip = await screen.findByRole('tooltip')
         expect(tooltip.style.left).toBe('210px')
-        expect(tooltip.style.top).toBe('228px')
+        expect(tooltip.style.top).toBe('142px')
 
         rect.mockReturnValue(makeRect(120, 500))
         fireEvent.scroll(window)
 
         await waitFor(() => expect(tooltip.style.left).toBe('410px'))
-        expect(tooltip.style.top).toBe('148px')
+        expect(tooltip.style.top).toBe('62px')
     })
 
     it('does not render at the origin for a zero-sized trigger', async () => {

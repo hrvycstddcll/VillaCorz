@@ -21,9 +21,9 @@ type WarmTooltipContextValue = {
 const WarmTooltipContext = React.createContext<WarmTooltipContextValue | null>(null)
 
 const sizeClasses: Record<Size, string> = {
-    sm: 'text-xs px-2 py-1',
-    md: 'text-sm px-3 py-1.5',
-    lg: 'text-base px-4 py-2',
+    sm: 'px-2.5 py-1.5 text-xs',
+    md: 'px-3 py-2 text-sm',
+    lg: 'px-4 py-2.5 text-base',
 }
 
 export type WarmTooltipProps = {
@@ -86,11 +86,10 @@ let idCounter = 0
 export const WarmTooltip = ({
     content,
     shortcut,
-    side = 'top',
     delay = 400,
     warmWindow: warmWindowProp,
-    surfaceColor = '#0f172a',
-    inkColor = '#e2e8f0',
+    surfaceColor = '#ffffff',
+    inkColor = '#0f172a',
     size = 'md',
     arrow = true,
     showFuse = false,
@@ -110,7 +109,7 @@ export const WarmTooltip = ({
 
     const [open, setOpen] = useState(false)
     const [fuseProgress, setFuseProgress] = useState(0)
-    const [pos, setPos] = useState({ x: 0, y: 0, side })
+    const [pos, setPos] = useState({ x: 0, y: 0 })
     const bubbleRef = useRef<HTMLDivElement | null>(null)
 
     const isActive = ctx ? ctx.activeId === id : open
@@ -124,34 +123,17 @@ export const WarmTooltip = ({
 
         const bubbleW = bubbleRef.current?.offsetWidth || 220
         const bubbleH = bubbleRef.current?.offsetHeight || 48
-        const gap = 8
-        let s: Side = side
-        let top = 0
-        let left = 0
+        const gap = 10
 
-        if (s === 'top') {
-            top = rect.top - bubbleH - gap
-            left = rect.left + rect.width / 2 - bubbleW / 2
-            if (top < 8) { s = 'bottom'; top = rect.bottom + gap }
-        } else if (s === 'bottom') {
-            top = rect.bottom + gap
-            left = rect.left + rect.width / 2 - bubbleW / 2
-            if (top + bubbleH > window.innerHeight - 8) { s = 'top'; top = rect.top - bubbleH - gap }
-        } else if (s === 'left') {
-            top = rect.top + rect.height / 2 - bubbleH / 2
-            left = rect.left - bubbleW - gap
-            if (left < 8) { s = 'right'; left = rect.right + gap }
-        } else {
-            top = rect.top + rect.height / 2 - bubbleH / 2
-            left = rect.right + gap
-            if (left + bubbleW > window.innerWidth - 8) { s = 'left'; left = rect.left - bubbleW - gap }
-        }
+        const left = Math.max(
+            8,
+            Math.min(rect.left + rect.width / 2 - bubbleW / 2, window.innerWidth - bubbleW - 8),
+        )
+        const top = Math.max(8, rect.top - bubbleH - gap)
 
-        left = Math.max(8, Math.min(left, window.innerWidth - bubbleW - 8))
-        top = Math.max(8, Math.min(top, window.innerHeight - bubbleH - 8))
-        setPos({ x: left, y: top, side: s })
+        setPos({ x: left, y: top })
         return true
-    }, [side])
+    }, [])
 
     const isWarm = useCallback(() => {
         if (!ctx) return false
@@ -301,28 +283,23 @@ export const WarmTooltip = ({
                 zIndex: 9999,
                 backgroundColor: surfaceColor,
                 color: inkColor,
+                borderColor: 'rgba(0, 109, 252, 0.22)',
             }}
-            className={`pointer-events-none max-w-xs rounded-lg shadow-lg ${sizeClasses[size]} ${className ?? ''}`}
+            className={`pointer-events-none max-w-xs rounded-lg border text-left font-medium shadow-[0_12px_32px_rgba(15,23,42,0.14)] ${sizeClasses[size]} ${className ?? ''}`}
         >
             <span className="block">{content}</span>
             {shortcut && (
-                <span
-                    className="ml-2 inline-flex items-center rounded border border-white/20 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] tabular-nums"
-                    style={{ color: inkColor }}
-                >
+                <span className="ml-2 inline-flex items-center rounded border border-[#006dfc]/20 bg-[#006dfc]/5 px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-[#006dfc]">
                     {shortcut}
                 </span>
             )}
             {arrow && (
                 <span
                     aria-hidden="true"
-                    className="absolute size-2 rotate-45"
+                    className="absolute -bottom-1 left-1/2 size-2 -translate-x-1/2 rotate-45 border-b border-r"
                     style={{
                         backgroundColor: surfaceColor,
-                        ...(pos.side === 'top' && { bottom: -4, left: '50%', transform: 'translateX(-50%) rotate(45deg)' }),
-                        ...(pos.side === 'bottom' && { top: -4, left: '50%', transform: 'translateX(-50%) rotate(45deg)' }),
-                        ...(pos.side === 'left' && { right: -4, top: '50%', transform: 'translateY(-50%) rotate(45deg)' }),
-                        ...(pos.side === 'right' && { left: -4, top: '50%', transform: 'translateY(-50%) rotate(45deg)' }),
+                        borderColor: 'rgba(0, 109, 252, 0.22)',
                     }}
                 />
             )}

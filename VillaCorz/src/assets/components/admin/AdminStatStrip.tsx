@@ -49,7 +49,7 @@ const DeltaIcon = ({ value }: { value: number }) => {
 
 const withTooltip = (content: ReactNode, tooltip?: string) =>
     tooltip ? (
-        <WarmTooltip content={tooltip} side="bottom" size="sm">
+        <WarmTooltip content={tooltip} size="sm">
             {content}
         </WarmTooltip>
     ) : (
