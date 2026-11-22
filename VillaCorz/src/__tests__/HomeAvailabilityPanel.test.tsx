@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import HomeAvailabilityPanel, {
     type HomeAvailabilityPanelProps,
-} from './HomeAvailabilityPanel'
-import { phtDateTimeToIso } from '../../../../lib/stayDateTime'
-import type { Stay } from '../../services/shared'
+} from '../assets/components/ui/InteractiveComponents/HomeAvailabilityPanel'
+import { phtDateTimeToIso } from '../lib/stayDateTime'
+import type { Stay } from '../services/shared'
 
 const makeStay = (id: string, title: string): Stay => ({
     id,

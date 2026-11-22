@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import PaymentSuccessView from './assets/components/pages/PaymentSuccessView'
-import StateModal from './assets/components/ui/ModalComponents/StateModal'
+import PaymentSuccessView from '../assets/components/pages/PaymentSuccessView'
+import StateModal from '../assets/components/ui/ModalComponents/StateModal'
 
 const paymentProps = {
     status: 'pending' as const,

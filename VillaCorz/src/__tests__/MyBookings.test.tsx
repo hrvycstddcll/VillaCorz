@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import MyBookings from './assets/components/pages/MyBookings'
-import { getBookings } from './services/bookingService'
+import MyBookings from '../assets/components/pages/MyBookings'
+import { getBookings } from '../services/bookingService'
 
-vi.mock('./services/bookingService', () => ({
+vi.mock('../services/bookingService', () => ({
     getBookings: vi.fn(),
     cancelBooking: vi.fn(),
 }))

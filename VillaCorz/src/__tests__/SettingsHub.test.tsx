@@ -1,9 +1,9 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import SettingsHub from './assets/components/pages/SettingsHub'
+import SettingsHub from '../assets/components/pages/SettingsHub'
 
 // Mock useAuth to avoid network calls.
-vi.mock('./services/useAuth', () => ({
+vi.mock('../services/useAuth', () => ({
     useAuth: () => ({
         user: {
             id: 1,

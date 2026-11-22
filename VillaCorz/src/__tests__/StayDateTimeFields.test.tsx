@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import StayDateTimeFields from './assets/components/ui/InteractiveComponents/StayDateTimeFields'
-import { addPhtDays, phtDateTimeToIso, phtToday } from './lib/stayDateTime'
+import StayDateTimeFields from '../assets/components/ui/InteractiveComponents/StayDateTimeFields'
+import { addPhtDays, phtDateTimeToIso, phtToday } from '../lib/stayDateTime'
 
 const baseFields = {
     checkInDate: '2026-11-20',

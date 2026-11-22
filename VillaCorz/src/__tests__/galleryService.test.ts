@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getServiceReviews, getServices } from './services/serviceService'
-import { loadGalleryImages, selectGalleryItems } from './services/galleryService'
-import type { Service, ServiceReview } from './services/types'
+import { getServiceReviews, getServices } from '../services/serviceService'
+import { loadGalleryImages, selectGalleryItems } from '../services/galleryService'
+import type { Service, ServiceReview } from '../services/types'
 
-vi.mock('./services/serviceService', () => ({
+vi.mock('../services/serviceService', () => ({
     getServices: vi.fn(),
     getServiceReviews: vi.fn(),
 }))

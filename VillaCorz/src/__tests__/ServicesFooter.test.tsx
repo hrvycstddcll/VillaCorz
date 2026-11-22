@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import ServicesFooter from './assets/components/ui/InteractiveComponents/ServicesFooter'
-import { fieldsFromStay, phtDateTimeToIso } from './lib/stayDateTime'
+import ServicesFooter from '../assets/components/ui/InteractiveComponents/ServicesFooter'
+import { fieldsFromStay, phtDateTimeToIso } from '../lib/stayDateTime'
 
 const fields = fieldsFromStay(
     phtDateTimeToIso('2026-12-01', '10:00'),

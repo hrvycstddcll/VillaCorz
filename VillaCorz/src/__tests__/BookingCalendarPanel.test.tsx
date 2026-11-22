@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import BookingCalendarPanel from './assets/components/ui/InteractiveComponents/BookingCalendarPanel'
+import BookingCalendarPanel from '../assets/components/ui/InteractiveComponents/BookingCalendarPanel'
 import {
     fieldsFromStay,
     phtDateTimeToIso,
     type StayDateFields,
-} from './lib/stayDateTime'
-import type { RoomGuests } from './assets/components/ui/InteractiveComponents/ServicesFooter'
+} from '../lib/stayDateTime'
+import type { RoomGuests } from '../assets/components/ui/InteractiveComponents/ServicesFooter'
 
 const onCheckAvailability = vi.fn()
 

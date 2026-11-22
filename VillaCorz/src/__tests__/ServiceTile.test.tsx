@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import ServiceTile from './assets/components/ui/InteractiveComponents/ServiceTile'
+import ServiceTile from '../assets/components/ui/InteractiveComponents/ServiceTile'
 
 const stay = {
     id: '1',

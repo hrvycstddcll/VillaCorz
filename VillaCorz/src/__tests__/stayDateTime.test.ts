@@ -9,7 +9,7 @@ import {
     phtDateKey,
     phtDateTimeToIso,
     splitPhtDateTime,
-} from './stayDateTime'
+} from '../lib/stayDateTime'
 
 describe('stayDateTime', () => {
     it('converts Philippine local date and time to a UTC ISO instant', () => {

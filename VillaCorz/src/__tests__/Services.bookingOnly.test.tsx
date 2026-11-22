@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import Services from './assets/components/pages/Services'
-import { getAvailabilityForRange, getBlockedDates } from './services/availabilityService'
-import { getServices } from './services/serviceService'
+import Services from '../assets/components/pages/Services'
+import { getAvailabilityForRange, getBlockedDates } from '../services/availabilityService'
+import { getServices } from '../services/serviceService'
 
-vi.mock('./services/serviceService', () => ({
+vi.mock('../services/serviceService', () => ({
     getServices: vi.fn(),
 }))
 
-vi.mock('./services/availabilityService', async () => {
+vi.mock('../services/availabilityService', async () => {
     const actual = await vi.importActual<
-        typeof import('./services/availabilityService')
-    >('./services/availabilityService')
+        typeof import('../services/availabilityService')
+    >('../services/availabilityService')
 
     return {
         ...actual,

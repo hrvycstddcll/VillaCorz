@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getServiceReviews, getServices } from './services/serviceService'
+import { getServiceReviews, getServices } from '../services/serviceService'
 import {
     FEATURED_TESTIMONIAL_LIMIT,
     loadFeaturedTestimonials,
     selectFeaturedTestimonials,
-} from './services/testimonialsService'
-import type { Service, ServiceReview } from './services/types'
+} from '../services/testimonialsService'
+import type { Service, ServiceReview } from '../services/types'
 
-vi.mock('./services/serviceService', () => ({
+vi.mock('../services/serviceService', () => ({
     getServices: vi.fn(),
     getServiceReviews: vi.fn(),
 }))

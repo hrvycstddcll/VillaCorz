@@ -1,14 +1,14 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import Dashboard from './assets/components/pages/Dashboard'
-import { getDashboard } from './services/dashboardService'
-import { adjustServicePrice } from './services/serviceService'
-import type { DashboardSummary } from './services/types'
+import Dashboard from '../assets/components/pages/Dashboard'
+import { getDashboard } from '../services/dashboardService'
+import { adjustServicePrice } from '../services/serviceService'
+import type { DashboardSummary } from '../services/types'
 
-vi.mock('./services/dashboardService', () => ({
+vi.mock('../services/dashboardService', () => ({
     getDashboard: vi.fn(),
 }))
-vi.mock('./services/serviceService', () => ({
+vi.mock('../services/serviceService', () => ({
     adjustServicePrice: vi.fn(),
 }))
 
