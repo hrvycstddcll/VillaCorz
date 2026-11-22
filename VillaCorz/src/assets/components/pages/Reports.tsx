@@ -511,6 +511,7 @@ const Reports = () => {
                 <AdminPageHeader
                     eyebrow="Administration / Reports"
                     title="Reports"
+                    titleClassName="text-[#006dfc]"
                     subtitle="Explore financial activity, stays, requests, guest feedback, and system events."
                     hero={{
                         label: 'Total events',
