@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import Testimonials from './assets/components/pages/Testimonials'
-import { loadFeaturedTestimonials } from './services/testimonialsService'
-import type { FeaturedTestimonial } from './services/types'
+import Testimonials from '../assets/components/pages/Testimonials'
+import { loadFeaturedTestimonials } from '../services/testimonialsService'
+import type { FeaturedTestimonial } from '../services/types'
 
 const carouselControls = vi.hoisted(() => ({
     next: vi.fn(),
@@ -15,11 +15,11 @@ type MockCarouselRef =
     | { current: typeof carouselControls | null }
     | null
 
-vi.mock('./services/testimonialsService', () => ({
+vi.mock('../services/testimonialsService', () => ({
     loadFeaturedTestimonials: vi.fn(),
 }))
 
-vi.mock('./assets/components/ui/CssComponents/FlexCarousel', () => ({
+vi.mock('../assets/components/ui/CssComponents/FlexCarousel', () => ({
     default: ({
         items,
         onChange,

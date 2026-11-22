@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import ModalFocusManager from './components/ModalFocusManager'
+import ModalFocusManager from '../components/ModalFocusManager'
 
 const Harness = () => {
     const [open, setOpen] = useState(false)

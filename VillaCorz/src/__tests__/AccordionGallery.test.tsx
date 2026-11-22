@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import AccordionGallery from './assets/components/ui/AccordionGallery'
+import AccordionGallery from '../assets/components/ui/AccordionGallery'
 
 vi.mock('gsap', () => ({
     default: {

@@ -9,6 +9,7 @@ use App\Models\CancellationRequest;
 use App\Models\ContactSubmission;
 use App\Models\PageView;
 use App\Models\Payment;
+use App\Models\Service;
 use App\Models\ServiceReview;
 use App\Models\User;
 use App\Queries\Offers\OfferMetricsQuery;
@@ -29,6 +30,8 @@ class DashboardController extends Controller
     private const ALLOWED_BACKTEST_RANGES = [7, 14, 30];
 
     private const FORECAST_FULL_DAYS = 60;
+
+    private const MINIMUM_PRICE_INCREASE = 500.0;
 
     private const RECENT_BOOKINGS_LIMIT = 20;
 
@@ -179,6 +182,13 @@ class DashboardController extends Controller
             ->sum('amount');
 
         $availability = $offerMetricsQuery->availability();
+        $demandForecast = $this->buildDemandForecast(
+            $services,
+            $forecastPreset,
+            $backtestRange,
+            $includeHolidays,
+            $includeWeekends,
+        );
 
         $actionCenter = [
             'pending_cancellations' => CancellationRequest::query()->where('status', 'pending')->count(),
@@ -416,12 +426,12 @@ class DashboardController extends Controller
                         : 0,
                     'booked_forward_revenue' => $bookedForwardRevenue,
                 ],
-                'demand_forecast' => $this->buildDemandForecast(
+                'demand_forecast' => $demandForecast,
+                'room_recommendations' => $this->buildRoomRecommendations(
                     $services,
+                    $offerMetrics,
+                    $demandForecast,
                     $forecastPreset,
-                    $backtestRange,
-                    $includeHolidays,
-                    $includeWeekends,
                 ),
             ],
         ]);
@@ -533,6 +543,143 @@ class DashboardController extends Controller
                 ],
             ],
         ];
+    }
+
+    private function buildRoomRecommendations(
+        $services,
+        $offerMetrics,
+        array $demandForecast,
+        string $forecastPreset,
+    ): array {
+        $forecast = collect($demandForecast['forecast'] ?? []);
+        if ($forecast->isEmpty()) {
+            return [];
+        }
+
+        $forecastWindow = $demandForecast['forecast_window'] ?? [];
+        $forecastWindowDays = max(1, (int) $forecastPreset);
+        $selectedStart = Carbon::parse(
+            $forecastWindow['start'] ?? now()->addDay()->toDateString(),
+        )->startOfDay();
+        $selectedEnd = Carbon::parse(
+            $forecastWindow['end'] ?? $selectedStart->copy()->addDays($forecastWindowDays - 1)->toDateString(),
+        )->startOfDay();
+        $forwardStart = $selectedStart->toDateString();
+        $forwardEnd = $selectedEnd->copy()->addDay()->toDateString();
+
+        $forwardRooms = BookingRoom::query()
+            ->whereHas('booking', function ($query) use ($forwardStart, $forwardEnd) {
+                $query->where('status', 'confirmed')
+                    ->whereDate('check_in', '<', $forwardEnd)
+                    ->whereDate('check_out', '>', $forwardStart)
+                    ->whereHas('payments', fn ($paymentQuery) => $paymentQuery->where('status', 'paid'));
+            })
+            ->with('booking:id,check_in,check_out')
+            ->get(['service_id', 'booking_id']);
+
+        $forwardNights = [];
+        foreach ($forwardRooms as $room) {
+            if ($room->service_id === null || $room->booking === null) {
+                continue;
+            }
+
+            $occupiedFrom = max($forwardStart, $room->booking->check_in->toDateString());
+            $occupiedUntil = min($forwardEnd, $room->booking->check_out->toDateString());
+            $nights = max(
+                0,
+                Carbon::parse($occupiedFrom)->diffInDays(Carbon::parse($occupiedUntil)),
+            );
+            $forwardNights[(int) $room->service_id] = ($forwardNights[(int) $room->service_id] ?? 0) + $nights;
+        }
+
+        $metricsByService = $offerMetrics->keyBy('service_id');
+        $holidayDays = (int) ($demandForecast['holiday_days'] ?? 0);
+        $avgForecastOccupancy = (float) ($demandForecast['average_forecast_occupancy'] ?? 0);
+        $avgWeekendOccupancy = (float) ($forecast
+            ->filter(fn (array $day) => $day['is_weekend'])
+            ->avg('expected_occupancy') ?? 0);
+        $avgHolidayOccupancy = (float) ($forecast
+            ->filter(fn (array $day) => $day['holiday'] !== null)
+            ->avg('expected_occupancy') ?? 0);
+
+        return $services->where('status', 'active')->map(function (Service $service) use (
+            $metricsByService,
+            $forwardNights,
+            $forecastWindowDays,
+            $avgForecastOccupancy,
+            $avgWeekendOccupancy,
+            $avgHolidayOccupancy,
+            $holidayDays,
+        ) {
+            $metrics = $metricsByService->get($service->id);
+            $currentOccupancy = (float) ($metrics['occupancy'] ?? 0);
+            $forwardOccupancy = round((($forwardNights[(int) $service->id] ?? 0) / max(1, $forecastWindowDays)) * 100, 1);
+            $demandScore = ($currentOccupancy * 0.55) + ($forwardOccupancy * 0.25) + ($avgForecastOccupancy * 0.2);
+
+            $change = 0;
+            $reasons = [];
+            if ($demandScore >= 70) {
+                $change = $demandScore >= 80 ? 12 : 8;
+                $reasons[] = "Strong forward demand in the {$forecastWindowDays}-day forecast window";
+            } elseif ($demandScore < 40) {
+                $change = $demandScore < 25 ? -10 : -5;
+                $reasons[] = 'Soft occupancy in the current and forward window';
+            }
+
+            if ($holidayDays > 0) {
+                $holidayLift = $holidayDays >= 4 ? 15 : ($holidayDays >= 2 ? 12 : 8);
+                if ($change < $holidayLift) {
+                    $change = $holidayLift;
+                }
+                $reasons[] = "{$holidayDays} Philippine holiday date(s) fall in the forecast window";
+            }
+            if ($avgHolidayOccupancy >= 65 && $change < 15) {
+                $change = 15;
+                $reasons[] = 'Holiday dates show peak forecast occupancy';
+            }
+            if ($avgWeekendOccupancy >= 55 && $change < 5) {
+                $change = 5;
+                $reasons[] = 'Weekend forecast occupancy is above 55%';
+            }
+            if ($forwardOccupancy >= 60) {
+                $reasons[] = "Most of the {$forecastWindowDays}-day forecast window is already booked";
+            }
+            if ($currentOccupancy >= 75) {
+                $reasons[] = 'Recent occupancy is above target';
+            }
+            if ($reasons === []) {
+                $reasons[] = 'Demand is steady; hold the current price';
+            }
+            $reasons = array_values(array_unique($reasons));
+
+            $bookingCount = (int) ($metrics['bookings'] ?? 0);
+            $confidence = $bookingCount >= 5 ? 'high' : ($bookingCount >= 2 ? 'medium' : 'low');
+            $currentPrice = (float) $service->price;
+            $suggestedPrice = round($currentPrice * (1 + ($change / 100)), 2);
+            if ($change > 0) {
+                $suggestedPrice = round(
+                    max($suggestedPrice, $currentPrice + self::MINIMUM_PRICE_INCREASE),
+                    2,
+                );
+            }
+            $effectiveChange = $currentPrice > 0
+                ? round((($suggestedPrice - $currentPrice) / $currentPrice) * 100, 1)
+                : $change;
+
+            return [
+                'service_id' => $service->id,
+                'name' => $service->name,
+                'current_price' => $currentPrice,
+                'suggested_price' => $suggestedPrice,
+                'change_percent' => $effectiveChange,
+                'direction' => $change > 0 ? 'increase' : ($change < 0 ? 'decrease' : 'hold'),
+                'confidence' => $confidence,
+                'current_occupancy' => $currentOccupancy,
+                'forward_occupancy' => $forwardOccupancy,
+                'demand_score' => round($demandScore, 1),
+                'reasons' => $reasons,
+            ];
+        })->sortByDesc('demand_score')->values()->all();
     }
 
     /**

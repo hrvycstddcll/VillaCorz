@@ -50,3 +50,16 @@ export const getBlockedDates = (
         `/services/${serviceId}/blocked-dates`,
         { params: { from, to }, signal },
     )
+
+export const wholeVillaIsBooked = (
+    rooms: ServiceAvailability[],
+    exclusiveServiceId: number | null,
+) =>
+    exclusiveServiceId !== null &&
+    rooms.some(
+        (room) =>
+            room.id === exclusiveServiceId &&
+            room.blocked_intervals.some(
+                (interval) => interval.service_id === exclusiveServiceId,
+            ),
+    )

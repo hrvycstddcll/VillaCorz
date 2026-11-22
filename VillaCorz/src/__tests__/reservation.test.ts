@@ -1,5 +1,5 @@
-import { getReservationPrice } from './reservation'
-import { phtDateTimeToIso } from './stayDateTime'
+import { getReservationPrice } from '../lib/reservation'
+import { phtDateTimeToIso } from '../lib/stayDateTime'
 
 const stay = {
     price: 1000,

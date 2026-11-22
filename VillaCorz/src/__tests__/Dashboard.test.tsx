@@ -1,11 +1,15 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import Dashboard from './assets/components/pages/Dashboard'
-import { getDashboard } from './services/dashboardService'
-import type { DashboardSummary } from './services/types'
+import Dashboard from '../assets/components/pages/Dashboard'
+import { getDashboard } from '../services/dashboardService'
+import { adjustServicePrice } from '../services/serviceService'
+import type { DashboardSummary } from '../services/types'
 
-vi.mock('./services/dashboardService', () => ({
+vi.mock('../services/dashboardService', () => ({
     getDashboard: vi.fn(),
+}))
+vi.mock('../services/serviceService', () => ({
+    adjustServicePrice: vi.fn(),
 }))
 
 const summary: DashboardSummary = {
@@ -146,6 +150,21 @@ const summary: DashboardSummary = {
             },
         ],
     },
+    room_recommendations: [
+        {
+            service_id: 1,
+            name: 'Seaview Room',
+            current_price: 2500,
+            suggested_price: 3000,
+            change_percent: 20,
+            direction: 'increase',
+            confidence: 'high',
+            current_occupancy: 70,
+            forward_occupancy: 60,
+            demand_score: 82,
+            reasons: ['Strong forward demand in the 30-day forecast window'],
+        },
+    ],
 }
 
 const getDashboardResponse = {
@@ -282,7 +301,7 @@ describe('Dashboard', () => {
         expect(screen.queryByText('Selected day')).not.toBeInTheDocument()
     }, 30000)
 
-    it('summarises forecast occupancy and paid days without price controls', async () => {
+    it('summarises forecast occupancy and paid days', async () => {
         render(
             <MemoryRouter>
                 <Dashboard />
@@ -295,9 +314,47 @@ describe('Dashboard', () => {
         expect(screen.getByText('36')).toBeInTheDocument()
         expect(screen.getByText('Day 1')).toBeInTheDocument()
         expect(screen.getByText(/WAPE 9.8%/)).toBeInTheDocument()
-        expect(screen.queryByText(/Price recommendations/)).not.toBeInTheDocument()
+    })
+
+    it('shows room recommendations and only changes a price after confirmation', async () => {
+        vi.mocked(adjustServicePrice).mockResolvedValue({
+            data: {
+                success: true,
+                message: 'Offer price updated.',
+                data: {},
+            },
+        } as never)
+
+        render(
+            <MemoryRouter>
+                <Dashboard />
+            </MemoryRouter>,
+        )
+
+        await screen.findByRole('heading', { name: 'Price recommendations' })
+        const recommendations = screen.getByRole('list', {
+            name: 'Room recommendations',
+        })
+        expect(within(recommendations).getByText('Seaview Room')).toBeInTheDocument()
+        expect(within(recommendations).getByText(/₱2,500/)).toBeInTheDocument()
+        expect(within(recommendations).getByText(/₱3,000/)).toBeInTheDocument()
+        expect(screen.getByText(/WAPE 9.8%/)).toBeInTheDocument()
+        expect(adjustServicePrice).not.toHaveBeenCalled()
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Review adjustment' }),
+        )
         expect(
-            screen.queryByRole('button', { name: 'Review adjustment' }),
-        ).not.toBeInTheDocument()
+            screen.getByRole('dialog', { name: 'Adjust Seaview Room base price?' }),
+        ).toBeInTheDocument()
+        expect(adjustServicePrice).not.toHaveBeenCalled()
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Confirm price update' }),
+        )
+        await waitFor(() => {
+            expect(adjustServicePrice).toHaveBeenCalledWith(1, 3000)
+        })
+        expect(await screen.findByText('Offer price updated.')).toBeInTheDocument()
     })
 })

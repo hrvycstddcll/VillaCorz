@@ -211,23 +211,23 @@ const BookingCalendarPanel = ({
                 aria-label="Booking summary"
                 aria-hidden={isOpen}
                 inert={isOpen}
-                className="h-fit w-full rounded-2xl border border-[#d7e6ff] bg-[#f5f9ff] p-4 font-poppins shadow-[0_10px_30px_rgba(8,117,249,0.08)] sm:p-5"
+                className="h-fit w-full rounded-2xl border border-[#d7e6ff] bg-[#f5f9ff] p-4 font-poppins shadow-[0_10px_30px_rgba(8,117,249,0.08)] sm:p-5 md:p-3.5"
             >
                 <div className="min-w-0">
-                    <h2 className="font-jakarta text-xs font-semibold text-[#006dfc] sm:text-sm lg:text-base">
+                    <h2 className="font-jakarta text-xs font-semibold text-[#006dfc] sm:text-sm md:text-xs lg:text-base">
                         Your booking
                     </h2>
-                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#006dfc] sm:text-xs lg:text-sm">
+                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#006dfc] sm:text-xs md:text-[10px] lg:text-sm">
                         {stepLabel}
                     </p>
-                    <p className="mt-1 break-words text-[13px] leading-relaxed sm:text-sm text-slate-600">
+                    <p className="mt-1 break-words text-[13px] leading-relaxed sm:text-sm md:text-xs text-slate-600">
                         {bookingSummary}
                     </p>
 
                     {!isOpen && notice && (
                         <p
                             role="status"
-                            className={`mt-3 text-[13px] leading-relaxed sm:text-sm ${
+                            className={`mt-3 text-[13px] leading-relaxed sm:text-sm md:text-xs ${
                                 noticeTone === 'success'
                                     ? 'text-blue-700'
                                     : 'text-rose-600'
@@ -243,7 +243,7 @@ const BookingCalendarPanel = ({
                         onClick={() => onOpenChange(true)}
                         aria-expanded={isOpen}
                         aria-controls="booking-drawer"
-                        className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#006dfc] px-4 py-3 text-[13px] font-semibold text-white sm:text-sm shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] motion-reduce:transition-none"
+                        className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#006dfc] px-4 py-3 text-[13px] font-semibold text-white sm:text-sm md:mt-4 md:min-h-10 md:px-3 md:py-2 md:text-xs shadow-[0_4px_12px_rgba(8,117,249,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] motion-reduce:transition-none"
                     >
                         Edit booking
                         <ChevronDown
@@ -285,18 +285,18 @@ const BookingCalendarPanel = ({
                                     : 'booking-drawer-enter'
                             }`}
                         >
-                            <div className="z-10 flex shrink-0 items-start justify-between gap-3 border-b border-[#d7e6ff] bg-[#f5f9ff]/95 px-4 py-3 backdrop-blur-sm sm:px-6 sm:py-4">
+                            <div className="z-10 flex shrink-0 items-start justify-between gap-3 border-b border-[#d7e6ff] bg-[#f5f9ff]/95 px-4 py-3 backdrop-blur-sm sm:px-6 sm:py-4 md:px-5 md:py-3">
                                 <div className="min-w-0">
                                     <h2
                                         id="booking-drawer-title"
-                                        className="font-jakarta text-xs font-semibold text-[#006dfc] sm:text-sm lg:text-base"
+                                        className="font-jakarta text-xs font-semibold text-[#006dfc] sm:text-sm md:text-xs lg:text-base"
                                     >
                                         Your booking
                                     </h2>
-                                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#006dfc] sm:text-xs lg:text-sm">
+                                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#006dfc] sm:text-xs md:text-[10px] lg:text-sm">
                                         {stepLabel}
                                     </p>
-                                    <p className="mt-1 truncate text-[13px] leading-relaxed sm:text-sm text-slate-600">
+                                    <p className="mt-1 truncate text-[13px] leading-relaxed sm:text-sm md:text-xs text-slate-600">
                                         {bookingSummary}
                                     </p>
                                 </div>
@@ -304,7 +304,7 @@ const BookingCalendarPanel = ({
                                     type="button"
                                     onClick={requestClose}
                                     aria-label="Close booking form"
-                                    className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-white hover:text-[#006dfc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                    className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-white hover:text-[#006dfc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] md:size-10"
                                 >
                                     <X className="size-5" aria-hidden="true" />
                                 </button>
@@ -318,7 +318,7 @@ const BookingCalendarPanel = ({
                                 {notice && (
                                 <p
                                     role="status"
-                                    className={`mx-4 mt-4 rounded-lg px-3 py-2 text-[13px] leading-relaxed sm:text-sm ${
+                                    className={`mx-4 mt-4 rounded-lg px-3 py-2 text-[13px] leading-relaxed sm:text-sm md:mx-5 md:mt-3 md:text-xs ${
                                         noticeTone === 'success'
                                             ? 'bg-blue-50 text-blue-800'
                                             : 'text-rose-600'
@@ -328,14 +328,14 @@ const BookingCalendarPanel = ({
                                 </p>
                                 )}
 
-                                <div className="grid gap-5 px-4 py-4 sm:px-6 sm:py-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
+                                <div className="grid gap-5 px-4 py-4 sm:px-6 sm:py-5 md:gap-4 md:px-5 md:py-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
                                 <section
                                     aria-labelledby="booking-dates-heading"
                                     className="min-w-0"
                                 >
                                     <h3
                                         id="booking-dates-heading"
-                                        className="mb-3 font-jakarta text-xs font-semibold text-slate-900 sm:text-sm"
+                                        className="mb-3 font-jakarta text-xs font-semibold text-slate-900 sm:text-sm md:text-xs"
                                     >
                                         Dates &amp; paid days
                                     </h3>
@@ -370,11 +370,11 @@ const BookingCalendarPanel = ({
                                 >
                                     <h3
                                         id="booking-rooms-heading"
-                                        className="font-jakarta text-xs font-semibold text-slate-900 sm:text-sm"
+                                        className="font-jakarta text-xs font-semibold text-slate-900 sm:text-sm md:text-xs"
                                     >
                                         Rooms &amp; guests
                                     </h3>
-                                    <p className="mt-0.5 break-words text-xs text-slate-600 sm:text-sm">
+                                    <p className="mt-0.5 break-words text-xs text-slate-600 sm:text-sm md:text-xs">
                                         {roomSummaryText}
                                     </p>
 
@@ -431,12 +431,12 @@ const BookingCalendarPanel = ({
                                                         <div className="flex min-w-0 flex-wrap items-center gap-2">
                                                             <label
                                                                 htmlFor={`booking-room-${index}`}
-                                                                className="font-jakarta text-xs font-semibold text-slate-800 sm:text-sm"
+                                                                className="font-jakarta text-xs font-semibold text-slate-800 sm:text-sm md:text-xs"
                                                             >
                                                                 Room {index + 1}
                                                             </label>
                                                             {selectedTitle ? (
-                                                                <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-[#006dfc]/10 px-2 py-0.5 text-xs font-medium text-[#006dfc] sm:text-sm">
+                                                                <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-[#006dfc]/10 px-2 py-0.5 text-xs font-medium text-[#006dfc] sm:text-sm md:text-xs">
                                                                     <Check
                                                                         className="size-3 shrink-0"
                                                                         aria-hidden="true"
@@ -446,12 +446,12 @@ const BookingCalendarPanel = ({
                                                                     </span>
                                                                 </span>
                                                             ) : (
-                                                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 sm:text-sm">
+                                                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 sm:text-sm md:text-xs">
                                                                     Not added
                                                                 </span>
                                                             )}
                                                             {selectedUnavailable ? (
-                                                                <span className="rounded-full bg-slate-300 px-2 py-0.5 text-xs font-semibold text-slate-700 sm:text-sm">
+                                                                <span className="rounded-full bg-slate-300 px-2 py-0.5 text-xs font-semibold text-slate-700 sm:text-sm md:text-xs">
                                                                     Unavailable
                                                                 </span>
                                                             ) : null}
@@ -551,7 +551,7 @@ const BookingCalendarPanel = ({
                                                         (guestType) => (
                                                             <div
                                                                 key={guestType}
-                                                                className="flex min-h-11 items-center justify-between py-1 text-xs text-slate-600 sm:text-sm"
+                                                                className="flex min-h-11 items-center justify-between py-1 text-xs text-slate-600 sm:text-sm md:text-xs"
                                                             >
                                                                 <span>
                                                                     {guestType === 'adults'
@@ -608,7 +608,7 @@ const BookingCalendarPanel = ({
                                     <button
                                         type="button"
                                         onClick={addRoom}
-                                        className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-[#006dfc] sm:text-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                        className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-[#006dfc] sm:text-sm md:text-xs hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                                     >
                                         + Add room
                                     </button>
@@ -620,7 +620,7 @@ const BookingCalendarPanel = ({
                                 {blockedReason && (
                                     <p
                                         role="alert"
-                                        className="mb-2 text-[13px] leading-relaxed sm:text-sm text-rose-600"
+                                        className="mb-2 text-[13px] leading-relaxed sm:text-sm md:text-xs text-rose-600"
                                     >
                                         {blockedReason}
                                     </p>
@@ -633,7 +633,7 @@ const BookingCalendarPanel = ({
                                         Boolean(blockedReason) ||
                                         !hasSelectedRooms
                                     }
-                                    className="min-h-12 w-full rounded-lg bg-[#006dfc] px-4 py-3 text-[13px] font-semibold text-white sm:text-sm shadow-[0_4px_12px_rgba(0,109,252,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="min-h-12 w-full rounded-lg bg-[#006dfc] px-4 py-3 text-[13px] font-semibold text-white sm:text-sm md:text-xs shadow-[0_4px_12px_rgba(0,109,252,0.3)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {checkingAvailability
                                         ? 'Checking availability'

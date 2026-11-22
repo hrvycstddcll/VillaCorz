@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import StayDateTimeFields from './assets/components/ui/InteractiveComponents/StayDateTimeFields'
-import { addPhtDays, phtDateTimeToIso, phtToday } from './lib/stayDateTime'
+import StayDateTimeFields from '../assets/components/ui/InteractiveComponents/StayDateTimeFields'
+import { addPhtDays, phtDateTimeToIso, phtToday } from '../lib/stayDateTime'
 
 const baseFields = {
     checkInDate: '2026-11-20',
@@ -26,6 +26,15 @@ const clickCalendarDate = (value: string) => {
 }
 
 describe('StayDateTimeFields', () => {
+    beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['Date'] })
+        vi.setSystemTime(new Date('2026-11-19T00:00:00.000Z'))
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
+    })
+
     it('renders check-in fields, the stage prompt, and a derived checkout', () => {
         render(<StayDateTimeFields fields={baseFields} onChange={vi.fn()} />)
 

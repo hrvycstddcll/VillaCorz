@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import FlexCarousel from './assets/components/ui/CssComponents/FlexCarousel'
-import type { FlexCarouselItem } from './assets/components/ui/CssComponents/FlexCarousel'
+import FlexCarousel from '../assets/components/ui/CssComponents/FlexCarousel'
+import type { FlexCarouselItem } from '../assets/components/ui/CssComponents/FlexCarousel'
 
 const testimonial: FlexCarouselItem = {
     src: 'data:image/svg+xml,test',

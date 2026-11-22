@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Gallery from './assets/components/pages/Gallery'
-import { loadGalleryImages } from './services/galleryService'
-import type { GalleryItem } from './services/types'
+import Gallery from '../assets/components/pages/Gallery'
+import { loadGalleryImages } from '../services/galleryService'
+import type { GalleryItem } from '../services/types'
 
-vi.mock('./services/galleryService', () => ({
+vi.mock('../services/galleryService', () => ({
     loadGalleryImages: vi.fn(),
 }))
 
-vi.mock('./assets/components/ui/CssComponents/DriftWall', () => ({
+vi.mock('../assets/components/ui/CssComponents/DriftWall', () => ({
     default: ({
         items,
         onSelect,

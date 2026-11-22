@@ -28,6 +28,9 @@ export const updateService = (id: number, payload: FormData) => {
 export const updateServiceStatus = (service: Service, status: Service['status']) =>
     api.patch<ApiEnvelope<Service>>(`/services/${service.id}/status`, { status })
 
+export const adjustServicePrice = (id: number, price: number) =>
+    api.patch<ApiEnvelope<Service>>(`/services/${id}/price`, { price })
+
 export const deleteService = (id: number) =>
     api.delete<ApiEnvelope<null>>(`/services/${id}`)
 

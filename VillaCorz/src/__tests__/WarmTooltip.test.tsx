@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { WarmTooltip } from './WarmTooltip'
+import { WarmTooltip } from '../assets/components/ui/WarmTooltip'
 
 const makeRect = (top: number, left: number, width = 40, height = 20): DOMRect => ({
     top,

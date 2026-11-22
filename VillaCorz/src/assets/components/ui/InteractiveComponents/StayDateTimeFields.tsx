@@ -1,10 +1,12 @@
 import { useId, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
+    addPhtDays,
     DEFAULT_CHECK_IN_TIME,
     formatPaidDays,
     formatStayDateTime,
     getStayWindow,
+    isPastCheckIn,
     MAX_PAID_DAYS,
     MIN_PAID_DAYS,
     OCCUPANCY_HOURS,
@@ -12,7 +14,7 @@ import {
     paidDaysFromCheckoutDate,
     PAID_DAY_HINT,
     phtDateKey,
-    phtToday,
+    splitPhtDateTime,
     type StayDateFields,
 } from '../../../../lib/stayDateTime'
 
@@ -88,13 +90,26 @@ const StayDateTimeFields = ({
     const unavailableSet = new Set(unavailableDates)
     const isUnavailable = (value: string) => unavailableSet.has(value)
     const stayWindow = getStayWindow(fields)
-    const message = error || rangeError || stayWindow.error
-    const today = phtToday()
-    const referenceDate = fields.checkInDate && fields.checkInDate >= today
-        ? fields.checkInDate
+    const message =
+        error ||
+        rangeError ||
+        (isPastCheckIn(fields)
+            ? 'Check-in time has passed. Choose a later date or time.'
+            : '') ||
+        stayWindow.error
+    const nowInPht = splitPhtDateTime(new Date().toISOString())
+    const today = nowInPht.date
+    const minDate = isPastCheckIn({
+        checkInDate: today,
+        checkInTime: fields.checkInTime || DEFAULT_CHECK_IN_TIME,
+    })
+        ? addPhtDays(today, 1)
         : today
+    const referenceDate = fields.checkInDate && fields.checkInDate >= minDate
+        ? fields.checkInDate
+        : minDate
     const calendarMonth = addMonths(monthStart(referenceDate), monthOffset)
-    const minMonth = monthStart(today)
+    const minMonth = monthStart(minDate)
     const months = compact
         ? [calendarMonth]
         : [calendarMonth, addMonths(calendarMonth, 1)]
@@ -224,7 +239,7 @@ const StayDateTimeFields = ({
             aria-labelledby={compact ? undefined : 'stay-datetime-heading'}
             className={
                 compact
-                    ? `min-w-0 font-poppins ${scrollable ? 'max-h-[70vh] overflow-y-auto pr-1' : ''}`
+                    ? `min-w-0 font-poppins ${scrollable ? 'booking-scrollbar max-h-[min(38svh,300px)] overflow-y-auto pr-0.5' : ''}`
                     : 'rounded-2xl border border-[#d7e6ff] bg-[#f5f9ff] p-4 font-poppins shadow-[0_10px_30px_rgba(8,117,249,0.08)] sm:p-5'
             }
         >
@@ -241,21 +256,24 @@ const StayDateTimeFields = ({
                 </>
             )}
 
-            <div className="mt-3">
+            <div className={compact ? 'mt-2' : 'mt-3'}>
                 <div className="flex items-center justify-between">
                     <button
                         type="button"
                         onClick={() => setMonthOffset((offset) => offset - 1)}
                         disabled={calendarMonth <= minMonth}
                         aria-label="Previous month"
-                        className="flex size-11 items-center justify-center rounded-full text-slate-600 transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:opacity-30"
+                        className={`flex items-center justify-center rounded-full text-slate-600 transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:opacity-30 ${compact ? 'size-8 sm:size-9 md:size-8' : 'size-11'}`}
                     >
-                        <ChevronLeft className="size-5" aria-hidden="true" />
+                        <ChevronLeft
+                            className={compact ? 'size-4' : 'size-5'}
+                            aria-hidden="true"
+                        />
                     </button>
                     <p
                         id={stagePromptId}
                         aria-live="polite"
-                        className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs lg:text-sm"
+                        className={`font-semibold uppercase tracking-[0.14em] text-slate-500 ${compact ? 'text-[10px] sm:text-[11px] md:text-[10px]' : 'text-xs sm:text-sm'}`}
                     >
                         {stagePrompt}
                     </p>
@@ -263,31 +281,36 @@ const StayDateTimeFields = ({
                         type="button"
                         onClick={() => setMonthOffset((offset) => offset + 1)}
                         aria-label="Next month"
-                        className="flex size-11 items-center justify-center rounded-full text-slate-600 transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                        className={`flex items-center justify-center rounded-full text-slate-600 transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] ${compact ? 'size-8 sm:size-9 md:size-8' : 'size-11'}`}
                     >
-                        <ChevronRight className="size-5" aria-hidden="true" />
+                        <ChevronRight
+                            className={compact ? 'size-4' : 'size-5'}
+                            aria-hidden="true"
+                        />
                     </button>
                 </div>
 
                 <div
-                    className={`mt-2 grid gap-4 ${
-                        compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'
+                    className={`mt-2 grid ${
+                        compact
+                            ? 'grid-cols-1 gap-2'
+                            : 'grid-cols-1 gap-4 sm:grid-cols-2'
                     }`}
                 >
                     {months.map((month) => (
                         <div key={month.toISOString()}>
-                            <h3 className="mb-2 text-center font-jakarta text-xs font-semibold text-slate-700 sm:text-sm">
+                            <h3 className={`mb-1.5 text-center font-jakarta font-semibold text-slate-700 ${compact ? 'text-[11px] sm:text-xs md:text-[11px]' : 'text-xs sm:text-sm'}`}>
                                 {monthLabel(month)}
                             </h3>
                             <div
-                                className="grid grid-cols-7 gap-y-1 text-center"
+                                className={`grid grid-cols-7 text-center ${compact ? 'gap-y-0.5' : 'gap-y-1'}`}
                                 aria-describedby={stagePromptId}
                             >
                                 {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(
                                     (day) => (
                                         <span
                                             key={day}
-                                            className="py-1 text-xs font-medium text-slate-500 sm:text-sm"
+                                            className={`py-0.5 font-medium text-slate-500 ${compact ? 'text-[10px]' : 'text-xs sm:text-sm'}`}
                                         >
                                             {day}
                                         </span>
@@ -309,7 +332,7 @@ const StayDateTimeFields = ({
                                             day.value < rangeEnd,
                                     )
                                     const unavailable = isUnavailable(day.value)
-                                    const disabled = day.value < today || unavailable
+                                    const disabled = day.value < minDate || unavailable
 
                                     return (
                                         <button
@@ -319,7 +342,7 @@ const StayDateTimeFields = ({
                                             onClick={() => selectDate(day.value)}
                                             aria-label={`${dayLabel(day.value)}${unavailable ? ', unavailable' : ''}`}
                                             aria-pressed={selected && !unavailable}
-                                            className={`mx-auto flex size-9 items-center justify-center rounded-md font-jakarta text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:text-slate-300 sm:size-10 sm:text-sm lg:size-11 ${
+                                            className={`mx-auto flex items-center justify-center rounded-md font-jakarta transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:text-slate-300 ${compact ? 'size-7 text-[11px] sm:size-8 sm:text-xs md:size-7 md:text-[11px]' : 'size-8 text-xs sm:size-9 sm:text-sm'} ${
                                                 unavailable
                                                     ? 'bg-slate-300 text-slate-500 line-through'
                                                     : selected
@@ -340,7 +363,7 @@ const StayDateTimeFields = ({
                     ))}
                 </div>
 
-                <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 border-b border-[#d7e6ff] pb-3 text-xs text-slate-600 sm:text-sm">
+                <div className={`flex flex-wrap border-b border-[#d7e6ff] text-slate-600 ${compact ? 'mt-2 gap-x-2 gap-y-0.5 pb-2 text-[10px] sm:text-[11px] md:text-[10px]' : 'mt-3 gap-x-3 gap-y-1 pb-3 text-xs sm:text-sm'}`}>
                     <span className="inline-flex items-center gap-1">
                         <span className="size-2.5 rounded-sm border border-slate-300" />
                         Weekday
@@ -365,18 +388,16 @@ const StayDateTimeFields = ({
             </div>
 
             <div
-                className={`mt-3 grid gap-3 ${
-                    compact ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'
-                }`}
+                className={`grid ${compact ? 'mt-2 grid-cols-2 gap-2' : 'mt-3 grid-cols-1 gap-3 sm:grid-cols-2'}`}
             >
                 <div>
-                    <label htmlFor={checkInDateId} className="booking-field-label">
+                    <label htmlFor={checkInDateId} className={`booking-field-label ${compact ? 'text-[11px] sm:text-xs md:text-[11px]' : ''}`}>
                         Check-in date
                     </label>
                     <input
                         id={checkInDateId}
                         type="date"
-                        min={today}
+                        min={minDate}
                         aria-invalid={Boolean(
                             fields.checkInDate &&
                                 isUnavailable(fields.checkInDate),
@@ -385,16 +406,19 @@ const StayDateTimeFields = ({
                         onChange={(event) =>
                             updateFields({ checkInDate: event.target.value })
                         }
-                        className="booking-input"
+                        className={`booking-input ${compact ? 'min-h-9 px-2 py-1 text-base sm:text-sm md:text-xs' : ''}`}
                     />
                 </div>
                 <div>
-                    <label htmlFor={checkInTimeId} className="booking-field-label">
+                    <label htmlFor={checkInTimeId} className={`booking-field-label ${compact ? 'text-[11px] sm:text-xs md:text-[11px]' : ''}`}>
                         Check-in time
                     </label>
                     <input
                         id={checkInTimeId}
                         type="time"
+                        min={
+                            fields.checkInDate === today ? nowInPht.time : undefined
+                        }
                         value={fields.checkInTime || DEFAULT_CHECK_IN_TIME}
                         onChange={(event) =>
                             updateFields({
@@ -403,18 +427,18 @@ const StayDateTimeFields = ({
                             })
                         }
                         aria-describedby={timeHintId}
-                        className="booking-input"
+                        className={`booking-input ${compact ? 'min-h-9 px-2 py-1 text-base sm:text-sm md:text-xs' : ''}`}
                     />
                 </div>
             </div>
 
-            <div className="mt-3 border-t border-[#d7e6ff] pt-3">
-                <span id={checkoutLabelId} className="booking-field-label">
+            <div className={compact ? 'mt-2 border-t border-[#d7e6ff] pt-2' : 'mt-3 border-t border-[#d7e6ff] pt-3'}>
+                <span id={checkoutLabelId} className={`booking-field-label ${compact ? 'text-[11px] sm:text-xs md:text-[11px]' : ''}`}>
                     Check-out (derived)
                 </span>
                 <div
                     aria-labelledby={checkoutLabelId}
-                    className="booking-input flex min-h-11 items-center font-jakarta text-slate-800"
+                    className={`booking-input flex items-center font-jakarta text-slate-800 ${compact ? 'min-h-9 px-2 py-1 text-xs sm:text-sm md:text-xs' : 'min-h-11'}`}
                 >
                     {stayWindow.valid
                         ? formatStayDateTime(stayWindow.checkOut)
@@ -424,20 +448,20 @@ const StayDateTimeFields = ({
 
             <p
                 id={timeHintId}
-                className="mt-2 text-[13px] leading-relaxed text-slate-500 sm:text-sm"
+                className={`leading-relaxed text-slate-500 ${compact ? 'mt-1.5 text-[11px] sm:text-xs md:text-[11px]' : 'mt-2 text-[13px] sm:text-sm'}`}
             >
                 PHT (UTC+8) · 24-hour HH:MM in the check-in field
             </p>
-            <p className="mt-1 text-[13px] leading-relaxed text-slate-500 sm:text-sm">
+            <p className={`leading-relaxed text-slate-500 ${compact ? 'mt-0.5 text-[11px] sm:text-xs md:text-[11px]' : 'mt-1 text-[13px] sm:text-sm'}`}>
                 {PAID_DAY_HINT}
             </p>
 
             {message ? (
-                <p role="status" className="mt-3 text-[13px] leading-relaxed text-rose-600 sm:text-sm">
+                <p role="status" className={`leading-relaxed text-rose-600 ${compact ? 'mt-2 text-[11px] sm:text-xs md:text-[11px]' : 'mt-3 text-[13px] sm:text-sm'}`}>
                     {message}
                 </p>
             ) : (
-                <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 font-jakarta text-[13px] leading-relaxed text-slate-600 sm:text-sm">
+                <p className={`rounded-lg bg-white/70 font-jakarta leading-relaxed text-slate-600 ${compact ? 'mt-2 px-2 py-1.5 text-[11px] sm:text-xs md:text-[11px]' : 'mt-3 px-3 py-2 text-[13px] sm:text-sm'}`}>
                     {formatStayDateTime(stayWindow.checkIn)} → {formatStayDateTime(stayWindow.checkOut)}
                     <br />
                     {formatPaidDays(stayWindow.paidDays)} · {OCCUPANCY_HOURS}h

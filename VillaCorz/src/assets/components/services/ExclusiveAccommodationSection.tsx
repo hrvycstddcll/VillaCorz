@@ -33,17 +33,17 @@ export function ExclusiveAccommodationSection({
         return (
             <section
                 aria-labelledby="exclusive-title"
-                className="mb-8 sm:mb-11"
+                className="mb-8 sm:mb-11 md:mb-7"
                 aria-busy="true"
             >
                 <div className="mb-3">
                     <h2
                         id="exclusive-title"
-                        className="text-base font-bold text-[#171717] sm:text-lg"
+                        className="text-base font-bold text-[#171717] sm:text-lg md:text-base"
                     >
                         Whole villa
                     </h2>
-                    <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
+                    <p className="mt-0.5 text-xs text-slate-500 sm:text-sm md:text-xs">
                         Choose the whole villa in the booking panel to reserve it for your group.
                     </p>
                 </div>
@@ -51,7 +51,7 @@ export function ExclusiveAccommodationSection({
                     <span className="sr-only">Loading whole villa.</span>
                     <div aria-hidden="true">
                         <div className="relative overflow-hidden rounded-xl shadow-md ring-1 ring-slate-100">
-                            <div className="relative h-48 w-full overflow-hidden bg-slate-100 sm:h-64 lg:h-72">
+                            <div className="relative h-48 w-full overflow-hidden bg-slate-100 sm:h-64 md:h-56 lg:h-72">
                                 <div className="absolute inset-0 animate-pulse bg-slate-200/70 motion-reduce:animate-none" />
                                 <div className="absolute inset-x-0 bottom-0 flex h-[42%] items-end justify-between gap-2 bg-gradient-to-t from-slate-900/15 via-slate-900/5 to-transparent px-2 pb-1 pt-1 sm:px-2.5">
                                     <div className="absolute left-0 top-0 h-14 w-[34%] min-w-40 animate-pulse bg-white/80 motion-reduce:animate-none sm:h-16 sm:min-w-48" />
@@ -70,7 +70,7 @@ export function ExclusiveAccommodationSection({
                             {Array.from({ length: 3 }).map((_, index) => (
                                 <div
                                     key={index}
-                                    className="h-14 w-20 animate-pulse rounded-lg bg-slate-200 motion-reduce:animate-none sm:h-16 sm:w-24"
+                                    className="h-14 w-20 animate-pulse rounded-lg bg-slate-200 motion-reduce:animate-none sm:h-16 sm:w-24 md:h-14 md:w-20"
                                 />
                             ))}
                         </div>
@@ -83,12 +83,12 @@ export function ExclusiveAccommodationSection({
     if (!stay) return null
 
     return (
-        <section aria-labelledby="exclusive-title" className="mb-8 sm:mb-11">
+        <section aria-labelledby="exclusive-title" className="mb-8 sm:mb-11 md:mb-7">
             <div className="mb-3">
-                <h2 id="exclusive-title" className="text-base font-bold text-[#171717] sm:text-lg">
+                <h2 id="exclusive-title" className="text-base font-bold text-[#171717] sm:text-lg md:text-base">
                     Whole villa
                 </h2>
-                <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
+                <p className="mt-0.5 text-xs text-slate-500 sm:text-sm md:text-xs">
                     Choose the whole villa in the booking panel to reserve it for your group.
                 </p>
             </div>
@@ -102,7 +102,7 @@ export function ExclusiveAccommodationSection({
                 onSelect={() => onSelectStay(stay)}
                 onSelectPhoto={onSelectPhoto}
             />
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#d7e6ff] bg-[#f5f9ff] px-3 py-2">
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#d7e6ff] bg-[#f5f9ff] px-3 py-2 md:px-2.5 md:py-1.5">
                 <span
                     className={`inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold ${
                         isReservationSelected

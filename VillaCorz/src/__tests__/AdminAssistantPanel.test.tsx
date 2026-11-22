@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import AdminAssistantPanel from './assets/components/admin/AdminAssistantPanel'
-import { sendAssistantMessage } from './services/assistantService'
+import AdminAssistantPanel from '../assets/components/admin/AdminAssistantPanel'
+import { sendAssistantMessage } from '../services/assistantService'
 
-vi.mock('./services/assistantService', () => ({
+vi.mock('../services/assistantService', () => ({
     sendAssistantMessage: vi.fn(),
 }))
 

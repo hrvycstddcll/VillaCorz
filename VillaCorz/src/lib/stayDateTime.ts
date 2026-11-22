@@ -53,6 +53,23 @@ export const phtDateTimeToIso = (date: string, time: string) => {
     return Number.isFinite(parsed) ? new Date(parsed).toISOString() : ''
 }
 
+export const isPastInstant = (iso: string, nowMs = Date.now()) => {
+    const instant = Date.parse(iso)
+    return Number.isFinite(instant) && instant < nowMs
+}
+
+export const isPastCheckIn = (
+    fields: Pick<StayDateFields, 'checkInDate' | 'checkInTime'>,
+    nowMs = Date.now(),
+) =>
+    isPastInstant(
+        phtDateTimeToIso(
+            fields.checkInDate,
+            fields.checkInTime || DEFAULT_CHECK_IN_TIME,
+        ),
+        nowMs,
+    )
+
 export const addPhtDays = (date: string, amount: number) => {
     const parsed = Date.parse(`${date}T00:00:00Z`)
     if (!date || !Number.isFinite(parsed)) return ''

@@ -4,6 +4,7 @@ import ServicesFooter, {
     type RoomGuests,
 } from '../ui/InteractiveComponents/ServicesFooter'
 import BookingCalendarPanel from '../ui/InteractiveComponents/BookingCalendarPanel'
+import HomeAvailabilityPanel from '../ui/InteractiveComponents/HomeAvailabilityPanel'
 import ServiceReviews from '../ui/InteractiveComponents/ServiceReviews'
 import { money } from '../../../lib/format'
 import { getReservationPrice } from '../../../lib/reservation'
@@ -12,6 +13,7 @@ import {
     formatPaidDays,
     formatStayDateTime,
     getStayWindow,
+    isPastInstant,
     paidDayStartDates,
     PAID_DAY_HINT,
     phtToday,
@@ -20,6 +22,7 @@ import {
 import {
     getAvailabilityForRange,
     getBlockedDates,
+    wholeVillaIsBooked,
 } from '../../../services/availabilityService'
 import { getServices } from '../../../services/serviceService'
 import type { Service } from '../../../services/types'
@@ -175,6 +178,8 @@ export default function Services({
         [exclusiveService],
     )
 
+    const exclusiveServiceId = exclusiveService?.id ?? null
+
     if (exclusiveStay && selectedStay === null) {
         setSelectedStay(exclusiveStay)
         setActivePhoto(exclusiveStay.image)
@@ -248,6 +253,15 @@ export default function Services({
             return
         }
 
+        if (isPastInstant(checkIn)) {
+            setAvailabilityByServiceId({})
+            setAvailabilityError(
+                'Check-in time has passed. Choose a later date or time.',
+            )
+            setCheckingAvailability(false)
+            return
+        }
+
         const controller = new AbortController()
 
         const timer = window.setTimeout(() => {
@@ -255,9 +269,15 @@ export default function Services({
             getAvailabilityForRange(checkIn, paidDays, controller.signal)
                 .then((response) => {
                     if (requestId !== availabilityRequestRef.current) return
+                    const rooms = response.data.data.rooms
                     const next: Record<number, boolean> = {}
-                    for (const room of response.data.data.rooms) {
+                    for (const room of rooms) {
                         next[room.id] = room.available
+                    }
+                    if (wholeVillaIsBooked(rooms, exclusiveServiceId)) {
+                        for (const choice of roomChoices) {
+                            next[Number(choice.id)] = false
+                        }
                     }
                     setAvailabilityByServiceId(next)
                     setAvailabilityError('')
@@ -266,8 +286,13 @@ export default function Services({
                     if (isAbortError(error)) return
                     if (requestId !== availabilityRequestRef.current) return
                     setAvailabilityByServiceId({})
+                    const status = (
+                        error as { response?: { status?: number } }
+                    ).response?.status
                     setAvailabilityError(
-                        'Unable to verify room availability right now. Please try again.',
+                        status === 422
+                            ? 'Check-in time has passed. Choose a later date or time.'
+                            : 'Unable to verify room availability right now. Please try again.',
                     )
                 })
                 .finally(() => {
@@ -281,7 +306,15 @@ export default function Services({
             window.clearTimeout(timer)
             controller.abort()
         }
-    }, [checkIn, paidDays, reservationOnly, services, stayWindow.valid])
+    }, [
+        checkIn,
+        exclusiveServiceId,
+        paidDays,
+        reservationOnly,
+        roomChoices,
+        services,
+        stayWindow.valid,
+    ])
 
     const hasDates = stayWindow.valid
     const unavailableRoomIds = useMemo(
@@ -479,7 +512,12 @@ export default function Services({
 
             return [...current, { stayId: stay.id, adults: 2, kids: 0 }]
         })
-        showNotice(`${stay.title} added. Choose your dates next.`, 'success')
+        showNotice(
+            bookingOnly
+                ? `${stay.title} added. Check availability to edit your booking.`
+                : `${stay.title} added. Choose your dates next.`,
+            'success',
+        )
     }
 
     const removeStayFromBooking = (stay: Stay) => {
@@ -500,7 +538,11 @@ export default function Services({
 
     const handleCheckAvailability = () => {
         if (!hasSelectedRooms) {
-            showNotice('Choose a room before choosing dates.')
+            showNotice(
+                bookingOnly
+                    ? 'Choose an available room above first.'
+                    : 'Choose a room before choosing dates.',
+            )
             return
         }
 
@@ -575,14 +617,14 @@ export default function Services({
             />
         )}
         {!bookingOnly && !reservationOnly && (
-        <main className="min-h-svh overflow-x-clip bg-white px-4 pb-32 pt-24 font-poppins sm:px-7 sm:pt-28 lg:pb-12">
-            <div className="mx-auto grid max-w-7xl items-start gap-7 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch lg:gap-9">
+        <main className="min-h-svh overflow-x-clip bg-white px-4 pb-32 pt-24 font-poppins sm:px-7 sm:pt-28 md:px-5 md:pb-28 md:pt-20 lg:pb-12">
+            <div className="mx-auto grid max-w-7xl items-start gap-7 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)] md:gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch lg:gap-9">
                 <div className="relative min-w-0 lg:self-stretch">
                     <div
                         aria-hidden="true"
                         className="pointer-events-none absolute -top-28 -bottom-12 -left-[100vw] right-0 hidden bg-[#006dfc] lg:block"
                     />
-                    <div className="relative space-y-4 lg:py-6 lg:pr-6 lg:pl-4">
+                    <div className="relative space-y-4 md:space-y-3 md:py-4 md:pr-4 md:pl-2 lg:py-6 lg:pr-6 lg:pl-4">
                     <BookingCalendarPanel
                         fields={stayFields}
                         hasSelectedRooms={hasSelectedRooms}
@@ -604,16 +646,16 @@ export default function Services({
 
                     <section
                         aria-labelledby="selected-stays-heading"
-                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)]"
+                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)] md:p-3"
                     >
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                                <p className="font-poppins text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs lg:text-sm">
+                                <p className="font-poppins text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs md:text-[11px] lg:text-sm">
                                     Your stay
                                 </p>
                                 <h2
                                     id="selected-stays-heading"
-                                    className="mt-1 font-jakarta text-sm font-semibold tracking-[-0.01em] text-slate-950 sm:text-base"
+                                    className="mt-1 font-jakarta text-sm font-semibold tracking-[-0.01em] text-slate-950 sm:text-base md:text-sm"
                                 >
                                     {assignedRooms.length === 1
                                         ? '1 room in this stay'
@@ -622,16 +664,16 @@ export default function Services({
                             </div>
                             <span
                                 aria-hidden="true"
-                                className="shrink-0 border-b-2 border-[#006dfc] pb-0.5 font-jakarta text-xs font-semibold tabular-nums text-[#006dfc] sm:text-sm"
+                                className="shrink-0 border-b-2 border-[#006dfc] pb-0.5 font-jakarta text-xs font-semibold tabular-nums text-[#006dfc] sm:text-sm md:text-xs"
                             >
                                 {String(assignedRooms.length).padStart(2, '0')}
                             </span>
                         </div>
 
-                        <div className="mt-3 border-y border-slate-100 py-2.5">
+                        <div className="mt-3 border-y border-slate-100 py-2.5 md:mt-2 md:py-2">
                             {hasDates ? (
                                 <>
-                                    <p className="font-jakarta text-xs leading-relaxed text-slate-900 sm:text-sm">
+                                    <p className="font-jakarta text-xs leading-relaxed text-slate-900 sm:text-sm md:text-xs">
                                         {formatStayDateTime(checkIn, {
                                             month: 'short',
                                             day: 'numeric',
@@ -648,13 +690,13 @@ export default function Services({
                                             minute: '2-digit',
                                         })}
                                     </p>
-                                    <p className="mt-1 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                                    <p className="mt-1 font-poppins text-[13px] leading-relaxed sm:text-sm md:text-xs text-slate-500">
                                         {formatPaidDays(paidDays)} · {assignedGuestCount} guest
                                         {assignedGuestCount === 1 ? '' : 's'} · PHP
                                     </p>
                                 </>
                             ) : (
-                                <p className="font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                                <p className="font-poppins text-[13px] leading-relaxed sm:text-sm md:text-xs text-slate-500">
                                     Set your dates to see room pricing.
                                 </p>
                             )}
@@ -671,35 +713,35 @@ export default function Services({
                                     return (
                                         <li
                                             key={`${stay.id}-${index}`}
-                                            className="flex min-w-0 items-start gap-3 py-3"
+                                            className="flex min-w-0 items-start gap-3 py-3 md:gap-2 md:py-2"
                                         >
-                                            <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-[#eff6ff] font-jakarta text-xs font-semibold tabular-nums text-[#006dfc] ring-1 sm:text-sm ring-inset ring-[#d7e6ff]">
+                                            <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-[#eff6ff] font-jakarta text-xs font-semibold tabular-nums text-[#006dfc] ring-1 sm:text-sm md:text-xs ring-inset ring-[#d7e6ff]">
                                                 {String(index + 1).padStart(2, '0')}
                                             </span>
                                             <img
                                                 src={stay.image || wholeVilla}
                                                 alt=""
                                                 loading="lazy"
-                                                className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-inset ring-black/5"
+                                                className="size-12 shrink-0 rounded-lg object-cover ring-1 ring-inset ring-black/5 md:size-10"
                                             />
                                             <div className="min-w-0 flex-1">
-                                                <p className="break-words font-jakarta text-xs leading-relaxed text-slate-950 sm:text-sm">
+                                                <p className="break-words font-jakarta text-xs leading-relaxed text-slate-950 sm:text-sm md:text-xs">
                                                     {stay.title}
                                                 </p>
-                                                <p className="mt-1 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                                                <p className="mt-1 font-poppins text-[13px] leading-relaxed sm:text-sm md:text-xs text-slate-500">
                                                     {stay.category === 'exclusive'
                                                         ? 'Whole villa'
                                                         : 'Private room'}{' '}
                                                     · {guests} guest{guests === 1 ? '' : 's'}
                                                 </p>
                                                 {unavailableRoomIds.includes(stay.id) && (
-                                                    <p className="mt-1 font-poppins text-[13px] leading-relaxed text-rose-600 sm:text-sm">
+                                                    <p className="mt-1 font-poppins text-[13px] leading-relaxed text-rose-600 sm:text-sm md:text-xs">
                                                         Unavailable for these dates
                                                     </p>
                                                 )}
                                             </div>
                                             {lineTotal !== null && (
-                                                <strong className="shrink-0 font-jakarta text-xs font-semibold tabular-nums text-slate-900 sm:text-sm">
+                                                <strong className="shrink-0 font-jakarta text-xs font-semibold tabular-nums text-slate-900 sm:text-sm md:text-xs">
                                                     {money(lineTotal)}
                                                 </strong>
                                             )}
@@ -708,13 +750,13 @@ export default function Services({
                                 })}
                             </ol>
                         ) : (
-                            <p className="mt-3 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                            <p className="mt-3 font-poppins text-[13px] leading-relaxed sm:text-sm md:text-xs text-slate-500">
                                 Rooms you add from the list will appear here.
                             </p>
                         )}
 
                         {assignedRooms.length > 3 && (
-                            <p className="pt-2 font-poppins text-xs text-slate-500 sm:text-sm">
+                            <p className="pt-2 font-poppins text-xs text-slate-500 sm:text-sm md:text-xs">
                                 +{assignedRooms.length - 3} more rooms in this stay
                             </p>
                         )}
@@ -723,20 +765,20 @@ export default function Services({
                             <div className="mt-1 border-t border-slate-100 pt-3" aria-live="polite">
                                 <div className="flex items-end justify-between gap-3">
                                     <div className="min-w-0">
-                                        <p className="font-poppins text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs lg:text-sm">
+                                        <p className="font-poppins text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs md:text-[11px] lg:text-sm">
                                             Estimated total
                                         </p>
-                                        <p className="mt-1 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                                        <p className="mt-1 font-poppins text-[13px] leading-relaxed sm:text-sm md:text-xs text-slate-500">
                                             {bookingSummary.lines} room
                                             {bookingSummary.lines === 1 ? '' : 's'} · {assignedGuestCount} guest
                                             {assignedGuestCount === 1 ? '' : 's'}
                                         </p>
                                     </div>
-                                    <strong className="shrink-0 font-jakarta text-xl font-semibold tracking-[-0.02em] tabular-nums text-[#006dfc]">
+                                    <strong className="shrink-0 font-jakarta text-xl font-semibold tracking-[-0.02em] tabular-nums text-[#006dfc] md:text-lg">
                                         {money(bookingSummary.total)}
                                     </strong>
                                 </div>
-                                <p className="mt-2 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-400">
+                                <p className="mt-2 font-poppins text-[13px] leading-relaxed sm:text-sm md:text-xs text-slate-400">
                                     Final amount is confirmed on the reservation page.
                                 </p>
                             </div>
@@ -745,23 +787,23 @@ export default function Services({
 
                     <section
                         aria-labelledby="booking-guide-heading"
-                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)]"
+                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.04)] md:p-3"
                     >
                         <div className="flex items-center justify-between gap-3">
-                            <p className="font-poppins text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs lg:text-sm">
+                            <p className="font-poppins text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs md:text-[11px] lg:text-sm">
                                 How it works
                             </p>
-                            <p className="font-poppins text-xs font-semibold text-[#006dfc] sm:text-sm">
+                            <p className="font-poppins text-xs font-semibold text-[#006dfc] sm:text-sm md:text-xs">
                                 2 steps
                             </p>
                         </div>
                         <h2 id="booking-guide-heading" className="sr-only">
                             Booking guide
                         </h2>
-                        <p className="mt-2 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                        <p className="mt-2 font-poppins text-[13px] leading-relaxed sm:text-sm md:text-xs text-slate-500">
                             Choose rooms first — dates appear after your first room.
                         </p>
-                        <ul className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+                        <ul className="mt-3 space-y-3 border-t border-slate-100 pt-3 md:mt-2 md:space-y-2 md:pt-2">
                             {[
                                 {
                                     title: 'Pick your rooms',
@@ -784,10 +826,10 @@ export default function Services({
                                         aria-hidden="true"
                                     />
                                     <div className="min-w-0">
-                                        <p className="font-jakarta text-xs font-semibold tracking-[-0.01em] text-slate-950 sm:text-sm">
+                                        <p className="font-jakarta text-xs font-semibold tracking-[-0.01em] text-slate-950 sm:text-sm md:text-xs">
                                             {step.title}
                                         </p>
-                                        <p className="mt-0.5 font-poppins text-[13px] leading-relaxed sm:text-sm text-slate-500">
+                                        <p className="mt-0.5 font-poppins text-[13px] leading-relaxed sm:text-sm md:text-xs text-slate-500">
                                             {step.description}
                                         </p>
                                     </div>
@@ -797,7 +839,7 @@ export default function Services({
                     </section>
                     </div>
                 </div>
-                <div className="min-w-0 lg:py-6" inert={isBookingPanelOpen}>
+                <div className="min-w-0 md:py-4 lg:py-6" inert={isBookingPanelOpen}>
                 {isRoomDetailOpen && selectedStay ? (
                     <>
                         <RoomDetailView
@@ -828,17 +870,17 @@ export default function Services({
                     </>
                 ) : (
                     <>
-                <header className="mb-7 sm:mb-9">
+                <header className="mb-7 sm:mb-9 md:mb-5">
                     <div>
-                        <h1 className="font-jakarta text-xl font-bold leading-[1.2] tracking-[-0.02em] text-[#171717] sm:text-2xl lg:text-3xl">
+                        <h1 className="font-jakarta text-xl font-bold leading-[1.2] tracking-[-0.02em] text-[#171717] sm:text-2xl md:text-xl lg:text-3xl">
                             Choose your stay
                         </h1>
-                        <p className="mt-1.5 max-w-2xl font-poppins text-[13px] leading-relaxed text-slate-500 sm:text-sm lg:text-base">
+                        <p className="mt-1.5 max-w-2xl font-poppins text-[13px] leading-relaxed text-slate-500 sm:text-sm md:text-xs lg:text-base">
                             Add a private room or choose the whole villa. Dates appear after your first room, in PHT.
                         </p>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-2" aria-label="Filter accommodation">
+                    <div className="mt-4 flex flex-wrap gap-2 md:mt-3 md:gap-1.5" aria-label="Filter accommodation">
                         {[
                             { value: 'all', label: 'All' },
                             { value: 'public', label: 'Private rooms' },
@@ -849,7 +891,7 @@ export default function Services({
                                 type="button"
                                 onClick={() => setActiveFilter(value as 'all' | StayCategory)}
                                 aria-pressed={activeFilter === value}
-                                className={`min-h-11 rounded-full border px-4 py-2 font-poppins text-[13px] font-medium shadow-sm transition sm:text-sm lg:text-base ${
+                                className={`min-h-11 rounded-full border px-4 py-2 font-poppins text-[13px] font-medium shadow-sm transition sm:text-sm md:min-h-10 md:px-3 md:py-1.5 md:text-xs lg:text-base ${
                                     activeFilter === value
                                         ? 'border-[#006dfc] bg-[#006dfc] text-white'
                                         : 'border-slate-300/80 bg-white/75 text-slate-700 backdrop-blur-md hover:border-[#006dfc]/50 hover:text-[#006dfc]'
@@ -910,7 +952,7 @@ export default function Services({
                 aria-live="polite"
                 className="mx-auto mt-24 max-w-7xl px-4 pt-6 font-poppins sm:px-7"
             >
-                <p className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 font-poppins text-[13px] text-blue-900 sm:text-sm lg:text-base">
+                <p className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 font-poppins text-[13px] text-blue-900 sm:text-sm md:text-xs lg:text-base">
                     <strong className="font-jakarta">Booking request:</strong>{' '}
                     {formatStayDateTime(incomingBooking.checkIn)}
                     {' – '}
@@ -929,6 +971,7 @@ export default function Services({
             <ServicesFooter
                 fields={stayFields}
                 hasSelectedRooms={hasSelectedRooms}
+                datesEnabled={bookingOnly}
                 onChange={updateStayFields}
                 checkIn={checkIn}
                 checkOut={checkOut}
@@ -944,6 +987,22 @@ export default function Services({
                 onUnavailableDate={handleUnavailableDate}
                 onCheckAvailability={handleCheckAvailability}
                 onBrowseRooms={() => navigate('/services')}
+                availabilityResults={
+                    bookingOnly && hasDates ? (
+                        <HomeAvailabilityPanel
+                            checkIn={checkIn}
+                            paidDays={paidDays}
+                            choices={roomChoices}
+                            availabilityByServiceId={availabilityByServiceId}
+                            selectedRoomIds={selectedRoomIds}
+                            checkingAvailability={checkingAvailability}
+                            availabilityError={availabilityError}
+                            roomsLoading={roomsLoading}
+                            roomsError={roomsError}
+                            onToggleRoom={toggleStayReservation}
+                        />
+                    ) : undefined
+                }
             />
         )}
         </>
