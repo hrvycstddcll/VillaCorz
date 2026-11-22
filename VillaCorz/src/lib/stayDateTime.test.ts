@@ -2,6 +2,7 @@ import {
     fieldsFromStay,
     formatPaidDays,
     getStayWindow,
+    isPastCheckIn,
     paidDayStartDates,
     paidDaysFromCheckoutDate,
     paidDaysFromStay,
@@ -47,6 +48,17 @@ describe('stayDateTime', () => {
         expect(window.checkOut).toBe('2026-11-20T22:00:00.000Z')
         expect(window.paidDays).toBe(1)
         expect(window.nights).toBe(1)
+    })
+
+    it('detects a check-in instant that has already passed', () => {
+        const fields = { checkInDate: '2026-11-22', checkInTime: '10:00' }
+
+        expect(
+            isPastCheckIn(fields, Date.parse('2026-11-22T01:59:59.000Z')),
+        ).toBe(false)
+        expect(
+            isPastCheckIn(fields, Date.parse('2026-11-22T02:00:01.000Z')),
+        ).toBe(true)
     })
 
     it('rejects paid days outside the supported range', () => {

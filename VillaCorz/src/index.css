@@ -421,6 +421,10 @@ html.modal-open .customer-assistant-floating:not([data-customer-assistant-dialog
   pointer-events: none;
 }
 
+html {
+  scroll-padding-bottom: var(--services-footer-height, 0px);
+}
+
 /* Anchored sections must clear the fixed navbar. */
 section[id] {
   scroll-margin-top: 6rem;

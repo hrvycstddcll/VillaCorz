@@ -25,20 +25,20 @@ export function PublicAccommodationSection({
 }) {
     const [showAllRooms, setShowAllRooms] = useState(false)
     const visibleRooms = showAllRooms ? rooms : rooms.slice(0, 4)
-    const roomGridClass = 'grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3'
+    const roomGridClass = 'grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 md:gap-3 xl:grid-cols-3'
 
     return (
         <section
             aria-labelledby="public-title"
-            className="mb-8 sm:mb-11"
+            className="mb-8 sm:mb-11 md:mb-7"
             aria-busy={loading}
         >
-            <div className="mb-3 flex items-end justify-between gap-4">
+            <div className="mb-3 flex items-end justify-between gap-4 md:mb-2 md:gap-3">
                 <div>
-                    <h2 id="public-title" className="text-base font-bold text-[#171717] sm:text-lg">
+                    <h2 id="public-title" className="text-base font-bold text-[#171717] sm:text-lg md:text-base">
                         Private rooms
                     </h2>
-                    <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
+                    <p className="mt-0.5 text-xs text-slate-500 sm:text-sm md:text-xs">
                         Add a room to your booking, then choose its guest count in the booking panel.
                     </p>
                 </div>
@@ -124,7 +124,7 @@ export function PublicAccommodationSection({
                     <button
                         type="button"
                         onClick={() => setShowAllRooms(true)}
-                        className="min-h-11 rounded-full bg-white px-5 py-2 text-sm text-slate-600 shadow-[0_4px_18px_rgba(15,23,42,0.12)] transition hover:text-[#006dfc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                        className="min-h-11 rounded-full bg-white px-5 py-2 text-sm text-slate-600 shadow-[0_4px_18px_rgba(15,23,42,0.12)] transition hover:text-[#006dfc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] md:min-h-10 md:px-4 md:py-1.5 md:text-xs"
                     >
                         Show more
                     </button>

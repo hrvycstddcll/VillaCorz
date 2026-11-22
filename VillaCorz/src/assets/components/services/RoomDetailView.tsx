@@ -29,37 +29,37 @@ export function RoomDetailView({
             <button
                 type="button"
                 onClick={onBack}
-                className="mb-3 inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-medium text-slate-600 transition-colors sm:text-sm lg:text-base hover:bg-white hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                className="mb-3 inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-medium text-slate-600 transition-colors sm:text-sm md:text-xs lg:text-base hover:bg-white hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
             >
                 Back to rooms
             </button>
-            <div className="grid overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_4px_18px_rgba(15,23,42,0.12)] md:grid-cols-[minmax(0,1.6fr)_minmax(260px,1fr)]">
+            <div className="grid overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_4px_18px_rgba(15,23,42,0.12)] md:grid-cols-[minmax(0,1.6fr)_minmax(220px,1fr)] lg:grid-cols-[minmax(0,1.6fr)_minmax(260px,1fr)]">
                 {selectedPhoto ? (
                     <img
                         src={selectedPhoto}
                         alt={`${stay.title} interior`}
-                        className="aspect-[1.65] h-full w-full object-cover md:aspect-auto md:min-h-[300px]"
+                        className="aspect-[1.65] h-full w-full object-cover md:aspect-auto md:min-h-[240px] lg:min-h-[300px]"
                     />
                 ) : (
-                    <div className="grid min-h-56 place-items-center bg-slate-100 text-xs text-slate-500 sm:text-sm md:min-h-[300px] lg:text-base">
+                    <div className="grid min-h-56 place-items-center bg-slate-100 text-xs text-slate-500 sm:text-sm md:min-h-[240px] md:text-xs lg:min-h-[300px] lg:text-base">
                         Photo unavailable
                     </div>
                 )}
-                <div className="flex min-w-0 flex-col p-4 sm:p-5">
+                <div className="flex min-w-0 flex-col p-4 sm:p-5 md:p-3.5">
                     <div>
                         <h2
                             id={titleId}
-                            className="font-jakarta text-xl font-bold leading-tight text-[#006dfc] sm:text-2xl lg:text-3xl"
+                            className="font-jakarta text-xl font-bold leading-tight text-[#006dfc] sm:text-2xl md:text-xl lg:text-3xl"
                         >
                             {stay.title}
                         </h2>
-                        <p className="mt-1 text-xs text-slate-600 sm:text-sm lg:text-base">
+                        <p className="mt-1 text-xs text-slate-600 sm:text-sm md:text-xs lg:text-base">
                             {stay.capacity}
                         </p>
                         {stay.pax != null &&
                             (stay.additionalHeadWeekdayPrice ?? 0) > 0 &&
                             (stay.additionalHeadWeekendPrice ?? 0) > 0 && (
-                                <p className="mt-1 text-[13px] leading-relaxed text-slate-500 sm:text-sm lg:text-base">
+                                <p className="mt-1 text-[13px] leading-relaxed text-slate-500 sm:text-sm md:text-xs lg:text-base">
                                     Additional guest:{' '}
                                     {money(
                                         stay.additionalHeadWeekdayPrice ?? 0,
@@ -75,10 +75,10 @@ export function RoomDetailView({
 
                     {hasAmenities && (
                         <div className="mt-4">
-                            <h3 className="font-jakarta text-sm font-semibold text-slate-700 sm:text-base lg:text-lg">
+                            <h3 className="font-jakarta text-sm font-semibold text-slate-700 sm:text-base md:text-sm lg:text-lg">
                                 Room Features
                             </h3>
-                            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-2 text-xs font-semibold text-emerald-700 sm:text-sm lg:text-base">
+                            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-2 text-xs font-semibold text-emerald-700 sm:text-sm md:text-xs lg:text-base">
                                 {stay.amenities.map((amenity, index) => {
                                     const icon = amenityIcon(amenity)
 
@@ -122,7 +122,7 @@ export function RoomDetailView({
                         </div>
                     )}
 
-                    <p className="mt-6 text-[13px] leading-relaxed text-slate-600 sm:text-sm lg:text-base">
+                    <p className="mt-6 text-[13px] leading-relaxed text-slate-600 sm:text-sm md:text-xs lg:text-base">
                         {stay.description}
                     </p>
 
@@ -130,7 +130,7 @@ export function RoomDetailView({
                         type="button"
                         onClick={onReserve}
                         disabled={isReservationSelected}
-                        className="mt-5 min-h-11 rounded-lg bg-[#006dfc] px-4 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:text-sm lg:text-base"
+                        className="mt-5 min-h-11 rounded-lg bg-[#006dfc] px-4 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:text-sm md:text-xs lg:text-base"
                     >
                         {isReservationSelected ? 'Added to booking' : 'Add to booking'}
                     </button>

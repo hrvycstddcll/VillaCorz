@@ -1,4 +1,12 @@
-import { useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
+import {
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+    type Dispatch,
+    type ReactNode,
+    type SetStateAction,
+} from 'react'
 import {
     CalendarDays,
     Check,
@@ -26,6 +34,15 @@ export type BookingRoomChoice = {
 }
 
 type BookingPopover = 'dates' | 'guests' | null
+
+const FOCUSABLE_SELECTOR = [
+    'button:not([disabled])',
+    '[href]',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"]):not([disabled])',
+].join(', ')
 
 type ServicesFooterProps = {
     fields: StayDateFields
@@ -72,6 +89,11 @@ const ServicesFooter = ({
 }: ServicesFooterProps) => {
     const [bookingPopover, setBookingPopover] = useState<BookingPopover>(null)
     const [isExpanded, setIsExpanded] = useState(false)
+    const footerRef = useRef<HTMLElement | null>(null)
+    const dateTriggerRef = useRef<HTMLButtonElement | null>(null)
+    const guestTriggerRef = useRef<HTMLButtonElement | null>(null)
+    const popoverRef = useRef<HTMLDivElement | null>(null)
+    const lastTriggerRef = useRef<HTMLButtonElement | null>(null)
 
     const adults = roomGuests.reduce((total, room) => total + room.adults, 0)
     const children = roomGuests.reduce((total, room) => total + room.kids, 0)
@@ -105,29 +127,137 @@ const ServicesFooter = ({
         )
     }
 
+    const closePopover = useCallback((restoreFocus = true) => {
+        setBookingPopover(null)
+        if (restoreFocus) {
+            lastTriggerRef.current?.focus({ preventScroll: true })
+        }
+        lastTriggerRef.current = null
+    }, [])
+
     const togglePopover = (popover: Exclude<BookingPopover, null>) => {
-        setBookingPopover((current) =>
-            current === popover ? null : popover,
-        )
+        if (bookingPopover === popover) {
+            closePopover()
+            return
+        }
+
+        lastTriggerRef.current =
+            popover === 'dates' ? dateTriggerRef.current : guestTriggerRef.current
+        setBookingPopover(popover)
     }
+
+    useEffect(() => {
+        const footer = footerRef.current
+        const root = document.documentElement
+        if (!footer) return
+
+        const updateScrollPadding = () => {
+            const height = Math.round(footer.getBoundingClientRect().height)
+            root.style.setProperty('--services-footer-height', `${height}px`)
+        }
+
+        updateScrollPadding()
+        const observer =
+            typeof ResizeObserver !== 'undefined'
+                ? new ResizeObserver(updateScrollPadding)
+                : null
+        observer?.observe(footer)
+        window.addEventListener('resize', updateScrollPadding)
+
+        return () => {
+            observer?.disconnect()
+            window.removeEventListener('resize', updateScrollPadding)
+            root.style.removeProperty('--services-footer-height')
+        }
+    }, [])
+
+    useEffect(() => {
+        if (!bookingPopover) return
+
+        const popover = popoverRef.current
+        if (!popover) return
+
+        const getFocusableItems = () =>
+            Array.from(popover.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+
+        popover.focus({ preventScroll: true })
+        popover.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.stopPropagation()
+                closePopover()
+                return
+            }
+
+            if (event.key !== 'Tab') return
+
+            const items = getFocusableItems()
+            if (items.length === 0) return
+
+            const first = items[0]
+            const last = items[items.length - 1]
+
+            if (!popover.contains(document.activeElement)) {
+                event.preventDefault()
+                first.focus()
+                return
+            }
+
+            if (
+                event.shiftKey &&
+                (document.activeElement === popover ||
+                    document.activeElement === first)
+            ) {
+                event.preventDefault()
+                last.focus()
+                return
+            }
+
+            if (!event.shiftKey && document.activeElement === popover) {
+                event.preventDefault()
+                first.focus()
+                return
+            }
+
+            if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault()
+                first.focus()
+            }
+        }
+
+        const handlePointerDown = (event: PointerEvent) => {
+            if (footerRef.current?.contains(event.target as Node)) return
+            closePopover(false)
+        }
+
+        document.addEventListener('keydown', handleKeyDown)
+        document.addEventListener('pointerdown', handlePointerDown)
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown)
+            document.removeEventListener('pointerdown', handlePointerDown)
+        }
+    }, [bookingPopover, closePopover])
 
     return (
         <footer
+            ref={footerRef}
             aria-label="Stay dates and guests"
             className="fixed inset-x-0 bottom-0 z-40 w-full bg-white px-0 pb-0 font-poppins shadow-[0_-6px_20px_rgba(15,23,42,0.10)]"
         >
             {availabilityResults && (
-                <div className="border-b border-slate-100 bg-white px-3 pt-2 sm:px-5 sm:pt-3">
+                <div className="border-b border-slate-100 bg-white px-2.5 pt-1.5 sm:px-4 sm:pt-2">
                     {availabilityResults}
                 </div>
             )}
-            <div className="grid w-full grid-cols-2 items-center gap-1.5 bg-white px-3 py-2 sm:gap-3 sm:px-5 sm:py-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(220px,0.8fr)] lg:gap-5">
+            <div className="grid w-full grid-cols-2 items-center gap-1 bg-white px-2.5 py-1.5 sm:gap-2 sm:px-4 sm:py-2 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(160px,0.8fr)] md:gap-2 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(190px,0.8fr)] lg:gap-4">
                 <div
-                    className={`relative col-span-2 min-w-0 lg:col-span-1 ${
-                        !isExpanded ? 'hidden lg:block' : ''
+                    className={`relative col-span-2 min-w-0 md:col-span-1 ${
+                        !isExpanded ? 'hidden md:block' : ''
                     }`}
                 >
                     <button
+                        ref={dateTriggerRef}
                         type="button"
                         aria-label={
                             datesEnabled
@@ -137,19 +267,19 @@ const ServicesFooter = ({
                         aria-haspopup="dialog"
                         aria-expanded={bookingPopover === 'dates'}
                         onClick={() => togglePopover('dates')}
-                        className="grid w-full min-w-0 grid-cols-[32px_minmax(0,1fr)_1px_minmax(0,1fr)_1px_40px] items-center gap-1.5 bg-[#f1f1f3] px-2 py-1.5 text-left sm:grid-cols-[40px_minmax(0,1fr)_1px_minmax(0,1fr)_1px_52px] sm:gap-2 sm:px-3 sm:py-2"
+                        className="grid min-h-10 w-full min-w-0 grid-cols-[28px_minmax(0,1fr)_1px_minmax(0,1fr)_1px_36px] items-center gap-1 bg-[#f1f1f3] px-2 py-1 text-left sm:grid-cols-[34px_minmax(0,1fr)_1px_minmax(0,1fr)_1px_44px] sm:gap-1.5 sm:px-2.5 sm:py-1.5 md:min-h-10"
                     >
-                        <span className="flex size-8 items-center justify-center rounded-full bg-[#006dfc] text-white sm:size-10">
+                        <span className="flex size-7 items-center justify-center rounded-full bg-[#006dfc] text-white sm:size-9 md:size-8">
                             <CalendarDays
-                                className="size-4 sm:size-5"
+                                className="size-3.5 sm:size-4"
                                 aria-hidden="true"
                             />
                         </span>
                         <span className="min-w-0">
-                            <span className="block text-[11px] leading-relaxed text-slate-600 sm:text-xs">
+                            <span className="block text-[10px] leading-snug text-slate-600 sm:text-xs md:text-[11px]">
                                 Check-in
                             </span>
-                            <span className="block truncate font-jakarta text-xs font-semibold leading-relaxed text-slate-700 sm:text-sm">
+                            <span className="block truncate font-jakarta text-xs font-semibold leading-snug text-slate-700 sm:text-sm">
                                 {formatStayDateTime(checkIn, {
                                     month: 'short',
                                     day: 'numeric',
@@ -159,14 +289,14 @@ const ServicesFooter = ({
                             </span>
                         </span>
                         <span
-                            className="h-6 w-px bg-slate-400/70"
+                            className="h-5 w-px bg-slate-400/70"
                             aria-hidden="true"
                         />
                         <span className="min-w-0">
-                            <span className="block text-[11px] leading-relaxed text-slate-600 sm:text-xs">
+                            <span className="block text-[10px] leading-snug text-slate-600 sm:text-xs md:text-[11px]">
                                 Check-out
                             </span>
-                            <span className="block truncate font-jakarta text-xs font-semibold leading-relaxed text-slate-700 sm:text-sm">
+                            <span className="block truncate font-jakarta text-xs font-semibold leading-snug text-slate-700 sm:text-sm">
                                 {formatStayDateTime(checkOut, {
                                     month: 'short',
                                     day: 'numeric',
@@ -176,11 +306,11 @@ const ServicesFooter = ({
                             </span>
                         </span>
                         <span
-                            className="h-6 w-px bg-slate-400/70"
+                            className="h-5 w-px bg-slate-400/70"
                             aria-hidden="true"
                         />
                         <span className="min-w-0 text-center">
-                            <span className="block text-[11px] text-slate-600 sm:text-xs">
+                            <span className="block text-[10px] text-slate-600 sm:text-xs md:text-[11px]">
                                 Paid days
                             </span>
                             <span className="block font-jakarta text-xs font-bold text-slate-600 sm:text-sm">
@@ -190,13 +320,16 @@ const ServicesFooter = ({
                     </button>
                     {bookingPopover === 'dates' && (
                         <div
+                            ref={popoverRef}
+                            tabIndex={-1}
+                            data-lenis-prevent=""
                             role="dialog"
                             aria-label={
                                 datesEnabled
                                     ? 'Choose your stay date and time'
                                     : 'Choose a room first'
                             }
-                            className="absolute bottom-full left-0 z-50 mb-2 w-[min(94vw,460px)] rounded-lg border border-slate-200 bg-white p-3 shadow-xl sm:p-3.5"
+                            className="booking-scrollbar absolute bottom-full left-1/2 z-50 mb-2 max-h-[min(42svh,360px)] w-[min(92vw,380px)] -translate-x-1/2 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2.5 shadow-xl sm:p-3 md:left-0 md:max-h-[min(38svh,320px)] md:w-[min(54vw,360px)] md:translate-x-0"
                         >
                             {datesEnabled ? (
                                 <>
@@ -204,14 +337,15 @@ const ServicesFooter = ({
                                         fields={fields}
                                         onChange={onChange}
                                         compact
+                                        scrollable={false}
                                         unavailableDates={unavailableDates}
                                         onUnavailableDate={onUnavailableDate}
                                     />
-                                    <div className="mt-2 flex justify-end border-t border-slate-100 pt-2">
+                                    <div className="mt-1.5 flex justify-end border-t border-slate-100 pt-1.5">
                                         <button
                                             type="button"
-                                            onClick={() => setBookingPopover(null)}
-                                            className="rounded bg-[#006dfc] px-3 py-1.5 text-xs font-semibold text-white sm:text-sm hover:bg-[#005bd4]"
+                                            onClick={() => closePopover()}
+                                            className="inline-flex min-h-9 items-center justify-center rounded bg-[#006dfc] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#005bd4] sm:text-sm"
                                         >
                                             Done
                                         </button>
@@ -229,30 +363,31 @@ const ServicesFooter = ({
                 </div>
 
                 <div
-                    className={`relative min-w-0 ${
-                        !isExpanded ? 'hidden lg:block' : ''
+                    className={`relative col-span-2 min-w-0 md:col-span-1 ${
+                        !isExpanded ? 'hidden md:block' : ''
                     }`}
                 >
                     <button
+                        ref={guestTriggerRef}
                         type="button"
                         aria-label="Choose rooms, adults, and children"
                         aria-haspopup="dialog"
                         aria-expanded={bookingPopover === 'guests'}
                         onClick={() => togglePopover('guests')}
-                        className="flex w-full min-w-0 items-center gap-1.5 border-l border-slate-200 pl-1.5 text-left sm:gap-2.5 sm:pl-3"
+                        className="flex min-h-10 w-full min-w-0 items-center gap-1 border-l border-slate-200 pl-1.5 text-left sm:gap-2 sm:pl-2.5 md:min-h-10"
                     >
-                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#006dfc] text-white sm:size-10">
+                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#006dfc] text-white sm:size-9 md:size-8">
                             <UsersRound
-                                className="size-4 sm:size-5"
+                                className="size-3.5 sm:size-4"
                                 aria-hidden="true"
                             />
                         </span>
                         <span className="min-w-0">
-                            <span className="block text-[11px] text-slate-600 sm:text-xs">
+                            <span className="block text-[10px] text-slate-600 sm:text-xs md:text-[11px]">
                                 Persons
                             </span>
                             <span className="flex items-center gap-1">
-                                <span className="font-jakarta text-base font-bold leading-none text-slate-500 sm:text-xl lg:text-2xl">
+                                <span className="font-jakarta text-sm font-bold leading-none text-slate-500 sm:text-base md:text-sm">
                                     {adults}
                                 </span>
                                 <span className="block min-w-0 text-[10px] font-bold uppercase leading-4 text-slate-600 sm:text-[11px]">
@@ -266,11 +401,14 @@ const ServicesFooter = ({
                     </button>
                     {bookingPopover === 'guests' && (
                         <div
+                            ref={popoverRef}
+                            tabIndex={-1}
+                            data-lenis-prevent=""
                             role="dialog"
                             aria-label="Choose rooms and guests"
-                            className="absolute bottom-full right-0 z-50 mb-2 w-[min(92vw,300px)] rounded-lg border border-slate-200 bg-white p-3 shadow-xl"
+                            className="booking-scrollbar absolute bottom-full left-1/2 z-50 mb-2 max-h-[min(42svh,360px)] w-[min(90vw,360px)] -translate-x-1/2 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2.5 shadow-xl md:left-auto md:right-0 md:max-h-[min(38svh,320px)] md:w-[min(48vw,340px)] md:translate-x-0"
                         >
-                            <div className="max-h-[min(48svh,300px)] space-y-2 overflow-y-auto pr-1">
+                            <div className="space-y-1.5">
                                 {roomGuests.map((room, roomIndex) => {
                                     const roomTitle = roomChoices.find(
                                         (choice) => choice.id === room.stayId,
@@ -305,19 +443,19 @@ const ServicesFooter = ({
                                                     ? `Guests for ${roomTitle ?? 'selected room'}`
                                                     : 'Choose a room or villa for these guests'
                                             }
-                                            className={`rounded-lg border px-2 py-1.5 ${
+                                            className={`rounded-lg border px-2 py-1 ${
                                                 room.stayId
                                                     ? 'border-[#006dfc]/40 bg-blue-50/60'
                                                     : 'border-slate-200 bg-white'
                                             }`}
                                         >
-                                            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                            <div className="mb-0.5 flex flex-wrap items-center justify-between gap-1.5">
                                                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                                                     <h3 className="font-jakarta text-xs font-semibold text-slate-700 sm:text-sm">
                                                         Room {roomIndex + 1}
                                                     </h3>
                                                     {room.stayId ? (
-                                                        <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-[#006dfc]/10 px-2 py-0.5 text-[11px] font-medium text-[#006dfc] sm:text-xs">
+                                                        <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-[#006dfc]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#006dfc] sm:text-xs md:text-[11px]">
                                                             <Check
                                                                 className="size-3 shrink-0"
                                                                 aria-hidden="true"
@@ -327,7 +465,7 @@ const ServicesFooter = ({
                                                             </span>
                                                         </span>
                                                     ) : (
-                                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 sm:text-xs">
+                                                        <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 sm:text-xs md:text-[11px]">
                                                             Not added
                                                         </span>
                                                     )}
@@ -347,7 +485,7 @@ const ServicesFooter = ({
                                                                 )
                                                             }
                                                             aria-label={`Deselect room ${roomIndex + 1}`}
-                                                            className="inline-flex min-h-9 items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold text-[#006dfc] sm:text-xs hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                                            className="inline-flex min-h-8 items-center gap-1 rounded-md px-1 text-[10px] font-semibold text-[#006dfc] sm:text-xs md:text-[11px] hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                                                         >
                                                             <X
                                                                 className="size-3"
@@ -370,7 +508,7 @@ const ServicesFooter = ({
                                                                 )
                                                             }
                                                             aria-label={`Remove room ${roomIndex + 1}`}
-                                                            className="inline-flex min-h-9 items-center rounded-md px-1.5 text-[11px] font-medium text-slate-500 sm:text-xs hover:bg-white hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                                            className="inline-flex min-h-8 items-center rounded-md px-1 text-[10px] font-medium text-slate-500 sm:text-xs md:text-[11px] hover:bg-white hover:text-rose-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                                                         >
                                                             Remove room
                                                         </button>
@@ -405,7 +543,7 @@ const ServicesFooter = ({
                                                             )
                                                         })
                                                     }}
-                                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc]"
+                                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-[#006dfc] focus:ring-1 focus:ring-[#006dfc] sm:text-sm"
                                                 >
                                                     <option value="">
                                                         Choose room or villa
@@ -467,7 +605,7 @@ const ServicesFooter = ({
                                             ).map(({ label, key }) => (
                                                 <div
                                                     key={key}
-                                                    className="flex items-center justify-between py-1"
+                                                    className="flex items-center justify-between py-0.5"
                                                 >
                                                     <span className="text-xs font-semibold text-slate-700 sm:text-sm">
                                                         {room[key]} {label}
@@ -490,10 +628,10 @@ const ServicesFooter = ({
                                                                       0
                                                             }
                                                             aria-label={`Remove one ${label.toLowerCase()} from guest group ${roomIndex + 1}`}
-                                                            className="flex size-6 items-center justify-center rounded-full border border-[#006dfc] text-[#006dfc] hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                            className="flex size-9 items-center justify-center rounded-full border border-[#006dfc] text-[#006dfc] hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 sm:size-10"
                                                         >
                                                             <Minus
-                                                                className="size-3.5"
+                                                                className="size-3"
                                                                 aria-hidden="true"
                                                             />
                                                         </button>
@@ -507,10 +645,10 @@ const ServicesFooter = ({
                                                                 )
                                                             }
                                                             aria-label={`Add one ${label.toLowerCase()} to guest group ${roomIndex + 1}`}
-                                                            className="flex size-6 items-center justify-center rounded-full border border-[#006dfc] text-[#006dfc] hover:bg-blue-50"
+                                                            className="flex size-9 items-center justify-center rounded-full border border-[#006dfc] text-[#006dfc] hover:bg-blue-50 sm:size-10"
                                                         >
                                                             <Plus
-                                                                className="size-3.5"
+                                                                className="size-3"
                                                                 aria-hidden="true"
                                                             />
                                                         </button>
@@ -538,22 +676,22 @@ const ServicesFooter = ({
                                         { stayId: null, adults: 2, kids: 0 },
                                     ])
                                 }
-                                className="mt-2 text-xs font-semibold text-[#006dfc] sm:text-sm hover:text-[#005bd4] disabled:cursor-not-allowed disabled:opacity-40"
+                                className="mt-1.5 inline-flex min-h-9 items-center text-xs font-semibold text-[#006dfc] hover:text-[#005bd4] disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
                             >
                                 + Add room choice
                             </button>
-                            <div className="mt-2 flex justify-end gap-2 border-t border-slate-100 pt-2">
+                            <div className="mt-1.5 flex justify-end gap-1.5 border-t border-slate-100 pt-1.5">
                                 <button
                                     type="button"
-                                    onClick={() => setBookingPopover(null)}
-                                    className="rounded px-3 py-1.5 text-xs font-medium text-slate-600 sm:text-sm hover:bg-slate-100"
+                                    onClick={() => closePopover()}
+                                    className="inline-flex min-h-9 items-center justify-center rounded px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 sm:text-sm"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setBookingPopover(null)}
-                                    className="rounded bg-[#006dfc] px-3 py-1.5 text-xs font-semibold text-white sm:text-sm hover:bg-[#005bd4]"
+                                    onClick={() => closePopover()}
+                                    className="inline-flex min-h-9 items-center justify-center rounded bg-[#006dfc] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#005bd4] sm:text-sm"
                                 >
                                     Done
                                 </button>
@@ -561,7 +699,7 @@ const ServicesFooter = ({
                         </div>
                     )}
                 </div>
-                <div className="col-span-2 flex items-center justify-center gap-2 lg:col-span-1">
+                <div className="col-span-2 flex items-center justify-center gap-2 md:col-span-1">
                     <button
                         type="button"
                         onClick={() => {
@@ -570,10 +708,10 @@ const ServicesFooter = ({
                                 return
                             }
 
-                            setBookingPopover(null)
+                            closePopover(false)
                             onCheckAvailability()
                         }}
-                        className="inline-flex min-h-10 w-[90%] items-center justify-center rounded-sm bg-[#006dfc] px-4 py-2 text-[13px] font-medium text-white transition hover:bg-[#005bd4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006dfc] focus-visible:ring-offset-2 sm:min-h-11 sm:text-sm lg:min-h-12 lg:w-full lg:text-base"
+                        className="inline-flex min-h-10 w-full items-center justify-center rounded-sm bg-[#006dfc] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#005bd4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006dfc] focus-visible:ring-offset-2 sm:text-sm md:min-h-10 md:text-xs"
                     >
                         {checkingAvailability
                             ? 'Checking availability'
@@ -584,24 +722,24 @@ const ServicesFooter = ({
                         type="button"
                         onClick={() => {
                             setIsExpanded((previous) => !previous)
-                            setBookingPopover(null)
+                            closePopover(false)
                         }}
                         aria-label={isExpanded ? 'Collapse booking form' : 'Expand booking form'}
                         aria-expanded={isExpanded}
-                        className="flex size-10 shrink-0 items-center justify-center rounded-sm bg-[#006dfc] text-white transition hover:bg-[#005bd4] lg:hidden"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-sm bg-[#006dfc] text-white transition hover:bg-[#005bd4] md:hidden"
                     >
                         {isExpanded ? (
-                            <ChevronDown size={22} />
+                            <ChevronDown size={20} />
                         ) : (
-                            <ChevronUp size={22} />
+                            <ChevronUp size={20} />
                         )}
                     </button>
                 </div>
                 {blockedReason && (
                     <p
                         role="alert"
-                        className={`col-span-2 rounded-lg bg-rose-50 p-2 text-xs leading-relaxed text-rose-700 sm:text-[13px] lg:col-span-3 ${
-                            !isExpanded ? 'hidden lg:flex' : ''
+                        className={`col-span-2 rounded-lg bg-rose-50 p-1.5 text-[11px] leading-snug text-rose-700 sm:text-xs md:text-[11px] md:col-span-3 ${
+                            !isExpanded ? 'hidden md:flex' : ''
                         }`}
                     >
                         {blockedReason}
@@ -610,12 +748,12 @@ const ServicesFooter = ({
                 {notice && (
                     <p
                         role="status"
-                        className={`col-span-2 flex items-start gap-2 rounded-lg bg-blue-50 p-2 text-xs leading-relaxed text-blue-800 sm:text-[13px] lg:col-span-3 ${
-                            !isExpanded ? 'hidden lg:flex' : ''
+                        className={`col-span-2 flex items-start gap-1.5 rounded-lg bg-blue-50 p-1.5 text-[11px] leading-snug text-blue-800 sm:text-xs md:text-[11px] md:col-span-3 ${
+                            !isExpanded ? 'hidden md:flex' : ''
                         }`}
                     >
                         <Check
-                            className="mt-0.5 size-3.5 shrink-0"
+                            className="mt-0.5 size-3 shrink-0"
                             aria-hidden="true"
                         />
                         {notice}

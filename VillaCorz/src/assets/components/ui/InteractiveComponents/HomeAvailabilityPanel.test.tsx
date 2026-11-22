@@ -39,16 +39,16 @@ const renderPanel = (overrides: Partial<HomeAvailabilityPanelProps> = {}) => {
 }
 
 describe('HomeAvailabilityPanel', () => {
-    it('shows availability and adds an available room', () => {
+    it('shows only available rooms and adds one', () => {
         const onToggleRoom = vi.fn()
         renderPanel({ onToggleRoom })
 
         expect(screen.getByText(/Available$/)).toBeInTheDocument()
-        expect(screen.getByText(/Unavailable$/)).toBeInTheDocument()
+        expect(screen.queryByText(/Unavailable$/)).toBeNull()
+        expect(screen.queryByRole('button', { name: 'Add Family Suite' })).toBeNull()
 
         fireEvent.click(screen.getByRole('button', { name: 'Add Ocean Room' }))
         expect(onToggleRoom).toHaveBeenCalledWith(choices[0])
-        expect(screen.getByRole('button', { name: 'Add Family Suite' })).toBeDisabled()
     })
 
     it('removes a selected room', () => {
@@ -67,5 +67,38 @@ describe('HomeAvailabilityPanel', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /Show rooms/ }))
         expect(screen.getByText('Ocean Room')).toBeInTheDocument()
+    })
+
+    it('keeps wheel scrolling inside the scrollable room list', () => {
+        renderPanel()
+
+        const list = screen.getByText('Ocean Room').closest('.overflow-y-auto')
+        expect(list).toHaveAttribute('data-lenis-prevent')
+    })
+
+    it('hides the room list while availability is still checking', () => {
+        renderPanel({ checkingAvailability: true })
+
+        expect(screen.getByText('Checking live availability...')).toBeInTheDocument()
+        expect(screen.getByText(/Checking availability/)).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Add Ocean Room' })).toBeNull()
+    })
+
+    it('shows a no-room status when none are available for the date', () => {
+        renderPanel({ availabilityByServiceId: { 1: false, 2: false } })
+
+        expect(screen.getByText('No room available for this date')).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /Add / })).toBeNull()
+    })
+
+    it('keeps a selected room visible so it can be removed', () => {
+        renderPanel({
+            selectedRoomIds: ['2'],
+            availabilityByServiceId: { 1: true, 2: false },
+        })
+
+        expect(
+            screen.getByRole('button', { name: 'Remove Family Suite' }),
+        ).toBeInTheDocument()
     })
 })

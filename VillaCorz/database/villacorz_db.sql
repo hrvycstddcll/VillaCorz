@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS `activity_logs` (
   CONSTRAINT `activity_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=345 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.activity_logs: ~70 rows (approximately)
+-- Dumping data for table villacorz_db.activity_logs: ~75 rows (approximately)
 INSERT INTO `activity_logs` (`id`, `user_id`, `action`, `subject_type`, `subject_id`, `description`, `properties`, `ip_address`, `user_agent`, `created_at`) VALUES
 	(270, 1, 'login', 'App\\Models\\Booking', 1, 'Seeded administrator activity.', '{"seed": true, "slot": 1}', '127.0.0.1', 'DemoReseedSeeder', '2026-11-20 23:00:00'),
 	(271, 4, 'registered', 'App\\Models\\User', 4, 'Seeded administrator activity.', '{"seed": true, "slot": 2}', '127.0.0.1', 'DemoReseedSeeder', '2026-11-20 00:07:00'),
@@ -115,7 +115,11 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `action`, `subject_type`, `subject
 	(341, 1, 'login', 'App\\Models\\User', 1, 'Signed in.', '{"role": "admin"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.147.0 Chrome/150.0.7871.250 Electron/43.8.9 Safari/537.36', '2026-11-21 14:55:33'),
 	(342, NULL, 'login_failed', 'App\\Models\\User', NULL, 'Failed sign-in attempt for dlord0260@gmail.com.', '{"email": "dlord0260@gmail.com"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', '2026-11-21 16:09:44'),
 	(343, NULL, 'login_failed', 'App\\Models\\User', NULL, 'Failed sign-in attempt for dlord0260@gmail.com.', '{"email": "dlord0260@gmail.com"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', '2026-11-21 16:10:16'),
-	(344, 1, 'login', 'App\\Models\\User', 1, 'Signed in.', '{"role": "admin"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', '2026-11-21 16:10:21');
+	(344, 1, 'login', 'App\\Models\\User', 1, 'Signed in.', '{"role": "admin"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', '2026-11-21 16:10:21'),
+	(345, 1, 'logout', 'App\\Models\\User', 1, 'Signed out.', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', '2026-11-21 18:18:57'),
+	(346, NULL, 'login_failed', 'App\\Models\\User', NULL, 'Failed sign-in attempt for dacillohaydee@gmail.com.', '{"email": "dacillohaydee@gmail.com"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', '2026-11-21 18:19:05'),
+	(347, 2, 'login', 'App\\Models\\User', 2, 'Signed in.', '{"role": "customer"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', '2026-11-21 18:19:12'),
+	(348, 2, 'booking_created', 'App\\Models\\Booking', 2457, 'Created booking VC-C4GA37QT.', '{"rooms": 1, "total": "2550.00", "reference": "VC-C4GA37QT"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', '2026-11-21 18:21:37');
 
 -- Dumping structure for table villacorz_db.bookings
 CREATE TABLE IF NOT EXISTS `bookings` (
@@ -157,7 +161,7 @@ CREATE TABLE IF NOT EXISTS `bookings` (
   CONSTRAINT `bookings_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=2457 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.bookings: ~222 rows (approximately)
+-- Dumping data for table villacorz_db.bookings: ~224 rows (approximately)
 INSERT INTO `bookings` (`id`, `user_id`, `reference`, `contact_name`, `contact_email`, `contact_phone`, `check_in`, `check_out`, `nights`, `paid_days`, `legacy_check_out`, `legacy_nights`, `legacy_subtotal`, `legacy_total`, `adults`, `kids`, `subtotal`, `total`, `currency`, `status`, `payment_method`, `expires_at`, `confirmed_at`, `completed_at`, `confirmation_email_sent_at`, `idempotency_key`, `request_hash`, `created_at`, `updated_at`) VALUES
 	(2233, 3, 'VC-REVIEW-R3-U3', 'Maria Santos', 'maria.santos@demo.villacorz.test', NULL, '2026-11-13 00:00:00', '2026-11-14 22:00:00', 2, 2, '2026-11-15 00:00:00', 2, 6000.00, 6000.00, 2, 0, 6000.00, 6000.00, 'PHP', 'confirmed', 'GCash', NULL, '2026-11-08 16:00:00', '2026-11-14 16:00:00', NULL, 'seed-review-proof-19', '18f08d695a1c783ac03cbe857697c916c1c36675072463cb934b13f6f8e8a8a7', '2026-11-08 16:00:00', '2026-11-08 16:00:00'),
 	(2234, 4, 'VC-REVIEW-R3-U4', 'Juan Dela Cruz', 'juan.delacruz@demo.villacorz.test', NULL, '2026-11-10 00:00:00', '2026-11-11 22:00:00', 2, 2, '2026-11-12 00:00:00', 2, 6000.00, 6000.00, 2, 0, 6000.00, 6000.00, 'PHP', 'confirmed', 'GCash', NULL, '2026-11-05 16:00:00', '2026-11-11 16:00:00', NULL, 'seed-review-proof-20', '0a8966f9546f3152b90afcbc7f7c393aea10df688eea27a9ac618851bf60c311', '2026-11-05 16:00:00', '2026-11-05 16:00:00'),
@@ -382,7 +386,8 @@ INSERT INTO `bookings` (`id`, `user_id`, `reference`, `contact_name`, `contact_e
 	(2453, 6, 'VC-DEMO-CANCEL-04', 'Jose Garcia', 'jose.garcia@demo.villacorz.test', NULL, '2026-11-18 13:15:00', '2026-11-20 11:15:00', 2, 2, '2026-11-20 13:15:00', 2, 6000.00, 6000.00, 2, 0, 6000.00, 6000.00, 'PHP', 'cancelled', 'GCash', NULL, NULL, NULL, NULL, NULL, NULL, '2026-11-11 05:15:00', '2026-11-11 05:15:00'),
 	(2454, 6, 'VC-DEMO-PENDING-01', 'Jose Garcia', 'jose.garcia@demo.villacorz.test', NULL, '2026-11-30 00:00:00', '2026-12-01 22:00:00', 2, 2, '2026-12-02 00:00:00', 2, 6000.00, 6000.00, 2, 0, 6000.00, 6000.00, 'PHP', 'pending_payment', 'GCash', '2026-11-19 08:30:00', NULL, NULL, NULL, NULL, NULL, '2026-11-19 07:30:00', '2026-11-19 07:30:00'),
 	(2455, 7, 'VC-DEMO-PENDING-02', 'Carmen Lopez', 'carmen.lopez@demo.villacorz.test', NULL, '2026-12-01 00:00:00', '2026-12-02 22:00:00', 2, 2, '2026-12-03 00:00:00', 2, 6000.00, 6000.00, 2, 0, 6000.00, 6000.00, 'PHP', 'pending_payment', 'GCash', '2026-11-18 09:30:00', NULL, NULL, NULL, NULL, NULL, '2026-11-18 08:30:00', '2026-11-18 08:30:00'),
-	(2456, 2, 'VC-DU5REX9T', 'Haydee Dacillo', 'dacillohaydee@gmail.com', '+639123456789', '2026-11-22 02:00:00', '2026-11-23 00:00:00', 1, 1, NULL, NULL, NULL, NULL, 2, 0, 3000.00, 3000.00, 'PHP', 'pending_payment', 'GCash', '2026-11-21 14:42:36', NULL, NULL, NULL, '33217d34-3d6b-480b-9ade-4bdadae5a58d', '522ddd721d47c3718df54b56caa19bc1c114e41c2a318a74f2beb9c26744abb9', '2026-11-21 13:42:36', '2026-11-21 13:42:36');
+	(2456, 2, 'VC-DU5REX9T', 'Haydee Dacillo', 'dacillohaydee@gmail.com', '+639123456789', '2026-11-22 02:00:00', '2026-11-23 00:00:00', 1, 1, NULL, NULL, NULL, NULL, 2, 0, 3000.00, 3000.00, 'PHP', 'pending_payment', 'GCash', '2026-11-21 14:42:36', NULL, NULL, NULL, '33217d34-3d6b-480b-9ade-4bdadae5a58d', '522ddd721d47c3718df54b56caa19bc1c114e41c2a318a74f2beb9c26744abb9', '2026-11-21 13:42:36', '2026-11-21 13:42:36'),
+	(2457, 2, 'VC-C4GA37QT', 'Haydee Dacillo', 'dacillohaydee@gmail.com', '+639123456789', '2026-11-23 02:00:00', '2026-11-24 00:00:00', 1, 1, NULL, NULL, NULL, NULL, 5, 0, 2550.00, 2550.00, 'PHP', 'pending_payment', 'GCash', '2026-11-21 19:21:37', NULL, NULL, NULL, 'cc37bd46-95d7-486c-a524-aeb0f9c4846b', '5fa7f168dcba2b2ba5a5f50a04975893c90892dc7af48e15013888f8e2d5cc5e', '2026-11-21 18:21:37', '2026-11-21 18:21:37');
 
 -- Dumping structure for table villacorz_db.booking_rooms
 CREATE TABLE IF NOT EXISTS `booking_rooms` (
@@ -411,7 +416,7 @@ CREATE TABLE IF NOT EXISTS `booking_rooms` (
   CONSTRAINT `booking_rooms_service_id_foreign` FOREIGN KEY (`service_id`) REFERENCES `services` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=2457 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.booking_rooms: ~222 rows (approximately)
+-- Dumping data for table villacorz_db.booking_rooms: ~224 rows (approximately)
 INSERT INTO `booking_rooms` (`id`, `booking_id`, `service_id`, `service_name`, `kind`, `adults`, `kids`, `additional_heads`, `weekday_price`, `weekend_price`, `additional_head_weekday_price`, `additional_head_weekend_price`, `additional_head_total`, `line_total`, `legacy_line_total`, `legacy_additional_head_total`, `created_at`, `updated_at`) VALUES
 	(2233, 2233, 3, 'Room 1', 'room', 2, 0, 0, 3000.00, 3000.00, 0.00, 0.00, 0.00, 6000.00, 6000.00, 0.00, '2026-11-20 23:14:13', '2026-11-20 23:14:13'),
 	(2234, 2234, 3, 'Room 1', 'room', 2, 0, 0, 3000.00, 3000.00, 0.00, 0.00, 0.00, 6000.00, 6000.00, 0.00, '2026-11-20 23:14:13', '2026-11-20 23:14:13'),
@@ -636,7 +641,8 @@ INSERT INTO `booking_rooms` (`id`, `booking_id`, `service_id`, `service_name`, `
 	(2453, 2453, 3, 'Room 1', 'room', 2, 0, 0, 3000.00, 3000.00, 0.00, 0.00, 0.00, 6000.00, 6000.00, 0.00, '2026-11-20 23:14:17', '2026-11-20 23:14:17'),
 	(2454, 2454, 3, 'Room 1', 'room', 2, 0, 0, 3000.00, 3000.00, 0.00, 0.00, 0.00, 6000.00, 6000.00, 0.00, '2026-11-20 23:14:17', '2026-11-20 23:14:17'),
 	(2455, 2455, 3, 'Room 1', 'room', 2, 0, 0, 3000.00, 3000.00, 0.00, 0.00, 0.00, 6000.00, 6000.00, 0.00, '2026-11-20 23:14:17', '2026-11-20 23:14:17'),
-	(2456, 2456, 3, 'Room 1', 'room', 2, 0, 0, 2500.00, 3000.00, 50.00, 100.00, 0.00, 3000.00, NULL, NULL, '2026-11-21 13:42:36', '2026-11-21 13:42:36');
+	(2456, 2456, 3, 'Room 1', 'room', 2, 0, 0, 2500.00, 3000.00, 50.00, 100.00, 0.00, 3000.00, NULL, NULL, '2026-11-21 13:42:36', '2026-11-21 13:42:36'),
+	(2457, 2457, 3, 'Room 1', 'room', 5, 0, 1, 2500.00, 3000.00, 50.00, 100.00, 50.00, 2550.00, NULL, NULL, '2026-11-21 18:21:37', '2026-11-21 18:21:37');
 
 -- Dumping structure for table villacorz_db.cache
 CREATE TABLE IF NOT EXISTS `cache` (
@@ -647,16 +653,16 @@ CREATE TABLE IF NOT EXISTS `cache` (
   KEY `cache_expiration_index` (`expiration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.cache: ~6 rows (approximately)
+-- Dumping data for table villacorz_db.cache: ~8 rows (approximately)
 INSERT INTO `cache` (`key`, `value`, `expiration`) VALUES
 	('villacorz-cache-340ad0cc31c39722bec39b3ff86cdf0c1381085a', 'i:1;', 1795229209),
 	('villacorz-cache-340ad0cc31c39722bec39b3ff86cdf0c1381085a:timer', 'i:1795229209;', 1795229209),
-	('villacorz-cache-356a192b7913b04c54574d18c28d46e6395428ab', 'i:1;', 1795306283),
-	('villacorz-cache-356a192b7913b04c54574d18c28d46e6395428ab:timer', 'i:1795306283;', 1795306283),
-	('villacorz-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:4;', 1795306228),
-	('villacorz-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1795306228;', 1795306228),
-	('villacorz-cache-da4b9237bacccdf19c0760cab7aec4a8359010b0', 'i:3;', 1795301726),
-	('villacorz-cache-da4b9237bacccdf19c0760cab7aec4a8359010b0:timer', 'i:1795301726;', 1795301726);
+	('villacorz-cache-356a192b7913b04c54574d18c28d46e6395428ab', 'i:7;', 1795315294),
+	('villacorz-cache-356a192b7913b04c54574d18c28d46e6395428ab:timer', 'i:1795315294;', 1795315294),
+	('villacorz-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:6;', 1795323109),
+	('villacorz-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1795323109;', 1795323109),
+	('villacorz-cache-da4b9237bacccdf19c0760cab7aec4a8359010b0', 'i:16;', 1795314228),
+	('villacorz-cache-da4b9237bacccdf19c0760cab7aec4a8359010b0:timer', 'i:1795314228;', 1795314228);
 
 -- Dumping structure for table villacorz_db.cache_locks
 CREATE TABLE IF NOT EXISTS `cache_locks` (
@@ -772,7 +778,7 @@ CREATE TABLE IF NOT EXISTS `migrations` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.migrations: ~34 rows (approximately)
+-- Dumping data for table villacorz_db.migrations: ~36 rows (approximately)
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 	(1, '0001_01_01_000000_create_users_table', 1),
 	(2, '0001_01_01_000001_create_cache_table', 1),
@@ -823,7 +829,7 @@ CREATE TABLE IF NOT EXISTS `page_views` (
   KEY `page_views_created_at_path_index` (`created_at`,`path`)
 ) ENGINE=InnoDB AUTO_INCREMENT=12980 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.page_views: ~2,474 rows (approximately)
+-- Dumping data for table villacorz_db.page_views: ~2,823 rows (approximately)
 INSERT INTO `page_views` (`id`, `path`, `session_hash`, `referrer`, `created_at`) VALUES
 	(10157, '/services/5', '872f353cccf2232c787a00930da8ef2bf4dd466d69e614b97c087bbf3911c592', NULL, '2026-08-24 03:43:00'),
 	(10158, '/about', '282bce73ec92de3e5b550a6b9d325633b518e13d32b94f5cbf33959e6ebf902d', NULL, '2026-08-23 18:10:00'),
@@ -3647,7 +3653,72 @@ INSERT INTO `page_views` (`id`, `path`, `session_hash`, `referrer`, `created_at`
 	(12976, '/services', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:09:08'),
 	(12977, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:09:19'),
 	(12978, '/auth', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:09:28'),
-	(12979, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:10:23');
+	(12979, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:10:23'),
+	(12980, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:15:39'),
+	(12981, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:15:40'),
+	(12982, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:15:40'),
+	(12983, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:15:41'),
+	(12984, '/', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:17:37'),
+	(12985, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:18:20'),
+	(12986, '/dashboard', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:21:11'),
+	(12987, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:22:25'),
+	(12988, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:26:17'),
+	(12989, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:26:18'),
+	(12990, '/services', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:29:53'),
+	(12991, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:30:00'),
+	(12992, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:54:45'),
+	(12993, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:54:45'),
+	(12994, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:56:45'),
+	(12995, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:56:45'),
+	(12996, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:56:46'),
+	(12997, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:56:47'),
+	(12998, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:56:51'),
+	(12999, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:56:52'),
+	(13000, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:56:53'),
+	(13001, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:56:53'),
+	(13002, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:57:31'),
+	(13003, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:57:31'),
+	(13004, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:57:32'),
+	(13005, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:57:32'),
+	(13006, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:57:38'),
+	(13007, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:57:38'),
+	(13008, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:57:39'),
+	(13009, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:57:39'),
+	(13010, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:57:59'),
+	(13011, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 16:58:01'),
+	(13012, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:58:01'),
+	(13013, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 16:58:01'),
+	(13014, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 17:02:20'),
+	(13015, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 17:02:21'),
+	(13016, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 17:02:21'),
+	(13017, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 17:02:22'),
+	(13018, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 17:02:28'),
+	(13019, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 17:02:29'),
+	(13020, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 17:02:29'),
+	(13021, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 17:02:30'),
+	(13022, '/dashboard', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 17:03:17'),
+	(13023, '/reports', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 17:29:10'),
+	(13024, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 17:35:53'),
+	(13025, '/dashboard', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 17:51:04'),
+	(13026, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 17:53:11'),
+	(13027, '/reports', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 18:02:42'),
+	(13028, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:15:19'),
+	(13029, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:15:20'),
+	(13030, '/', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:15:23'),
+	(13031, '/services', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:16:14'),
+	(13032, '/dashboard', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:16:33'),
+	(13033, '/manageOffers', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:18:29'),
+	(13034, '/reports', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:18:51'),
+	(13035, '/settings', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:18:55'),
+	(13036, '/auth', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:18:57'),
+	(13037, '/', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:19:14'),
+	(13038, '/services', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:19:23'),
+	(13039, '/reservation', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:21:20'),
+	(13040, '/payment/VC-C4GA37QT', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:21:38'),
+	(13041, '/reservation', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:22:48'),
+	(13042, '/services', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:22:51'),
+	(13043, '/', '50ba7c8f9c3aff35f8d5bd7aae95ab112941a2fc86cfbfe32c10a44731f7ce60', NULL, '2026-11-21 18:22:58'),
+	(13044, '/', '204cddeebbb18afa472af2e6787fa9fdbcffb371e3909b6862d850679a4ab1a4', NULL, '2026-11-21 18:40:34');
 
 -- Dumping structure for table villacorz_db.password_reset_tokens
 CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
@@ -3686,7 +3757,7 @@ CREATE TABLE IF NOT EXISTS `payments` (
   CONSTRAINT `payments_booking_id_foreign` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=2337 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.payments: ~182 rows (approximately)
+-- Dumping data for table villacorz_db.payments: ~184 rows (approximately)
 INSERT INTO `payments` (`id`, `booking_id`, `reference`, `provider`, `method`, `amount`, `currency`, `status`, `idempotency_key`, `qr_token_hash`, `qr_url`, `qr_expires_at`, `paid_at`, `metadata`, `created_at`, `updated_at`) VALUES
 	(2153, 2273, 'PAY-VC-DEMO-R3-U3', 'demo', 'GCash', 6000.00, 'PHP', 'paid', 'demo-vc-demo-r3-u3', '5d791040aa7deaa05b70ec5cd068564b244d7c895ede4759a41f9325f1854027', 'http://192.168.18.25:8000/pay/seed-demo-token-vc-demo-r3-u3', '2026-11-21 00:14:15', '2026-09-27 02:10:00', NULL, '2026-09-27 02:00:00', '2026-09-27 02:00:00'),
 	(2154, 2274, 'PAY-VC-DEMO-R3-U5', 'demo', 'GCash', 6000.00, 'PHP', 'paid', 'demo-vc-demo-r3-u5', '63f82435ba53d96768625c7621033b89ec6a66c862e3244381fac1dbd2de1e69', 'http://192.168.18.25:8000/pay/seed-demo-token-vc-demo-r3-u5', '2026-11-21 00:14:15', '2026-09-28 02:10:00', NULL, '2026-09-28 02:00:00', '2026-09-28 02:00:00'),
@@ -3871,7 +3942,8 @@ INSERT INTO `payments` (`id`, `booking_id`, `reference`, `provider`, `method`, `
 	(2333, 2453, 'PAY-VC-DEMO-CANCEL-04', 'demo', 'GCash', 6000.00, 'PHP', 'cancelled', 'demo-cancel-payment-4', '760d164203b44fc325827ef754629a120a6526a3c9c2d71bb92d499eb888cd59', 'http://192.168.18.25:8000/pay/seed-cancel-token-4', '2026-11-11 06:15:00', NULL, NULL, '2026-11-11 05:15:00', '2026-11-11 05:15:00'),
 	(2334, 2454, 'PAY-VC-DEMO-PENDING-01', 'demo', 'GCash', 6000.00, 'PHP', 'pending', 'demo-pending-payment-1', 'bac2d2a23cc28dc3df07c0959a3b2a303278d623b4ed2a4a088c8fcd1273aaa4', 'http://192.168.18.25:8000/pay/seed-pending-token-1', '2026-11-19 08:30:00', NULL, NULL, '2026-11-19 07:30:00', '2026-11-19 07:30:00'),
 	(2335, 2455, 'PAY-VC-DEMO-PENDING-02', 'demo', 'GCash', 6000.00, 'PHP', 'pending', 'demo-pending-payment-2', '10f6de290ead706ce9de356531fe93492599658b8af546e7b3faeaabd7b50bc4', 'http://192.168.18.25:8000/pay/seed-pending-token-2', '2026-11-18 09:30:00', NULL, NULL, '2026-11-18 08:30:00', '2026-11-18 08:30:00'),
-	(2336, 2456, 'PAY-AEBC94B0', 'demo', 'GCash', 3000.00, 'PHP', 'pending', '33217d34-3d6b-480b-9ade-4bdadae5a58d', '47af7d6d07b9134a23ef22defef41eea5e8dcc4872b8c156005740e1b47be22f', 'http://192.168.18.25:8000/pay/FXBWLZPq0msFSLpTmTkpF9tk0sxYtYwTgL5pSQrm5x5z9E9D', '2026-11-21 14:42:36', NULL, '{"check_in": "2026-11-22T02:00:00+00:00", "check_out": "2026-11-23T00:00:00+00:00", "paid_days": 1}', '2026-11-21 13:42:36', '2026-11-21 13:42:36');
+	(2336, 2456, 'PAY-AEBC94B0', 'demo', 'GCash', 3000.00, 'PHP', 'pending', '33217d34-3d6b-480b-9ade-4bdadae5a58d', '47af7d6d07b9134a23ef22defef41eea5e8dcc4872b8c156005740e1b47be22f', 'http://192.168.18.25:8000/pay/FXBWLZPq0msFSLpTmTkpF9tk0sxYtYwTgL5pSQrm5x5z9E9D', '2026-11-21 14:42:36', NULL, '{"check_in": "2026-11-22T02:00:00+00:00", "check_out": "2026-11-23T00:00:00+00:00", "paid_days": 1}', '2026-11-21 13:42:36', '2026-11-21 13:42:36'),
+	(2337, 2457, 'PAY-85C01FE9', 'demo', 'GCash', 2550.00, 'PHP', 'pending', 'cc37bd46-95d7-486c-a524-aeb0f9c4846b', '3e964ec280a0dd63b8ae0a46e3cb4f7638bfdeb15dabd0d639a90c77a7010c87', 'http://192.168.18.25:8000/pay/g0N74S9kTjm3bT7KlB8LsOwoqTkeUcTOaqp0GQqEkfydKhJu', '2026-11-21 19:21:37', NULL, '{"check_in": "2026-11-23T02:00:00+00:00", "check_out": "2026-11-24T00:00:00+00:00", "paid_days": 1}', '2026-11-21 18:21:37', '2026-11-21 18:21:37');
 
 -- Dumping structure for table villacorz_db.payment_events
 CREATE TABLE IF NOT EXISTS `payment_events` (
@@ -3893,7 +3965,7 @@ CREATE TABLE IF NOT EXISTS `payment_events` (
   CONSTRAINT `payment_events_payment_id_foreign` FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=2960 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.payment_events: ~726 rows (approximately)
+-- Dumping data for table villacorz_db.payment_events: ~733 rows (approximately)
 INSERT INTO `payment_events` (`id`, `booking_id`, `payment_id`, `event`, `actor`, `idempotency_key`, `metadata`, `ip_address`, `user_agent`, `created_at`) VALUES
 	(2227, 2273, 2153, 'booking_created', 'user', 'seed-event-2153-0', '{"reference": "VC-DEMO-R3-U3"}', '127.0.0.1', 'DemoReseedSeeder', '2026-09-27 02:00:00'),
 	(2228, 2273, 2153, 'payment_created', 'user', 'seed-event-2153-1', '{"method": "GCash", "reference": "PAY-VC-DEMO-R3-U3"}', '127.0.0.1', 'DemoReseedSeeder', '2026-09-27 02:01:00'),
@@ -4627,7 +4699,10 @@ INSERT INTO `payment_events` (`id`, `booking_id`, `payment_id`, `event`, `actor`
 	(2956, 2455, 2335, 'qr_issued', 'system', 'seed-event-2335-2', '{"expires_at": "2026-11-18T17:30:00+00:00"}', '127.0.0.1', 'DemoReseedSeeder', '2026-11-18 08:32:00'),
 	(2957, 2456, 2336, 'booking_created', 'user', '33217d34-3d6b-480b-9ade-4bdadae5a58d', '{"total": "3000.00", "reference": "VC-DU5REX9T"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.147.0 Chrome/150.0.7871.250 Electron/43.8.9 Safari/537.36', '2026-11-21 13:42:36'),
 	(2958, 2456, 2336, 'payment_created', 'user', '33217d34-3d6b-480b-9ade-4bdadae5a58d', '{"method": "GCash", "reference": "PAY-AEBC94B0"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.147.0 Chrome/150.0.7871.250 Electron/43.8.9 Safari/537.36', '2026-11-21 13:42:36'),
-	(2959, 2456, 2336, 'qr_issued', 'system', '33217d34-3d6b-480b-9ade-4bdadae5a58d', '{"expires_at": "2026-11-21T22:42:36+00:00"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.147.0 Chrome/150.0.7871.250 Electron/43.8.9 Safari/537.36', '2026-11-21 13:42:36');
+	(2959, 2456, 2336, 'qr_issued', 'system', '33217d34-3d6b-480b-9ade-4bdadae5a58d', '{"expires_at": "2026-11-21T22:42:36+00:00"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.147.0 Chrome/150.0.7871.250 Electron/43.8.9 Safari/537.36', '2026-11-21 13:42:36'),
+	(2960, 2457, 2337, 'booking_created', 'user', 'cc37bd46-95d7-486c-a524-aeb0f9c4846b', '{"total": "2550.00", "reference": "VC-C4GA37QT"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', '2026-11-21 18:21:37'),
+	(2961, 2457, 2337, 'payment_created', 'user', 'cc37bd46-95d7-486c-a524-aeb0f9c4846b', '{"method": "GCash", "reference": "PAY-85C01FE9"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', '2026-11-21 18:21:37'),
+	(2962, 2457, 2337, 'qr_issued', 'system', 'cc37bd46-95d7-486c-a524-aeb0f9c4846b', '{"expires_at": "2026-11-22T03:21:37+00:00"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', '2026-11-21 18:21:37');
 
 -- Dumping structure for table villacorz_db.personal_access_tokens
 CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
@@ -4864,12 +4939,11 @@ CREATE TABLE IF NOT EXISTS `sessions` (
   KEY `sessions_last_activity_index` (`last_activity`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dumping data for table villacorz_db.sessions: ~3 rows (approximately)
+-- Dumping data for table villacorz_db.sessions: ~4 rows (approximately)
 INSERT INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
-	('3Ja24m06j1TKIL4FXPzEOprOWeJRUVDlwL9frjPW', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.147.0 Chrome/150.0.7871.250 Electron/43.8.9 Safari/537.36', 'YTo1OntzOjY6Il90b2tlbiI7czo0MDoiWEs0d1d6WmNzRWFTRzdrNU1rVFRVMlRSVzNnVUlBREhvaUVROWg5UyI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6NTE6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMvMy9yZXZpZXdzP3BhZ2U9MSI7czo1OiJyb3V0ZSI7Tjt9czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6MTtzOjE3OiJwYXNzd29yZF9oYXNoX3dlYiI7czo2NDoiY2ZmNTIzYjA3MmQ1Zjk0NTI4NTg1ZjVkNDBiYWE5NTdmNDMyYTA5NTJkMThhMmY4NWNjNTFjNTAyNTE3OTFiNCI7fQ==', 1795306172),
-	('Cj45fEXHtsnCzI8mZ4S3ueKq52v3fKIzE9zZQU4S', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', 'YToyOntzOjY6Il90b2tlbiI7czo0MDoiV0F2Y3M3WjRKeUk4TzBxR3BTVTEwQnUwMmdiQzk1SjhxTWwyaFBQSyI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1795301297),
-	('SyyimOvn2C4dWpuEWmo4tiGlaa6Rt1RvjjRQxeOF', 1, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', 'YTo1OntzOjY6Il90b2tlbiI7czo0MDoiTk9xZjdkTGtROWZ3WDVUejNJVnV0SlFqN1oyZ01vTWdCNm1tR1kzRyI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MTI1OiJodHRwOi8vbG9jYWxob3N0OjgwMDAvYXBpL2Rhc2hib2FyZD9iYWNrdGVzdF9yYW5nZT0xNCZmb3JlY2FzdF9wcmVzZXQ9MzAmaW5jbHVkZV9ob2xpZGF5cz10cnVlJmluY2x1ZGVfd2Vla2VuZHM9dHJ1ZSZyYW5nZT0zMCI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6MTtzOjE3OiJwYXNzd29yZF9oYXNoX3dlYiI7czo2NDoiY2ZmNTIzYjA3MmQ1Zjk0NTI4NTg1ZjVkNDBiYWE5NTdmNDMyYTA5NTJkMThhMmY4NWNjNTFjNTAyNTE3OTFiNCI7fQ==', 1795306269),
-	('ue6x6tXN7i3w9HInkhla34pbUbqgb0j9OBPXSUMB', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiR3NJaWczaWhETDU3TWM2NHNjSVJySEJtWGtUM2t4ZDNQRlE4OFJSeiI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1795301297);
+	('CCa6FJUFlsf3JR3Jv9HMfBwc3GRrEkT20E2t7bId', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.147.0 Chrome/150.0.7871.250 Electron/43.8.9 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiZEsxS1pBSkZXOHZ5R1UzdjMwT002OEtYdENjQzZGNHU0dzY3U0ZJYyI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6NTE6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMvNS9yZXZpZXdzP3BhZ2U9MSI7czo1OiJyb3V0ZSI7Tjt9fQ==', 1795323057),
+	('jliFQdI8M69Yl89XZySkW5qvTmhIqxv1edfsSZR3', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.147.0 Chrome/150.0.7871.250 Electron/43.8.9 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoic1lxNmZTOHBLTEpJZGFIdk1EVkwwRGE1ZXFUeFh1Ynd2bWc2MUhMdSI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6NTE6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvc2VydmljZXMvMy9yZXZpZXdzP3BhZ2U9MSI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1795323059),
+	('vFhh6S2ZuJuUC2hSBOEVbQiFbSvD9GxKq0gVJpxL', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.147.0 Chrome/150.0.7871.250 Electron/43.8.9 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiNVlFQXRzMUk4Q2ZSWlRENk1zTWlpd1BKYWtrOTBNR05MMWlKdXl0bSI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzA6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hcGkvdXNlciI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1795323035);
 
 -- Dumping structure for table villacorz_db.users
 CREATE TABLE IF NOT EXISTS `users` (

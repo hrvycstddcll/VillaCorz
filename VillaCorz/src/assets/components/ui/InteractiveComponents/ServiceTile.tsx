@@ -47,7 +47,7 @@ const DiscountRibbon = ({ label }: { label: string }) => {
     const isUpTo = label.toLowerCase().startsWith('up to')
 
     return (
-        <span className="pointer-events-none absolute right-0 top-0 z-10 flex h-[5.5rem] w-[5.5rem] flex-col items-end bg-[#006dfc] pr-2 pt-2 text-white [clip-path:polygon(100%_0,0_0,100%_100%)] sm:h-24 sm:w-24 sm:pr-2.5 sm:pt-2.5">
+        <span className="pointer-events-none absolute right-0 top-0 z-10 flex h-[5.5rem] w-[5.5rem] flex-col items-end bg-[#006dfc] pr-2 pt-2 text-white [clip-path:polygon(100%_0,0_0,100%_100%)] sm:h-24 sm:w-24 sm:pr-2.5 sm:pt-2.5 md:h-20 md:w-20 md:pr-2 md:pt-2">
             {percent ? (
                 <>
                     {isUpTo && (
@@ -83,7 +83,7 @@ const RatingBadge = ({ rating }: { rating: string }) => (
             aria-hidden="true"
             className="size-3.5 shrink-0 object-contain"
         />
-        <span aria-hidden="true" className="text-[11px] sm:text-xs">
+        <span aria-hidden="true" className="text-[11px] sm:text-xs md:text-[11px]">
             {rating}
         </span>
     </span>
@@ -115,10 +115,10 @@ const ServiceTile = (props: ServiceTileProps) => {
                                 alt="Blue-roofed Villa Corz beach house"
                                 loading="lazy"
                                 decoding="async"
-                                className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.01] sm:h-64 lg:h-72"
+                                className="h-48 w-full object-cover transition duration-500 group-hover:scale-[1.01] sm:h-64 md:h-56 lg:h-72"
                             />
                         ) : (
-                            <div className="flex h-48 w-full items-center justify-center bg-slate-100 text-slate-400 sm:h-64 lg:h-72">
+                            <div className="flex h-48 w-full items-center justify-center bg-slate-100 text-slate-400 sm:h-64 md:h-56 lg:h-72">
                                 <div className="flex flex-col items-center gap-2">
                                     <ImageOff className="size-8" aria-hidden="true" />
                                     <span className="text-xs font-medium">
@@ -127,10 +127,10 @@ const ServiceTile = (props: ServiceTileProps) => {
                                 </div>
                             </div>
                         )}
-                        <span className="absolute inset-x-0 bottom-0 flex h-[42%] items-end justify-between gap-2 bg-gradient-to-t from-slate-950/90 via-slate-950/55 to-transparent px-2 pb-1 pt-1 text-white shadow-[0_-8px_20px_rgba(0,0,0,0.2)] backdrop-blur-[1px] sm:px-2.5">
+                        <span className="absolute inset-x-0 bottom-0 flex h-[42%] items-end justify-between gap-2 bg-gradient-to-t from-slate-950/90 via-slate-950/55 to-transparent px-2 pb-1 pt-1 text-white shadow-[0_-8px_20px_rgba(0,0,0,0.2)] backdrop-blur-[1px] sm:px-2.5 md:px-2">
                             <span
                                 className={`absolute left-0 top-0 inline-flex w-[34%] min-w-55 max-w-90 items-center justify-between gap-2 bg-white px-3 py-1.5 text-[#006dfc] shadow-sm sm:px-3.5 ${
-                                    hasWeekdayOriginal ? 'h-auto' : 'min-h-11'
+                                    hasWeekdayOriginal ? 'h-auto' : 'min-h-11 md:min-h-10'
                                 }`}
                             >
                                 <span className="shrink-0 text-left text-xs font-semibold italic leading-[1.05] sm:text-sm">
@@ -138,7 +138,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                                     <span className="block text-[10px] font-medium sm:text-[11px]">Mon - Thu</span>
                                 </span>
                                 <span className="min-w-0 text-right">
-                                    <span className="block whitespace-nowrap text-xl font-bold leading-none sm:text-2xl">
+                                    <span className="block whitespace-nowrap text-xl font-bold leading-none sm:text-2xl md:text-xl">
                                         {money(stay.price)}
                                     </span>
                                     {hasWeekdayOriginal && (
@@ -152,10 +152,10 @@ const ServiceTile = (props: ServiceTileProps) => {
                                 {stay.badge}
                             </span>
                             <span className="flex min-w-0 flex-col items-start gap-0.5 pt-9 sm:pt-11">
-                                <span className="block text-sm font-bold leading-tight sm:text-base">
+                                <span className="block text-sm font-bold leading-tight sm:text-base md:text-sm">
                                     Whole Villa
                                 </span>
-                                <span className="flex items-center gap-1 truncate text-[11px] leading-tight text-white/90 sm:text-xs">
+                                <span className="flex items-center gap-1 truncate text-[11px] leading-tight text-white/90 sm:text-xs md:text-[11px]">
                                     <span>{stay.capacity}</span>
                                     {stay.rating && (
                                         <RatingBadge rating={stay.rating} />
@@ -167,7 +167,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                                     <span className="block text-[10px] font-medium leading-tight sm:text-[11px]">
                                         Weekends
                                     </span>
-                                    <span className="block text-sm font-bold leading-tight sm:text-base">
+                                    <span className="block text-sm font-bold leading-tight sm:text-base md:text-sm">
                                         {money(stay.weekendPrice ?? stay.price)}
                                     </span>
                                     {hasWeekendOriginal && (
@@ -176,7 +176,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                                         </span>
                                     )}
                                 </span>
-                                <span className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold text-[#006dfc] shadow-sm sm:text-xs">
+                                <span className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold text-[#006dfc] shadow-sm sm:text-xs md:text-[11px]">
                                     View details
                                 </span>
                             </span>
@@ -279,16 +279,16 @@ const ServiceTile = (props: ServiceTileProps) => {
                     </span>
                 ) : null}
 
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 grid gap-2 p-3 text-white sm:p-3.5">
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 grid gap-2 p-3 text-white sm:p-3.5 md:p-3">
                     <span className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-3">
                         <span className="min-w-0">
-                            <span className="inline-flex min-h-11 max-w-full items-center gap-2 bg-white px-2 py-1.5 text-[#006dfc] shadow-sm sm:px-2.5">
-                                <span className="shrink-0 text-left text-[11px] font-semibold italic leading-[1.05] sm:text-xs">
+                            <span className="inline-flex min-h-11 max-w-full items-center gap-2 bg-white px-2 py-1.5 text-[#006dfc] shadow-sm sm:px-2.5 md:min-h-10 md:px-2">
+                                <span className="shrink-0 text-left text-[11px] font-semibold italic leading-[1.05] sm:text-xs md:text-[11px]">
                                     Weekdays
                                     <span className="block text-[10px] font-medium">Mon - Thu</span>
                                 </span>
                                 <span className="min-w-0 text-right tabular-nums">
-                                    <span className="block whitespace-nowrap text-base font-bold leading-none sm:text-lg">
+                                    <span className="block whitespace-nowrap text-base font-bold leading-none sm:text-lg md:text-base">
                                         {money(stay.price)}
                                     </span>
                                     {stay.originalPrice != null &&
@@ -302,12 +302,12 @@ const ServiceTile = (props: ServiceTileProps) => {
 
                             <span className="mt-2 block min-w-0">
                                 <span
-                                    className="line-clamp-2 text-sm font-bold leading-tight sm:text-base"
+                                    className="line-clamp-2 text-sm font-bold leading-tight sm:text-base md:text-sm"
                                     title={stay.title}
                                 >
                                     {stay.title}
                                 </span>
-                                <span className="mt-1 flex min-w-0 items-center gap-1 text-[11px] leading-tight text-white/90 sm:text-xs">
+                                <span className="mt-1 flex min-w-0 items-center gap-1 text-[11px] leading-tight text-white/90 sm:text-xs md:text-[11px]">
                                     <span className="truncate">{stay.capacity}</span>
                                     {stay.rating && (
                                         <RatingBadge rating={stay.rating} />
@@ -321,7 +321,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                                 <span className="block text-[10px] font-medium leading-tight sm:text-[11px]">
                                     Weekends
                                 </span>
-                                <span className="block whitespace-nowrap text-sm font-bold leading-tight tabular-nums sm:text-base">
+                                <span className="block whitespace-nowrap text-sm font-bold leading-tight tabular-nums sm:text-base md:text-sm">
                                     {money(stay.weekendPrice ?? stay.price)}
                                 </span>
                                 {stay.weekendOriginalPrice != null &&
@@ -344,7 +344,7 @@ const ServiceTile = (props: ServiceTileProps) => {
                                           : `Add ${stay.title} to your booking, good for ${stay.capacity}`
                                 }
                                 aria-pressed={isReservationSelected}
-                                className={`pointer-events-auto inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-3 py-2 text-xs font-semibold shadow-sm transition-colors duration-200 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-70 sm:px-3.5 ${
+                                className={`pointer-events-auto inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-3 py-2 text-xs font-semibold shadow-sm transition-colors duration-200 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-70 sm:px-3.5 md:min-h-10 md:px-3 ${
                                     isReservationSelected
                                         ? 'bg-[#006dfc] text-white hover:bg-blue-700'
                                         : 'bg-white text-[#006dfc] hover:bg-[#006dfc] hover:text-white'

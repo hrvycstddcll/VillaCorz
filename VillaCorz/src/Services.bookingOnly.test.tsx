@@ -9,10 +9,17 @@ vi.mock('./services/serviceService', () => ({
     getServices: vi.fn(),
 }))
 
-vi.mock('./services/availabilityService', () => ({
-    getAvailabilityForRange: vi.fn(),
-    getBlockedDates: vi.fn(),
-}))
+vi.mock('./services/availabilityService', async () => {
+    const actual = await vi.importActual<
+        typeof import('./services/availabilityService')
+    >('./services/availabilityService')
+
+    return {
+        ...actual,
+        getAvailabilityForRange: vi.fn(),
+        getBlockedDates: vi.fn(),
+    }
+})
 
 const service = {
     id: 1,
@@ -26,8 +33,6 @@ const service = {
     additional_head_weekend_price: null,
     weekday_discount_type: null,
     weekday_discount_value: null,
-    weekend_discount_type: null,
-    weekend_discount_value: null,
     pax: 2,
     features: null,
     amenities: [],
@@ -38,6 +43,14 @@ const service = {
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
 }
+
+const exclusiveService = {
+    ...service,
+    id: 2,
+    kind: 'exclusive',
+    name: 'Whole Villa',
+}
+
 
 describe('Services availability flows', () => {
     beforeEach(() => {
@@ -84,5 +97,80 @@ describe('Services availability flows', () => {
         expect(
             screen.getByRole('button', { name: 'Remove Ocean Room' }),
         ).toBeInTheDocument()
+    })
+
+    it('marks every room unavailable when the whole villa is booked', async () => {
+        vi.mocked(getServices).mockResolvedValue({
+            data: { success: true, data: [service, exclusiveService] },
+        } as never)
+        vi.mocked(getAvailabilityForRange).mockResolvedValue({
+            data: {
+                data: {
+                    rooms: [
+                        { id: 1, available: true, blocked_intervals: [] },
+                        {
+                            id: 2,
+                            available: false,
+                            blocked_intervals: [
+                                {
+                                    service_id: 2,
+                                    check_in: '2027-01-10T02:00:00.000Z',
+                                    check_out: '2027-01-12T00:00:00.000Z',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+        } as never)
+
+        render(
+            <MemoryRouter>
+                <Services bookingOnly />
+            </MemoryRouter>,
+        )
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Choose check-in date, time, and paid days',
+            }),
+        )
+        fireEvent.change(screen.getByLabelText('Check-in date'), {
+            target: { value: '2027-01-10' },
+        })
+
+        await waitFor(() => {
+            expect(getAvailabilityForRange).toHaveBeenCalled()
+        })
+        expect(
+            await screen.findByText('No room available for this date'),
+        ).toBeInTheDocument()
+        expect(
+            screen.queryByRole('button', { name: 'Add Ocean Room' }),
+        ).toBeNull()
+    })
+
+    it('explains a past check-in instead of calling the availability API', async () => {
+        render(
+            <MemoryRouter>
+                <Services bookingOnly />
+            </MemoryRouter>,
+        )
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Choose check-in date, time, and paid days',
+            }),
+        )
+        fireEvent.change(screen.getByLabelText('Check-in date'), {
+            target: { value: '2020-01-01' },
+        })
+
+        expect(
+            await screen.findByText(
+                'Check-in time has passed. Choose a later date or time.',
+            ),
+        ).toBeInTheDocument()
+        expect(getAvailabilityForRange).not.toHaveBeenCalled()
     })
 })

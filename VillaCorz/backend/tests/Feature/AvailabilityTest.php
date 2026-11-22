@@ -100,6 +100,42 @@ class AvailabilityTest extends TestCase
             ->assertJsonPath('data.rooms.1.available', false);
     }
 
+    public function test_a_booked_whole_villa_marks_every_room_unavailable(): void
+    {
+        $firstRoom = $this->makeRoomService(['name' => 'Room 1']);
+        $secondRoom = $this->makeRoomService(['name' => 'Room 2']);
+        $villa = Service::create([
+            'name' => 'The Whole Villa',
+            'description' => 'Entire property.',
+            'kind' => 'exclusive',
+            'price' => 15000,
+            'weekend_price' => 18000,
+            'pax' => 12,
+            'status' => 'active',
+        ]);
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDay()->toDateString();
+        $this->seedBooking($villa, $date, 'confirmed');
+
+        $this->getJson('/api/services/availability?'.http_build_query([
+            'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+            'paid_days' => 1,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('data.rooms.0.id', $firstRoom->id)
+            ->assertJsonPath('data.rooms.0.available', false)
+            ->assertJsonPath('data.rooms.1.id', $secondRoom->id)
+            ->assertJsonPath('data.rooms.1.available', false)
+            ->assertJsonPath('data.rooms.2.id', $villa->id)
+            ->assertJsonPath('data.rooms.2.available', false);
+
+        $this->getJson("/api/services/{$firstRoom->id}/blocked-dates?".http_build_query([
+            'from' => $date,
+            'to' => now()->setTimezone(StayTime::TIMEZONE)->addDays(7)->toDateString(),
+        ]))
+            ->assertOk()
+            ->assertJsonPath('data.unavailable_dates.0', $date);
+    }
+
     private function makeRoomService(array $overrides = []): Service
     {
         return Service::create(array_merge([
