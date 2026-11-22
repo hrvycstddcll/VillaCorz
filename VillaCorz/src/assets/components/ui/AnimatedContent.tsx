@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, type HTMLAttributes } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -16,6 +16,45 @@ const WIPES = {
   center:
     'radial-gradient(farthest-corner at 50% 50%, #000 calc(var(--ac-wipe) * 140% - 40%), transparent calc(var(--ac-wipe) * 140%))'
 };
+
+type Direction = 'horizontal' | 'vertical';
+type StaggerFrom = 'start' | 'center' | 'end' | 'edges' | 'random' | number | [number, number];
+type Wipe = keyof typeof WIPES | 'none';
+type Callbacks = {
+  onStart?: () => void;
+  onComplete?: () => void;
+  onDisappearanceComplete?: () => void;
+};
+type TweenVars = gsap.TweenVars & Record<string, unknown>;
+
+interface AnimatedContentProps extends HTMLAttributes<HTMLDivElement> {
+  container?: Element | string | null;
+  distance?: number;
+  direction?: Direction;
+  reverse?: boolean;
+  duration?: number;
+  ease?: string;
+  initialOpacity?: number;
+  animateOpacity?: boolean;
+  scale?: number;
+  blur?: number;
+  rotate?: number;
+  tilt?: number;
+  wipe?: Wipe;
+  threshold?: number;
+  delay?: number;
+  stagger?: number;
+  staggerFrom?: StaggerFrom;
+  trigger?: 'mount' | 'scroll';
+  once?: boolean;
+  scrub?: boolean | number;
+  disappearAfter?: number;
+  disappearDuration?: number;
+  disappearEase?: string;
+  onStart?: () => void;
+  onComplete?: () => void;
+  onDisappearanceComplete?: () => void;
+}
 
 const AnimatedContent = ({
   children,
@@ -48,17 +87,21 @@ const AnimatedContent = ({
   className = '',
   style,
   ...props
-}) => {
-  const ref = useRef(null);
-  const callbacksRef = useRef({ onStart, onComplete, onDisappearanceComplete });
-  callbacksRef.current = { onStart, onComplete, onDisappearanceComplete };
+}: AnimatedContentProps) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const callbacksRef = useRef<Callbacks>({ onStart, onComplete, onDisappearanceComplete });
+
+  useIsomorphicLayoutEffect(() => {
+    callbacksRef.current = { onStart, onComplete, onDisappearanceComplete };
+  }, [onStart, onComplete, onDisappearanceComplete]);
 
   useIsomorphicLayoutEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
 
-    let scroller = container || document.getElementById('snap-main-container') || null;
-    if (typeof scroller === 'string') scroller = document.querySelector(scroller);
+    const scroller: Element | null = typeof container === 'string'
+      ? document.querySelector(container)
+      : container ?? document.getElementById('snap-main-container');
 
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
@@ -67,7 +110,7 @@ const AnimatedContent = ({
       const horizontal = direction === 'horizontal';
       const axis = horizontal ? 'x' : 'y';
       const sign = reverse ? -1 : 1;
-      const mask = WIPES[wipe];
+      const mask = wipe === 'none' ? undefined : WIPES[wipe];
 
       gsap.set(el, { visibility: 'visible' });
 
@@ -76,12 +119,12 @@ const AnimatedContent = ({
         return;
       }
 
-      const from = {
+      const from: TweenVars = {
         [axis]: distance * sign,
         scale,
         opacity: animateOpacity ? initialOpacity : 1
       };
-      const to = {
+      const to: TweenVars = {
         [axis]: 0,
         scale: 1,
         opacity: 1,
@@ -118,7 +161,7 @@ const AnimatedContent = ({
 
       const disappear = () => {
         if (disappearAfter <= 0) return;
-        const out = {
+        const out: TweenVars = {
           [axis]: -distance * sign,
           scale: 0.8,
           opacity: animateOpacity ? initialOpacity : 0,
