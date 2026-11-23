@@ -201,6 +201,50 @@ describe('Dashboard', () => {
         expect(within(metrics).queryByText('Site visits')).not.toBeInTheDocument()
     })
 
+    it('wraps dashboard data cards in glowing bento grids', async () => {
+        const { container } = render(
+            <MemoryRouter>
+                <Dashboard />
+            </MemoryRouter>,
+        )
+
+        await screen.findByRole('group', {
+            name: 'Daily revenue for the last 30 days',
+        })
+
+        const grids = container.querySelectorAll('.magic-bento--admin')
+        expect(grids.length).toBeGreaterThan(1)
+        expect(container.querySelector('.magic-bento__card')).toBeInTheDocument()
+        expect(container.querySelector('.magic-bento__light')).toBeInTheDocument()
+        expect(container.querySelector('.magic-bento__border')).toBeInTheDocument()
+        expect(grids[0]).toHaveAttribute('data-motion')
+        expect(container.querySelector('.admin-bento--revenue')).toBeInTheDocument()
+        expect(container.querySelector('.admin-bento--stacked')).toBeInTheDocument()
+    })
+
+    it('shows the revenue amount in white on a blue hero with a wallet chip', async () => {
+        const { container } = render(
+            <MemoryRouter>
+                <Dashboard />
+            </MemoryRouter>,
+        )
+
+        await screen.findByRole('group', {
+            name: 'Daily revenue for the last 30 days',
+        })
+
+        const panel = container.querySelector(
+            '.admin-bento--revenue [class*="bg-[#006dfc]"]',
+        ) as HTMLElement
+        expect(panel).toBeInTheDocument()
+        expect(panel).toHaveClass('bg-[#006dfc]', 'text-white')
+        expect(within(panel).getByText('Revenue')).toBeInTheDocument()
+
+        const amount = within(panel).getByRole('link', { name: /₱/ })
+        expect(amount).toHaveClass('text-white')
+        expect(panel.querySelector('[class*="bg-white/20"] svg')).toBeInTheDocument()
+    })
+
     it('links the Churn KPI to cancelled bookings for the dashboard period', async () => {
         render(
             <MemoryRouter>

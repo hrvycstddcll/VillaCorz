@@ -15,6 +15,7 @@ export type DashboardChartSeries = {
     label: string
     color: string
     strokeDasharray?: string
+    fill?: boolean
 }
 
 type DashboardLineChartProps = {
@@ -88,7 +89,9 @@ const DashboardLineChart = ({
     onSelectPoint,
 }: DashboardLineChartProps) => {
     const tooltipId = useId()
-    const revealClipId = `chart-reveal-${tooltipId.replace(/:/g, '')}`
+    const idSuffix = tooltipId.replace(/:/g, '')
+    const revealClipId = `chart-reveal-${idSuffix}`
+    const areaGradientId = `chart-area-${idSuffix}`
     const [activePoint, setActivePoint] = useState<{
         index: number
         x: number
@@ -107,6 +110,11 @@ const DashboardLineChart = ({
         x: getX(index),
         y: padding.top + plotHeight - (value / maxValue) * plotHeight,
     })
+    const getSeriesCoordinates = (key: string) =>
+        points.map((point, index) =>
+            getCoordinates(point.values[key] ?? 0, index),
+        )
+    const baselineY = chartHeight - padding.bottom
     const getColumnBounds = (index: number) => {
         const x = getX(index)
         const left = index === 0 ? padding.left : (getX(index - 1) + x) / 2
@@ -205,6 +213,36 @@ const DashboardLineChart = ({
                             height={chartHeight}
                         />
                     </clipPath>
+                    {series.map((item) => {
+                        if (!item.fill || points.length === 0) return null
+                        const topY = Math.min(
+                            ...getSeriesCoordinates(item.key).map(
+                                ({ y }) => y,
+                            ),
+                        )
+                        return (
+                            <linearGradient
+                                key={item.key}
+                                id={`${areaGradientId}-${item.key}`}
+                                gradientUnits="userSpaceOnUse"
+                                x1="0"
+                                y1={Math.min(topY, baselineY - 1)}
+                                x2="0"
+                                y2={baselineY}
+                            >
+                                <stop
+                                    offset="0%"
+                                    stopColor="rgb(0, 102, 255)"
+                                    stopOpacity="0.22"
+                                />
+                                <stop
+                                    offset="100%"
+                                    stopColor="rgb(0, 102, 255)"
+                                    stopOpacity="0"
+                                />
+                            </linearGradient>
+                        )
+                    })}
                 </defs>
                 {canSelect && (
                     <rect
@@ -252,27 +290,36 @@ const DashboardLineChart = ({
 
                 <g clipPath={`url(#${revealClipId})`}>
                     {series.map((item) => {
-                        const path = buildSmoothPath(
-                            points.map((point, index) =>
-                                getCoordinates(
-                                    point.values[item.key] ?? 0,
-                                    index,
-                                ),
-                            ),
-                        )
+                        const coordinates = getSeriesCoordinates(item.key)
+                        const path = buildSmoothPath(coordinates)
+                        const first = coordinates[0]
+                        const last = coordinates[coordinates.length - 1]
+                        const areaPath =
+                            first && last
+                                ? `${path} L${last.x},${baselineY} L${first.x},${baselineY} Z`
+                                : ''
 
                         return (
-                            <path
-                                key={item.key}
-                                d={path}
-                                fill="none"
-                                stroke={item.color}
-                                strokeDasharray={item.strokeDasharray}
-                                strokeWidth={strokeWidth}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                pointerEvents="none"
-                            />
+                            <g key={item.key}>
+                                {item.fill && (
+                                    <path
+                                        d={areaPath}
+                                        fill={`url(#${areaGradientId}-${item.key})`}
+                                        stroke="none"
+                                        pointerEvents="none"
+                                    />
+                                )}
+                                <path
+                                    d={path}
+                                    fill="none"
+                                    stroke={item.color}
+                                    strokeDasharray={item.strokeDasharray}
+                                    strokeWidth={strokeWidth}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    pointerEvents="none"
+                                />
+                            </g>
                         )
                     })}
                 </g>
