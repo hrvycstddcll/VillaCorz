@@ -1381,8 +1381,6 @@ const Dashboard = () => {
                                         MAE {demandForecast.accuracy.mae}
                                         {demandForecast.accuracy.mape !== null &&
                                             ` · MAPE ${demandForecast.accuracy.mape}%`}
-                                        {demandForecast.accuracy.wape != null &&
-                                            ` · WAPE ${demandForecast.accuracy.wape}%`}
                                     </span>
                                 </WarmTooltip>
                             )}

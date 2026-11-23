@@ -101,7 +101,9 @@ def _stabilized_values(values: list[float]) -> list[float]:
 
 def _robust_level(values: list[float]) -> float:
     window = values[-ROBUST_WINDOW_DAYS:] if values else []
-    return float(np.median(window)) if window else 0.0
+    if not window:
+        return 0.0
+    return float(np.mean(window))
 
 
 def _stabilizing_weight(values: list[float]) -> float:
@@ -114,7 +116,7 @@ def _stabilizing_weight(values: list[float]) -> float:
     if zero_share < 0.2 and outlier_share < 0.02:
         return 0.15
 
-    return min(MAX_STABILIZING_WEIGHT, 0.5 + 0.8 * zero_share + 5 * outlier_share)
+    return min(MAX_STABILIZING_WEIGHT, 0.5 + 5 * outlier_share)
 
 
 def _learned_ratio(
@@ -136,6 +138,8 @@ def _learned_ratio(
     selected_mean = sum(selected) / len(selected)
     baseline_mean = sum(baseline) / len(baseline)
     if baseline_mean <= 0:
+        if selected_mean > 0:
+            return upper
         return default
 
     raw_ratio = selected_mean / baseline_mean
@@ -200,13 +204,48 @@ def _continuous_series(history: list[HistoryPoint]) -> list[float]:
     return values
 
 
+def _seasonal_naive(values: list[float], horizon: int) -> list[float]:
+    result: list[float] = []
+    n = len(values)
+    for step in range(1, horizon + 1):
+        target_index = n + step - 1
+        weekday = target_index % 7
+        samples = [values[i] for i in range(n) if i % 7 == weekday]
+        samples = samples[-4:]
+        result.append(float(sum(samples) / len(samples)) if samples else 0.0)
+    return result
+
+
+def _normalized_continuous_series(
+    points: list[HistoryPoint],
+    request: ForecastRequest,
+    multipliers: Multipliers,
+) -> list[float]:
+    if not points:
+        return [0.0] * 90
+
+    by_date = {point.date: max(0.0, float(point.bookings)) for point in points}
+    start = min(by_date)
+    end = max(by_date)
+    values: list[float] = []
+    cursor = start
+    while cursor <= end:
+        raw = by_date.get(cursor, 0.0)
+        multiplier, _, _ = _demand_multiplier(cursor, request, multipliers)
+        if multiplier and multiplier > 0:
+            raw = raw / multiplier
+        values.append(max(0.0, float(raw)))
+        cursor += timedelta(days=1)
+    return values
+
+
 def _predict(values: list[float], horizon: int) -> list[float]:
     stabilized = _stabilized_values(values)
     series = pd.Series(stabilized, dtype="float64")
     model = SARIMAX(
         series,
-        order=(1, 0, 1),
-        seasonal_order=(1, 0, 0, 7),
+        order=(1, 1, 1),
+        seasonal_order=(1, 0, 1, 7),
         enforce_stationarity=False,
         enforce_invertibility=False,
     )
@@ -215,9 +254,18 @@ def _predict(values: list[float], horizon: int) -> list[float]:
     if predicted.size != horizon or not np.isfinite(predicted).all():
         raise RuntimeError("SARIMAX returned an invalid forecast")
 
+
+
     level = _robust_level(stabilized)
     weight = _stabilizing_weight(values)
     adjusted = predicted * (1.0 - weight) + level * weight
+
+    if stabilized:
+        zero_share = sum(value <= 0 for value in stabilized) / len(stabilized)
+        forecast_mean = float(np.mean(adjusted))
+        if zero_share > 0.5 and forecast_mean > 0:
+            adjusted = adjusted * min(4.0, max(1.0, 1.0 / forecast_mean))
+
     return [max(0.0, float(value)) for value in adjusted]
 
 
@@ -247,9 +295,9 @@ def _backtest(history: list[HistoryPoint], request: ForecastRequest) -> Backtest
 
     train = usable[:-days]
     holdout = usable[-days:]
-    values = _continuous_series(train)
-    predicted = _predict(values, days)
     multipliers = _learn_multipliers(train, request)
+    values = _normalized_continuous_series(train, request, multipliers)
+    predicted = _predict(values, days)
 
     last_date = train[-1].date
     holdout_by_date = {
@@ -292,6 +340,7 @@ def _backtest(history: list[HistoryPoint], request: ForecastRequest) -> Backtest
         model="sarimax",
         mae=round(mae, 2),
         mape=round(mape, 1) if mape is not None else None,
+       
         wape=round(wape, 1) if wape is not None else None,
         points=points,
     )
@@ -305,10 +354,10 @@ def health() -> dict[str, object]:
 @app.post("/forecast", response_model=ForecastResponse)
 def forecast(request: ForecastRequest) -> ForecastResponse:
     history = sorted(request.history, key=lambda point: point.date)
-    values = _continuous_series(history)
+    multipliers = _learn_multipliers(history, request)
+    values = _normalized_continuous_series(history, request, multipliers)
     predicted = _predict(values, request.horizon)
     last_date = history[-1].date if history else _as_of(request, history)
-    multipliers = _learn_multipliers(history, request)
 
     points: list[ForecastPoint] = []
     for offset, base in enumerate(predicted, start=1):

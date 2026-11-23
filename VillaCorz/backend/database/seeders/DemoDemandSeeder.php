@@ -16,7 +16,7 @@ class DemoDemandSeeder extends Seeder
 {
     /**
      * Seed historical booking demand with a smooth weekday/weekend/holiday
-     * curve and roughly Php 225k paid revenue per rolling 30 days.
+     * curve and roughly Php 100k paid revenue per rolling 30 days.
      * Safe to run more than once.
      */
     public function run(): void
@@ -37,23 +37,31 @@ class DemoDemandSeeder extends Seeder
         $pool = $rooms->isNotEmpty() ? $rooms : $services->values();
         $holidays = $this->philippineHolidays();
 
-        for ($offset = 270; $offset >= 1; $offset--) {
+        for ($offset = 365; $offset >= 1; $offset--) {
             $date = now()->startOfDay()->subDays($offset);
             $dateKey = $date->toDateString();
             $weekday = (int) $date->dayOfWeek;
             $isPeakMonth = in_array((int) $date->month, [4, 5, 11, 12], true);
+            $isLowMonth = in_array((int) $date->month, [1, 2, 6, 9], true);
 
-            $weekdayBase = [0 => 3, 1 => 3, 2 => 3, 3 => 3, 4 => 3, 5 => 4, 6 => 4];
-            $count = $weekdayBase[$weekday] ?? 3;
+            $weekdayBase = [0 => 0, 1 => 0, 2 => 0, 3 => 0, 4 => 1, 5 => 1, 6 => 1];
+            $count = $weekdayBase[$weekday] ?? 0;
             if (isset($holidays[$dateKey])) {
                 $count += 1;
             }
             if ($isPeakMonth) {
                 $count += 1;
             }
-            if (crc32('jitter-'.$dateKey) % 5 === 0) {
+            if ($isLowMonth) {
+                $count = 0;
+            }
+            if (crc32('spike-'.$dateKey) % 12 === 0) {
                 $count += 1;
             }
+            if (crc32('dip-'.$dateKey) % 5 === 0) {
+                $count = 0;
+            }
+            $count = max(0, $count);
 
             $candidates = [];
             for ($index = 0; $index < $count; $index++) {
@@ -65,7 +73,7 @@ class DemoDemandSeeder extends Seeder
 
                 $service = $pool[crc32($reference) % $pool->count()];
                 $paidDays = 1 + (crc32('paid-days-'.$reference) % 3);
-                $leadDays = 3 + (crc32('lead-'.$reference) % 19);
+                $leadDays = 3 + (crc32('lead-'.$reference) % 46);
                 $checkIn = StayTime::parseLocal(
                     $date->copy()->addDays($leadDays)->toDateString(),
                     StayPolicy::defaultCheckInTime(),
@@ -90,23 +98,14 @@ class DemoDemandSeeder extends Seeder
                 ];
             }
 
-            $dailyTarget = crc32('revenue-'.$dateKey) % 3 === 0 ? 4000 : 3000;
+            $dailyTarget = 3333;
             $bestMask = 0;
             $bestTotal = -1.0;
-            $limit = 1 << count($candidates);
 
-            for ($mask = 0; $mask < $limit; $mask++) {
-                $maskTotal = 0.0;
-
-                foreach ($candidates as $candidateIndex => $candidate) {
-                    if (($mask & (1 << $candidateIndex)) !== 0) {
-                        $maskTotal += $candidate['total'];
-                    }
-                }
-
-                if ($maskTotal <= $dailyTarget && $maskTotal > $bestTotal) {
-                    $bestTotal = $maskTotal;
-                    $bestMask = $mask;
+            foreach ($candidates as $candidateIndex => $candidate) {
+                if ($candidate['total'] <= $dailyTarget && $candidate['total'] > $bestTotal) {
+                    $bestTotal = $candidate['total'];
+                    $bestMask = 1 << $candidateIndex;
                 }
             }
 
