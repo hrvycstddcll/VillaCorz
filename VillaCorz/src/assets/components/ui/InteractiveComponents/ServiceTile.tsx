@@ -1,6 +1,6 @@
 import { money } from '../../../../lib/format'
 import { Check, ImageOff, X } from 'lucide-react'
-import star from '../../../images/star.png'
+const star = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364253/villacorz/ui/src/assets/images/star.png'
 
 export type ServiceTileStay = {
     id: string

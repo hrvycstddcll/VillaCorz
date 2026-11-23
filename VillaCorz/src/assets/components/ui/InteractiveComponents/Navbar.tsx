@@ -7,7 +7,7 @@ import {
     type ReactNode,
 } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import logoSvg from '../../../VillaCorz-SVGLogo.svg?raw'
+const logoUrl = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364127/villacorz/ui/src/assets/VillaCorz-SVGLogo.svg'
 import { ArrowUpRight, ChevronDown, Menu, X } from 'lucide-react'
 import DirectionalButton from './DirectionalButton'
 import GooeyNav, { type GooeyNavChild, type GooeyNavItem } from '../CssComponents/GooeyNav'
@@ -15,8 +15,6 @@ import { useAuth } from '../../../../services/useAuth'
 import { scrollToHash, scrollToTop } from '../../../../lib/smoothScroll'
 
 const buttonColor = '#3d8bff'
-
-const logoMarkup = logoSvg
 
 const navArrowIcon = (
     <ArrowUpRight
@@ -168,6 +166,21 @@ const Navbar = () => {
     const navigate = useNavigate()
     const location = useLocation()
     const { user, loading } = useAuth()
+    const [logoMarkup, setLogoMarkup] = useState('')
+
+    useEffect(() => {
+        let active = true
+        fetch(logoUrl)
+            .then((response) => response.text())
+            .then((markup) => {
+                if (active) setLogoMarkup(markup)
+            })
+            .catch(() => {})
+        return () => {
+            active = false
+        }
+    }, [])
+
     const [isOpen, setIsOpen] = useState(false)
     const [mobileGroup, setMobileGroup] = useState<MobileGroup | null>(null)
     const [fullMenuOpen, setFullMenuOpen] = useState(false)

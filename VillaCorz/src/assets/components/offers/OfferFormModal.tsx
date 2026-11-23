@@ -7,9 +7,9 @@ import {
 } from 'react'
 import axios from 'axios'
 import { Fan, Loader2, Trash2, X } from 'lucide-react'
-import acIcon from '../../images/AC.png'
-import crIcon from '../../images/Cr.png'
-import tvIcon from '../../images/Tv.png'
+const acIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364138/villacorz/ui/src/assets/images/AC.png'
+const crIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364142/villacorz/ui/src/assets/images/Cr.png'
+const tvIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364143/villacorz/ui/src/assets/images/Tv.png'
 import type {
     Service,
     ServiceDiscountType,

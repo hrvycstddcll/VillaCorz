@@ -1,8 +1,8 @@
 import { Fan } from 'lucide-react'
 import { money } from '../../../lib/format'
-import airConditioningIcon from '../../images/AC.png'
-import tvIcon from '../../images/Tv.png'
-import privateBathroomIcon from '../../images/Cr.png'
+const airConditioningIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364138/villacorz/ui/src/assets/images/AC.png'
+const tvIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364143/villacorz/ui/src/assets/images/Tv.png'
+const privateBathroomIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364142/villacorz/ui/src/assets/images/Cr.png'
 import { amenityIcon, type Stay } from './shared'
 
 export function RoomDetailView({
