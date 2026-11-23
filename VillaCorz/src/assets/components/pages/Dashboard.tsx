@@ -8,6 +8,7 @@ import {
     MessageSquareText,
     RefreshCw,
     Star,
+    Wallet,
     X,
 } from 'lucide-react'
 import { money } from '../../../lib/format'
@@ -27,6 +28,7 @@ import type {
     DashboardChartPoint,
     DashboardChartSeries,
 } from '../admin/DashboardLineChart'
+import AdminBento from '../admin/AdminBento'
 import AdminCard from '../admin/AdminCard'
 import AdminEmptyState from '../admin/AdminEmptyState'
 import AdminStatStrip from '../admin/AdminStatStrip'
@@ -45,7 +47,7 @@ type PriceRecommendation = DashboardSummary['room_recommendations'][number]
 
 const numberFormatter = new Intl.NumberFormat('en-PH')
 const revenueChartSeries: DashboardChartSeries[] = [
-    { key: 'revenue', label: 'Revenue', color: '#006dfc' },
+    { key: 'revenue', label: 'Revenue', color: '#006dfc', fill: true },
 ]
 const accuracyChartSeries: DashboardChartSeries[] = [
     { key: 'actual', label: 'Actual paid days', color: '#64748b' },
@@ -99,14 +101,39 @@ const Skeleton = ({ className = '' }: { className?: string }) => (
     />
 )
 
+const RevenueWalletIcon = () => (
+    <span
+        aria-hidden="true"
+        className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-white sm:size-10"
+    >
+        <Wallet className="size-5 sm:size-6" strokeWidth={1.8} />
+    </span>
+)
+
 const RevenueHeroSkeleton = () => (
-    <div role="status" aria-label="Loading revenue" className="min-w-0 px-1">
+    <div
+        role="status"
+        aria-label="Loading revenue"
+        className="min-w-0 rounded-2xl bg-[#006dfc] px-4 py-4 sm:px-5 sm:py-5"
+    >
         <span className="sr-only">Loading revenue</span>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80">
             Revenue
         </p>
-        <Skeleton className="mt-2 h-12 w-48 rounded-md sm:h-16 sm:w-64" />
-        <Skeleton className="mt-3 h-3 w-32 rounded-sm" />
+        <div className="mt-2 flex items-center gap-3">
+            <div
+                aria-hidden="true"
+                className="h-12 w-48 animate-pulse rounded-md bg-white/30 motion-reduce:animate-none sm:h-16 sm:w-64"
+            />
+            <div
+                aria-hidden="true"
+                className="size-9 shrink-0 animate-pulse rounded-full bg-white/30 motion-reduce:animate-none sm:size-10"
+            />
+        </div>
+        <div
+            aria-hidden="true"
+            className="mt-3 h-3 w-32 animate-pulse rounded-sm bg-white/30 motion-reduce:animate-none"
+        />
     </div>
 )
 
@@ -749,16 +776,7 @@ const Dashboard = () => {
                     </p>
                 </div>
 
-                <section
-
-
-                    className="grid gap-6 md:grid-cols-[minmax(15rem,0.7fr)_minmax(0,1.3fr)] md:items-center"
-
-
-                    aria-busy={loading}
-
-
-                >
+                <AdminBento className="admin-bento--revenue" ariaBusy={loading}>
 
 
                     {loading ? (
@@ -770,11 +788,11 @@ const Dashboard = () => {
                     ) : (
 
 
-                        <div className="min-w-0 px-1">
+                        <div className="min-w-0 rounded-2xl bg-[#006dfc] px-4 py-4 text-white shadow-sm sm:px-5 sm:py-5">
 
 
                             <div className="flex items-center gap-1.5">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80">
                                     Revenue
                                 </p>
                                 <WarmTooltip
@@ -782,7 +800,7 @@ const Dashboard = () => {
                                     side="top"
                                     size="sm"
                                 >
-                                    <span className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm text-slate-400 hover:text-slate-600">
+                                    <span className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm text-white/80 hover:text-white">
                                         <Info className="size-3.5" aria-hidden="true" />
                                         <span className="sr-only">About revenue</span>
                                     </span>
@@ -794,25 +812,27 @@ const Dashboard = () => {
                                     side="bottom"
                                     size="sm"
                                 >
-                                    <Link
-                                        to={reportHref('revenue')}
-                                        className={`mt-2 inline-block rounded-sm font-jakarta-serif text-5xl font-bold leading-none tracking-tight text-slate-950 tabular-nums hover:text-[#006dfc] sm:text-6xl ${focusRing}`}
-                                    >
-                                        {money(metrics?.revenue ?? 0)}
-                                    </Link>
+                                    <span className="mt-2 inline-flex max-w-full items-center gap-3 align-middle">
+                                        <Link
+                                            to={reportHref('revenue')}
+                                            className="rounded-sm font-jakarta-serif text-5xl font-bold leading-none tracking-tight text-white tabular-nums hover:text-white/90 sm:text-6xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                                        >
+                                            {money(metrics?.revenue ?? 0)}
+                                        </Link>
+                                        <RevenueWalletIcon />
+                                    </span>
                                 </WarmTooltip>
 
 
                             ) : (
 
 
-                                <p className="mt-2 font-jakarta-serif text-5xl font-bold leading-none tracking-tight text-slate-950 tabular-nums sm:text-6xl">
-
-
-                                    —
-
-
-                                </p>
+                                <span className="mt-2 inline-flex max-w-full items-center gap-3 align-middle">
+                                    <span className="font-jakarta-serif text-5xl font-bold leading-none tracking-tight text-white tabular-nums sm:text-6xl">
+                                        —
+                                    </span>
+                                    <RevenueWalletIcon />
+                                </span>
 
 
                             )}
@@ -824,22 +844,7 @@ const Dashboard = () => {
                                 <p
 
 
-                                    className={`mt-3 font-mono text-xs font-medium tabular-nums ${comparison.revenue.delta > 0
-
-
-                                            ? 'text-emerald-700'
-
-
-                                            : comparison.revenue.delta < 0
-
-
-                                                ? 'text-rose-700'
-
-
-                                                : 'text-slate-500'
-
-
-                                        }`}
+                                    className="mt-3 font-mono text-xs font-medium tabular-nums text-white/90"
 
 
                                 >
@@ -854,7 +859,7 @@ const Dashboard = () => {
                                         : `${comparison.revenue.delta > 0 ? '+' : ''}${money(comparison.revenue.delta)}`}
 
 
-                                    <span className="ml-1 text-slate-500">
+                                    <span className="ml-1 text-white/70">
 
 
                                         vs prior period
@@ -1029,8 +1034,9 @@ const Dashboard = () => {
                     </AdminCard>
 
 
-                </section>
+                </AdminBento>
 
+                <AdminBento>
                 {loading ? (
 
 
@@ -1059,6 +1065,7 @@ const Dashboard = () => {
 
 
                 )}
+                </AdminBento>
 
                 {error && (
                     <div
@@ -1070,7 +1077,7 @@ const Dashboard = () => {
                     </div>
                 )}
 
-                <section>
+                <AdminBento>
                     <AdminCard>
                         <div className="flex items-center gap-1.5">
                             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -1179,7 +1186,7 @@ const Dashboard = () => {
 
                         )}
                     </AdminCard>
-                </section>
+                </AdminBento>
 
                 <section aria-labelledby="forecast-title" className="space-y-4">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -1286,6 +1293,7 @@ const Dashboard = () => {
                         ))}
                     </div>
 
+                    <AdminBento className="admin-bento--stacked">
                     <AdminCard className="min-w-0">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                             <div>
@@ -1573,6 +1581,7 @@ const Dashboard = () => {
                             </>
                         )}
                     </AdminCard>
+                    </AdminBento>
                 </section>
 
                 {priceAdjustmentNotice && (
@@ -1581,6 +1590,7 @@ const Dashboard = () => {
                     </p>
                 )}
 
+                <AdminBento>
                 <AdminCard>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
@@ -1694,8 +1704,9 @@ const Dashboard = () => {
                         </ul>
                     )}
                 </AdminCard>
+                </AdminBento>
 
-                <section className="grid gap-8 lg:grid-cols-2">
+                <AdminBento gap={32}>
                     <AdminCard>
                         <div className="flex items-center gap-1.5">
                             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -1867,9 +1878,9 @@ const Dashboard = () => {
                             </>
                         )}
                     </AdminCard>
-                </section>
+                </AdminBento>
 
-                <section className="grid gap-8 lg:grid-cols-2">
+                <AdminBento gap={32}>
                     <AdminCard>
                         <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                             Stay performance
@@ -2012,9 +2023,9 @@ const Dashboard = () => {
                             )}
                         </div>
                     </AdminCard>
-                </section>
+                </AdminBento>
 
-                <section>
+                <AdminBento>
                     <AdminCard padding={false}>
                         <div className="px-5 pt-5">
                             <div className="flex items-center gap-1.5">
@@ -2123,7 +2134,7 @@ const Dashboard = () => {
                             )}
                         </div>
                     </AdminCard>
-                </section>
+                </AdminBento>
             </div>
             {selectedPriceRecommendation && (
                 <ConfirmDialog
