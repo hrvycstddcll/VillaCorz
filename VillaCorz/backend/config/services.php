@@ -27,7 +27,7 @@ return [
     ],
 
     'contact' => [
-        'recipient' => env('CONTACT_MAIL_TO'),
+        'recipient' => env('CONTACT_MAIL_TO', env('MAIL_FROM_ADDRESS', 'dlord0260@gmail.com')),
     ],
 
     'cancel_request' => [

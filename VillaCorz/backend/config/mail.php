@@ -116,8 +116,8 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+        'address' => env('MAIL_FROM_ADDRESS', 'dlord0260@gmail.com'),
+        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'VillaCorz')),
     ],
 
 ];
