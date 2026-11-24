@@ -15,7 +15,15 @@ class PasswordResetCode extends Mailable
     public function __construct(
         public readonly string $firstname,
         public readonly string $code,
-    ) {}
+        public readonly string $resetId,
+        public readonly string $email,
+    ) {
+        $this->resetUrl = rtrim(config('app.frontend_url'), '/')
+            .'/forgot-password?reset_id='.urlencode($resetId)
+            .'&email='.urlencode($email);
+    }
+
+    public readonly string $resetUrl;
 
     public function envelope(): Envelope
     {

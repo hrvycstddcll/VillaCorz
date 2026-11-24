@@ -120,6 +120,8 @@ class AccountController extends Controller
                 Mail::to($user->email)->send(new PasswordResetCode(
                     $user->firstname,
                     $code,
+                    $resetId,
+                    $user->email,
                 ));
             } catch (Throwable $exception) {
                 $this->forgetReset($cacheKey, $attemptsKey);

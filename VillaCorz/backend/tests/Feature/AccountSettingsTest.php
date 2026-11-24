@@ -74,6 +74,7 @@ class AccountSettingsTest extends TestCase
         Mail::fake();
         $user = User::factory()->create(['password' => 'CurrentPassword123']);
         $developmentCode = null;
+        $resetUrl = null;
 
         $response = $this->postJson('/api/forgot-password', [
             'email' => $user->email,
@@ -83,11 +84,14 @@ class AccountSettingsTest extends TestCase
                 'If an account exists for that email, a password reset code has been sent.',
             );
 
-        Mail::assertSent(PasswordResetCode::class, function (PasswordResetCode $mail) use (&$developmentCode) {
+        Mail::assertSent(PasswordResetCode::class, function (PasswordResetCode $mail) use (&$developmentCode, &$resetUrl) {
             $developmentCode = $mail->code;
+            $resetUrl = $mail->resetUrl;
 
             return true;
         });
+
+        $this->assertStringContainsString('reset_id='.$response->json('reset_id'), $resetUrl);
 
         $this->postJson('/api/reset-password', [
             'reset_id' => $response->json('reset_id'),

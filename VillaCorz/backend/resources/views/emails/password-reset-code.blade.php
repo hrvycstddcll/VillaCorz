@@ -12,6 +12,8 @@
         <p style="font-size:15px; line-height:1.6;">Hi {{ $firstname }}, use this code to choose a new password:</p>
         <p style="margin:24px 0; padding:18px; border-radius:8px; background:#eff6ff; color:#0056cc; font-size:32px; font-weight:700; letter-spacing:8px; text-align:center;">{{ $code }}</p>
         <p style="font-size:14px; line-height:1.6;">This code expires in 10 minutes and can be used once. If you did not request a password reset, you can ignore this email.</p>
+        <p style="margin:24px 0 0; font-size:14px; line-height:1.6;"><a href="{{ $resetUrl }}" style="display:inline-block; padding:12px 18px; border-radius:8px; background:#006dfc; color:#ffffff; font-weight:700; text-decoration:none;">Choose a new password</a></p>
+        <p style="margin:12px 0 0; color:#64748b; font-size:12px; line-height:1.6;">If the button does not work, open this link:<br><span style="word-break:break-all;">{{ $resetUrl }}</span></p>
         <p style="margin:28px 0 0; color:#64748b; font-size:12px;">Never share this code with anyone. VillaCorz will never ask you for it.</p>
     </main>
 </body>
