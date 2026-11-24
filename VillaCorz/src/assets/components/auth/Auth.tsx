@@ -387,7 +387,14 @@ const Auth = () => {
                     developmentCode={verification.developmentCode}
                     remember={remember}
                     onVerified={(user) => {
-                        setUser(user ?? null)
+                        if (!user?.id) {
+                            setFeedback('Verification did not return your account. Please try again.')
+                            setFeedbackType('error')
+                            setVerification(null)
+                            return
+                        }
+
+                        setUser(user)
                         setVerification(null)
                         navigate(getPostAuthDestination(user, location.state), { replace: true })
                     }}
