@@ -43,11 +43,10 @@ class BookingAvailability
     ): array {
         $checkInAt = StayTime::toCarbon($checkIn)->utc();
         $blockingEnd = StayPolicy::blockingEndFor($checkInAt, $paidDays);
-        $turnoverHours = StayPolicy::turnoverHours();
 
         $query = $this->activityQuery()
             ->where('bookings.check_in', '<', $blockingEnd->toDateTimeString())
-            ->whereRaw('DATE_ADD(bookings.check_out, INTERVAL ? HOUR) > ?', [$turnoverHours, $checkInAt->toDateTimeString()]);
+            ->where('bookings.check_out', '>', StayPolicy::turnoverCutoffFor($checkInAt)->toDateTimeString());
 
         if ($ignoreBookingId !== null) {
             $query->where('bookings.id', '!=', $ignoreBookingId);
@@ -168,7 +167,6 @@ class BookingAvailability
         $paidDays = (int) ($villa->paid_days ?? $villa->nights ?? 1);
         $checkInAt = StayTime::toCarbon($villa->check_in)->utc();
         $blockingEnd = StayPolicy::blockingEndFor($checkInAt, $paidDays);
-        $turnoverHours = StayPolicy::turnoverHours();
 
         $query = Booking::query()
             ->where('id', '!=', $villa->id)
@@ -178,9 +176,10 @@ class BookingAvailability
                 fn ($roomQuery) => $roomQuery->where('service_id', '!=', $exclusiveServiceId),
             )
             ->where('check_in', '<', $blockingEnd->toDateTimeString())
-            ->whereRaw(
-                'DATE_ADD(bookings.check_out, INTERVAL ? HOUR) > ?',
-                [$turnoverHours, $checkInAt->toDateTimeString()],
+            ->where(
+                'check_out',
+                '>',
+                StayPolicy::turnoverCutoffFor($checkInAt)->toDateTimeString(),
             )
             ->where(function ($statusQuery) {
                 $statusQuery->where('status', 'confirmed')
@@ -194,9 +193,10 @@ class BookingAvailability
         if ($from !== null) {
             $fromAt = StayTime::toCarbon($from)->utc();
 
-            $query->whereRaw(
-                'DATE_ADD(bookings.check_out, INTERVAL ? HOUR) > ?',
-                [$turnoverHours, $fromAt->toDateTimeString()],
+            $query->where(
+                'check_out',
+                '>',
+                StayPolicy::turnoverCutoffFor($fromAt)->toDateTimeString(),
             );
         }
 
@@ -213,11 +213,10 @@ class BookingAvailability
     ): array {
         $fromAt = StayTime::toCarbon($from)->utc()->toDateTimeString();
         $toAt = StayTime::toCarbon($to)->utc()->toDateTimeString();
-        $turnoverHours = StayPolicy::turnoverHours();
 
         return $this->activityQuery()
             ->where('bookings.check_in', '<', $toAt)
-            ->whereRaw('DATE_ADD(bookings.check_out, INTERVAL ? HOUR) > ?', [$turnoverHours, $fromAt])
+            ->where('bookings.check_out', '>', StayPolicy::turnoverCutoffFor($from)->toDateTimeString())
             ->get()
             ->map(fn ($row) => $this->mapInterval($row))
             ->all();

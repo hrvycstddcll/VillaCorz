@@ -315,10 +315,7 @@ class CustomerAssistantContextBuilder
             ->join('bookings', 'bookings.id', '=', 'booking_rooms.booking_id')
             ->where('bookings.status', 'confirmed')
             ->where('bookings.check_in', '<', $blockingEnd->toDateTimeString())
-            ->whereRaw('DATE_ADD(bookings.check_out, INTERVAL ? HOUR) > ?', [
-                StayPolicy::turnoverHours(),
-                $checkInAt->toDateTimeString(),
-            ])
+            ->where('bookings.check_out', '>', StayPolicy::turnoverCutoffFor($checkInAt)->toDateTimeString())
             ->whereNotNull('booking_rooms.service_id')
             ->pluck('booking_rooms.service_id')
             ->map(fn ($id) => (int) $id)

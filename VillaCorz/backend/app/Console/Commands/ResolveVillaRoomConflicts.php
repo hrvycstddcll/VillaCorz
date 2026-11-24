@@ -38,16 +38,16 @@ class ResolveVillaRoomConflicts extends Command
         }
 
         $dryRun = (bool) $this->option('dry-run');
-        $turnoverHours = StayPolicy::turnoverHours();
         $villas = Booking::query()
             ->where('status', 'confirmed')
             ->whereHas(
                 'rooms',
                 fn ($roomQuery) => $roomQuery->where('service_id', $exclusiveServiceId),
             )
-            ->whereRaw(
-                'DATE_ADD(bookings.check_out, INTERVAL ? HOUR) > ?',
-                [$turnoverHours, $from->toDateTimeString()],
+            ->where(
+                'check_out',
+                '>',
+                StayPolicy::turnoverCutoffFor($from)->toDateTimeString(),
             )
             ->with('rooms')
             ->orderBy('check_in')
