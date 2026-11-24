@@ -156,8 +156,10 @@ class AuthController extends Controller
         Cache::forget($cacheKey);
         Cache::forget($attemptsKey);
 
-        Auth::login($user);
-        $request->session()->regenerate();
+        if ($request->hasSession()) {
+            Auth::login($user);
+            $request->session()->regenerate();
+        }
 
         ActivityLogger::record(
             'registered',
@@ -172,6 +174,7 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Email verified and account created successfully.',
             'user' => $user->accountPayload(),
+            'token' => $user->createToken('villacorz-spa')->plainTextToken,
         ], 201);
     }
 
@@ -258,7 +261,9 @@ class AuthController extends Controller
             ]);
         }
 
-        $request->session()->regenerate();
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
 
         $user = Auth::user();
 
@@ -275,6 +280,7 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Login successful.',
             'user' => $user->accountPayload(),
+            'token' => $user->createToken('villacorz-spa')->plainTextToken,
         ]);
     }
 
@@ -294,10 +300,13 @@ class AuthController extends Controller
             );
         }
 
-        Auth::guard('web')->logout();
+        $user?->currentAccessToken()?->delete();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if ($request->hasSession()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json([
             'message' => 'Logout successful.',
