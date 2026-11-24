@@ -232,7 +232,7 @@ class DatabaseBackupService
             $values = (array) $table;
             $name = (string) reset($values);
             $type = strtoupper((string) (end($values) ?: ''));
-            if ($type !== 'BASE TABLE' || ! preg_match('/^[A-Za-z0-9_]+$/', $name)) {
+            if ($name === 'backups' || $type !== 'BASE TABLE' || ! preg_match('/^[A-Za-z0-9_]+$/', $name)) {
                 continue;
             }
 
@@ -347,7 +347,7 @@ class DatabaseBackupService
     private function postgresTables(PDO $pdo): array
     {
         $statement = $pdo->query(
-            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename ~ '^[A-Za-z0-9_]+$' ORDER BY tablename",
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'backups' AND tablename ~ '^[A-Za-z0-9_]+$' ORDER BY tablename",
         );
 
         if ($statement === false) {

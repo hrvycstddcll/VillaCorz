@@ -80,6 +80,7 @@ class AdminBackupTest extends TestCase
         $this->actingAs($admin)->get('/api/backups/'.$filename.'/download')
             ->assertOk()
             ->assertHeader('Content-Type', 'application/sql')
+            ->assertHeader('Content-Disposition', 'attachment; filename="'.$filename.'"')
             ->assertSee('-- fake database dump', false);
     }
 

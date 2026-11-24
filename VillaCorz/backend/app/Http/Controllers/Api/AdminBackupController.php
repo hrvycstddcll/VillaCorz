@@ -58,9 +58,8 @@ class AdminBackupController extends Controller
             $request,
         );
 
-        return response($backup['contents'], 200, [
-            'Content-Type' => 'application/sql',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
+        return response($backup['contents'], 200)
+            ->header('Content-Type', 'application/sql')
+            ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
     }
 }
