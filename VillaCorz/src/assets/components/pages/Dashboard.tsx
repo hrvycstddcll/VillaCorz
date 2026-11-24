@@ -189,24 +189,7 @@ const KpiStripSkeleton = ({ className = '' }: { className?: string }) => (
     </div>
 )
 
-const ActionCenterSkeleton = () => (
-    <ul
-        role="status"
-        aria-label="Loading action items"
-        className="mt-3 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-4"
-    >
-        <li className="sr-only sm:col-span-2 lg:col-span-4">Loading action items</li>
-        {Array.from({ length: 4 }).map((_, i) => (
-            <li key={i} aria-hidden="true">
-                <div className="flex min-h-12 items-center gap-3 rounded-sm py-2">
-                    <Skeleton className="size-4 shrink-0 rounded" />
-                    <Skeleton className="h-3 flex-1 rounded-sm" />
-                    <Skeleton className="h-4 w-8 rounded-sm" />
-                </div>
-            </li>
-        ))}
-    </ul>
-)
+
 
 const AnalysisChartSkeleton = () => (
     <div role="status" aria-label="Loading chart" className="mt-4 py-2">
@@ -1279,14 +1262,10 @@ const Dashboard = () => {
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                                     <div>
                                         <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                            {isAccuracy
-                                                ? 'Backtest accuracy'
-                                                : 'Predictive outlook'}
+                                            {isAccuracy ? 'Backtest accuracy' : 'Predictive outlook'}
                                         </p>
                                         <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
-                                            {isAccuracy
-                                                ? 'Actual vs predicted paid days'
-                                                : 'Forecast occupancy'}
+                                            {isAccuracy ? 'Actual vs predicted paid days' : 'Forecast occupancy'}
                                         </h3>
                                         <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">
                                             {isAccuracy
@@ -1297,60 +1276,29 @@ const Dashboard = () => {
                                     <div className="flex flex-wrap items-end gap-3">
                                         <label className="grid gap-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                                             <WarmTooltip
-                                                content={
-                                                    isAccuracy
-                                                        ? 'Past days to compare results.'
-                                                        : 'Days to forecast occupancy.'
-                                                }
+                                                content={isAccuracy ? 'Past days to compare results.' : 'Days to forecast occupancy.'}
                                                 side="top"
                                                 size="sm"
                                             >
                                                 <span className="inline-flex items-center gap-1">
-                                                    {isAccuracy
-                                                        ? 'Backtest window'
-                                                        : 'Forecast window'}
+                                                    {isAccuracy ? 'Backtest window' : 'Forecast window'}
                                                     <Info className="size-3" aria-hidden="true" />
                                                 </span>
                                             </WarmTooltip>
                                             <select
-                                                value={
-                                                    isAccuracy
-                                                        ? backtestRange
-                                                        : forecastPreset
-                                                }
+                                                value={isAccuracy ? backtestRange : forecastPreset}
                                                 onChange={(event) => {
                                                     if (isAccuracy) {
-                                                        setBacktestRange(
-                                                            Number(
-                                                                event.target.value,
-                                                            ) as (typeof backtestRanges)[number],
-                                                        )
+                                                        setBacktestRange(Number(event.target.value) as (typeof backtestRanges)[number]);
                                                     } else {
-                                                        setForecastPreset(
-                                                            event.target
-                                                                .value as (typeof forecastPresets)[number],
-                                                        )
+                                                        setForecastPreset(event.target.value as (typeof forecastPresets)[number]);
                                                     }
                                                 }}
                                                 className={`min-h-11 rounded-lg border border-[rgba(0,0,0,0.12)] bg-white px-3 text-xs font-medium normal-case tracking-normal text-slate-800 ${focusRing}`}
                                             >
                                                 {isAccuracy
-                                                    ? backtestRanges.map((days) => (
-                                                        <option
-                                                            key={days}
-                                                            value={days}
-                                                        >
-                                                            Last {days} days
-                                                        </option>
-                                                    ))
-                                                    : forecastPresets.map((days) => (
-                                                        <option
-                                                            key={days}
-                                                            value={days}
-                                                        >
-                                                            {days} days
-                                                        </option>
-                                                    ))}
+                                                    ? backtestRanges.map((days) => (<option key={days} value={days}>Last {days} days</option>))
+                                                    : forecastPresets.map((days) => (<option key={days} value={days}>{days} days</option>))}
                                             </select>
                                         </label>
                                     </div>
@@ -1361,40 +1309,18 @@ const Dashboard = () => {
                                         {modelLabel(demandForecast?.model ?? 'sarimax')}
                                     </span>
                                     {isAccuracy && demandForecast?.accuracy && (
-                                        <WarmTooltip
-                                            content="Prediction error (lower is better)."
-                                            side="top"
-                                            size="sm"
-                                        >
+                                        <WarmTooltip content="Prediction error (lower is better)." side="top" size="sm">
                                             <span className="font-jakarta-serif text-[10px] tabular-nums text-slate-500">
                                                 MAE {demandForecast.accuracy.mae}
-                                                {demandForecast.accuracy.mape !== null &&
-                                                    ` • MAPE ${demandForecast.accuracy.mape}%`}
-                                                {demandForecast.accuracy.wape != null &&
-                                                    ` • WAPE ${demandForecast.accuracy.wape}%`}
+                                                {demandForecast.accuracy.mape !== null && ` • MAPE ${demandForecast.accuracy.mape}%`}
+                                                {demandForecast.accuracy.wape != null && ` • WAPE ${demandForecast.accuracy.wape}%`}
                                             </span>
                                         </WarmTooltip>
                                     )}
-                                    <ul
-                                        className="flex flex-wrap gap-x-4 gap-y-2"
-                                        aria-label="Chart legend"
-                                    >
+                                    <ul className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Chart legend">
                                         {analysisChartSeries.map((series) => (
-                                            <li
-                                                key={series.key}
-                                                className="inline-flex items-center gap-2 text-[10px] text-slate-600"
-                                            >
-                                                <span
-                                                    aria-hidden="true"
-                                                    className="w-4 border-t-2"
-                                                    style={{
-                                                        borderColor: series.color,
-                                                        borderTopStyle:
-                                                            series.strokeDasharray
-                                                                ? 'dashed'
-                                                                : 'solid',
-                                                    }}
-                                                />
+                                            <li key={series.key} className="inline-flex items-center gap-2 text-[10px] text-slate-600">
+                                                <span aria-hidden="true" className="w-4 border-t-2" style={{ borderColor: series.color, borderTopStyle: series.strokeDasharray ? 'dashed' : 'solid' }} />
                                                 {series.label}
                                             </li>
                                         ))}
@@ -1405,45 +1331,20 @@ const Dashboard = () => {
                                     <AnalysisChartSkeleton />
                                 ) : error ? (
                                     <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                                        <p className="text-sm text-slate-600">
-                                            {isAccuracy
-                                                ? 'Model accuracy unavailable.'
-                                                : 'Occupancy forecast unavailable.'}
-                                        </p>
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setRefreshToken((token) => token + 1)
-                                            }
-                                            className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
-                                        >
-                                            Retry
-                                        </button>
+                                        <p className="text-sm text-slate-600">{isAccuracy ? 'Model accuracy unavailable.' : 'Occupancy forecast unavailable.'}</p>
+                                        <button type="button" onClick={() => setRefreshToken((token) => token + 1)} className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}>Retry</button>
                                     </div>
-                                ) : isAccuracy &&
-                                    accuracyChartPoints.length === 0 ? (
-                                    <p className="py-16 text-center text-sm text-slate-500">
-                                        Not enough stay history to compare a forecast
-                                        with actual results yet.
-                                    </p>
+                                ) : isAccuracy && accuracyChartPoints.length === 0 ? (
+                                    <p className="py-16 text-center text-sm text-slate-500">Not enough stay history to compare a forecast with actual results yet.</p>
                                 ) : !isAccuracy && occupancyPoints.length === 0 ? (
-                                    <p className="py-16 text-center text-sm text-slate-500">
-                                        Occupancy projections are unavailable for this
-                                        forecast window.
-                                    </p>
+                                    <p className="py-16 text-center text-sm text-slate-500">Occupancy projections are unavailable for this forecast window.</p>
                                 ) : (
                                     <div className="mt-4">
                                         <DashboardLineChart
                                             points={analysisChartPoints}
                                             series={analysisChartSeries}
-                                            ariaLabel={
-                                                isAccuracy
-                                                    ? `Actual and predicted paid days over the last ${demandForecast?.accuracy?.window_days ?? backtestRange} days`
-                                                    : `Forecast occupancy over the next ${forecastPreset} days`
-                                            }
-                                            formatValue={
-                                                isAccuracy ? undefined : formatPercent
-                                            }
+                                            ariaLabel={isAccuracy ? `Actual and predicted paid days over the last ${demandForecast?.accuracy?.window_days ?? backtestRange} days` : `Forecast occupancy over the next ${forecastPreset} days`}
+                                            formatValue={isAccuracy ? undefined : formatPercent}
                                         />
                                     </div>
                                 )}
@@ -1452,76 +1353,43 @@ const Dashboard = () => {
                         <div className="lg:col-span-5 flex flex-col justify-between bg-transparent border-0 shadow-none p-0">
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
-                                    <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                        Forecast summary
-                                    </p>
-                                    <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
-                                        Demand outlook
-                                    </h3>
+                                    <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">Forecast summary</p>
+                                    <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">Demand outlook</h3>
                                     <p className="mt-1 text-xs leading-5 text-slate-500">
-                                        {demandForecast?.forecast_window
-                                            ? `${demandForecast.forecast_window.start} to ${demandForecast.forecast_window.end}`
-                                            : 'Expected demand for the selected window.'}
+                                        {demandForecast?.forecast_window ? `${demandForecast.forecast_window.start} to ${demandForecast.forecast_window.end}` : 'Expected demand for the selected window.'}
                                     </p>
                                 </div>
-                                <span className="font-jakarta-serif text-xs tabular-nums text-slate-500">
-                                    {demandForecast?.forecast.length ?? 0} days
-                                </span>
+                                <span className="font-jakarta-serif text-xs tabular-nums text-slate-500">{demandForecast?.forecast.length ?? 0} days</span>
                             </div>
                             {loading ? (
                                 <ForecastSummarySkeleton />
                             ) : error ? (
                                 <div className="flex flex-wrap items-center gap-3 py-8">
-                                    <p className="text-sm text-slate-600">
-                                        Forecast summary unavailable.
-                                    </p>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setRefreshToken((token) => token + 1)
-                                        }
-                                        className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
-                                    >
-                                        Retry
-                                    </button>
+                                    <p className="text-sm text-slate-600">Forecast summary unavailable.</p>
+                                    <button type="button" onClick={() => setRefreshToken((token) => token + 1)} className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}>Retry</button>
                                 </div>
-                            ) : !demandForecast ||
-                              demandForecast.forecast.length === 0 ? (
-                                <p className="py-8 text-sm text-slate-500">
-                                    No forecast data is available for this window.
-                                </p>
+                            ) : !demandForecast || demandForecast.forecast.length === 0 ? (
+                                <p className="py-8 text-sm text-slate-500">No forecast data is available for this window.</p>
                             ) : (
                                 <>
                                     <div className="mt-4 grid grid-cols-2 gap-3.5">
                                         <div className="bg-white border-[1.5px] border-[#0066FF] rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
-                                            <div className="flex items-start justify-between">
-                                                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Average occupancy</p>
-                                                <span className="p-2 rounded-xl bg-blue-50 text-blue-600"><BedDouble className="size-4" /></span>
-                                            </div>
+                                            <div className="flex items-start justify-between"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Average occupancy</p><span className="p-2 rounded-xl bg-blue-50 text-blue-600"><BedDouble className="size-4" /></span></div>
                                             <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">{formatPercent(demandForecast.average_forecast_occupancy)}</p>
                                             <p className="mt-1 text-[11px] text-slate-500">Across the selected forecast window.</p>
                                         </div>
                                         <div className="bg-white border-[1.5px] border-[#0066FF] rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
-                                            <div className="flex items-start justify-between">
-                                                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Expected paid days</p>
-                                                <span className="p-2 rounded-xl bg-blue-50 text-blue-600"><CalendarCheck className="size-4" /></span>
-                                            </div>
+                                            <div className="flex items-start justify-between"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Expected paid days</p><span className="p-2 rounded-xl bg-blue-50 text-blue-600"><CalendarCheck className="size-4" /></span></div>
                                             <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">{numberFormatter.format(demandForecast.expected_room_nights)}</p>
                                             <p className="mt-1 text-[11px] text-slate-500">Total paid 22-hour stays projected.</p>
                                         </div>
                                         <div className="bg-white border-[1.5px] border-[#0066FF] rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
-                                            <div className="flex items-start justify-between">
-                                                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Peak day</p>
-                                                <span className="p-2 rounded-xl bg-blue-50 text-blue-600"><TrendingUp className="size-4" /></span>
-                                            </div>
+                                            <div className="flex items-start justify-between"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Peak day</p><span className="p-2 rounded-xl bg-blue-50 text-blue-600"><TrendingUp className="size-4" /></span></div>
                                             <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">{demandForecast.peak_day?.label ?? '—'}</p>
                                             <p className="mt-1 text-[11px] text-slate-500">{demandForecast.peak_day ? `${formatPercent(demandForecast.peak_day.expected_occupancy)} projected occupancy` : 'No peak day projected.'}</p>
                                         </div>
                                         <div className="bg-white border-[1.5px] border-[#0066FF] rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
-                                            <div className="flex items-start justify-between">
-                                                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Holiday dates</p>
-                                                <span className="p-2 rounded-xl bg-blue-50 text-blue-600"><Sun className="size-4" /></span>
-                                            </div>
+                                            <div className="flex items-start justify-between"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Holiday dates</p><span className="p-2 rounded-xl bg-blue-50 text-blue-600"><Sun className="size-4" /></span></div>
                                             <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">{demandForecast.holiday_days}</p>
                                             <p className="mt-1 text-[11px] text-slate-500">Holidays inside the forecast window.</p>
                                         </div>
@@ -1529,14 +1397,8 @@ const Dashboard = () => {
                                     <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2" aria-label="Forecast factors">
                                         {demandForecast.factors.map((factor) => (
                                             <li key={factor.key}>
-                                                <WarmTooltip
-                                                    content={factor.impact}
-                                                    side="top"
-                                                    size="sm"
-                                                >
-                                                    <span className="text-[10px] text-slate-600 underline decoration-dotted underline-offset-4">
-                                                        {factor.label}
-                                                    </span>
+                                                <WarmTooltip content={factor.impact} side="top" size="sm">
+                                                    <span className="text-[10px] text-slate-600 underline decoration-dotted underline-offset-4">{factor.label}</span>
                                                 </WarmTooltip>
                                             </li>
                                         ))}
@@ -1546,7 +1408,6 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </section>
-
                 {priceAdjustmentNotice && (
                     <p role="status" className="text-sm text-emerald-700">
                         {priceAdjustmentNotice}

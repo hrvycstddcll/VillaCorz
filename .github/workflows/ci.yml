@@ -8,21 +8,6 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_DATABASE: villacorz_test
-          MYSQL_USER: villacorz
-          MYSQL_PASSWORD: secret
-          MYSQL_ROOT_PASSWORD: secret
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -psecret"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
     defaults:
       run:
         working-directory: VillaCorz/backend
@@ -31,19 +16,15 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, pdo_mysql, openssl
+          extensions: mbstring, pdo_sqlite, sqlite3, openssl
       - run: composer install --no-interaction --prefer-dist
       - run: cp .env.example .env
       - run: php artisan key:generate
       - run: |
-          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
-          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
-          sed -i 's/^DB_PORT=.*/DB_PORT=3306/' .env
-          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=villacorz_test/' .env
-          sed -i 's/^DB_USERNAME=.*/DB_USERNAME=villacorz/' .env
-          sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=secret/' .env
+          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
+          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=:memory:/' .env
       - run: php artisan migrate --force
-      - run: php artisan test || true
+      - run: php artisan test
 
   frontend:
     runs-on: ubuntu-latest
@@ -58,7 +39,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: VillaCorz/package-lock.json
       - run: npm ci
-      - run: npx tsc -b || true
-      - run: npm run lint -- --max-warnings 999 || true
+      - run: npx tsc -b
+      - run: npm run lint -- --max-warnings 999
+        continue-on-error: true
       - run: npx vite build
-      - run: npm test || true
+      - run: npm test

@@ -1,41 +1,29 @@
 import {
     useCallback,
     useEffect,
+    useRef,
     useState,
     type ReactNode,
 } from 'react'
+import {
+    getAuthToken,
+    getCachedUser,
+    REMEMBER_STORAGE_KEY,
+    setCachedUser,
+    TOKEN_STORAGE_KEY,
+    USER_STORAGE_KEY,
+} from './api'
 import { getUser, logout } from './authService'
 import type { User } from './types'
 import { AuthContext } from './AuthContextValue'
 
-const USER_CACHE_KEY = 'villacorz.user'
-
 const readCachedUser = (): User | null => {
-    if (typeof window === 'undefined') return null
-
-    try {
-        const raw = window.sessionStorage.getItem(USER_CACHE_KEY)
-        if (!raw) return null
-        const parsed = JSON.parse(raw) as User
-        return parsed && typeof parsed === 'object' ? parsed : null
-    } catch {
+    if (!getAuthToken()) {
+        setCachedUser(null)
         return null
     }
-}
 
-const writeCachedUser = (user: User | null) => {
-    if (typeof window === 'undefined') return
-
-    try {
-        if (user) {
-            window.sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(user))
-        } else {
-            window.sessionStorage.removeItem(USER_CACHE_KEY)
-        }
-    } catch {
-        // Storage can be unavailable (private mode, quota); the in-memory
-        // state below is still correct for this session.
-    }
+    return getCachedUser<User>()
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -45,11 +33,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [loading, setLoading] = useState(true)
 
     const setUser = useCallback((nextUser: User | null) => {
-        writeCachedUser(nextUser)
+        setCachedUser(nextUser)
         setUserState(nextUser)
     }, [])
 
     const refreshUser = useCallback(async () => {
+        if (!getAuthToken()) {
+            setUser(null)
+            setLoading(false)
+            return
+        }
+
         try {
             const response = await getUser()
             setUser(response.data)
@@ -61,20 +55,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [setUser])
 
     const handleLogout = async () => {
-        await logout()
-        setUser(null)
+        try {
+            await logout()
+        } finally {
+            setUser(null)
+        }
     }
 
+    const initializedRef = useRef(false)
+
     useEffect(() => {
-        const init = async () => {
-            try {
-                await refreshUser()
-            } catch {
-                // ignore
+        if (initializedRef.current) return
+        initializedRef.current = true
+        void refreshUser()
+    }, [refreshUser])
+
+    useEffect(() => {
+        const handleUnauthorized = () => setUser(null)
+        const handleStorage = (event: StorageEvent) => {
+            if (![
+                TOKEN_STORAGE_KEY,
+                USER_STORAGE_KEY,
+                REMEMBER_STORAGE_KEY,
+            ].includes(event.key ?? '')) {
+                return
+            }
+
+            if (getAuthToken()) {
+                void refreshUser()
+            } else {
+                setUser(null)
             }
         }
-        void init()
-    }, [refreshUser])
+
+        window.addEventListener('villacorz:unauthorized', handleUnauthorized)
+        window.addEventListener('storage', handleStorage)
+
+        return () => {
+            window.removeEventListener('villacorz:unauthorized', handleUnauthorized)
+            window.removeEventListener('storage', handleStorage)
+        }
+    }, [refreshUser, setUser])
 
     return (
         <AuthContext.Provider value={{ user, loading, refreshUser, setUser, logout:handleLogout }}>

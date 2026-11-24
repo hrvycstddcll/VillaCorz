@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\BookingRoom;
 use App\Models\ContactSubmission;
 use App\Models\PageView;
 use App\Models\ScheduledReportExport;
@@ -173,5 +174,66 @@ class AdminReportsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('meta.total', 1)
             ->assertJsonPath('data.0.reference', 'VC-CHECKIN-001');
+    }
+
+    public function test_bookings_report_search_matches_room_names(): void
+    {
+        $admin = $this->makeUser('admin');
+        $guest = $this->makeUser('customer');
+
+        $matchingBooking = Booking::create([
+            'user_id' => $guest->id,
+            'reference' => 'VC-ROOM-001',
+            'contact_name' => $guest->firstname.' '.$guest->lastname,
+            'contact_email' => $guest->email,
+            'check_in' => now()->toDateString(),
+            'check_out' => now()->addDay()->toDateString(),
+            'nights' => 1,
+            'paid_days' => 1,
+            'adults' => 1,
+            'kids' => 0,
+            'subtotal' => 1000,
+            'total' => 1000,
+            'currency' => 'PHP',
+            'status' => 'confirmed',
+        ]);
+        BookingRoom::create([
+            'booking_id' => $matchingBooking->id,
+            'service_name' => 'Ocean View Room',
+            'weekday_price' => 1000,
+            'weekend_price' => 1000,
+            'line_total' => 1000,
+        ]);
+
+        $otherBooking = Booking::create([
+            'user_id' => $guest->id,
+            'reference' => 'VC-ROOM-002',
+            'contact_name' => $guest->firstname.' '.$guest->lastname,
+            'contact_email' => $guest->email,
+            'check_in' => now()->toDateString(),
+            'check_out' => now()->addDay()->toDateString(),
+            'nights' => 1,
+            'paid_days' => 1,
+            'adults' => 1,
+            'kids' => 0,
+            'subtotal' => 1000,
+            'total' => 1000,
+            'currency' => 'PHP',
+            'status' => 'confirmed',
+        ]);
+        BookingRoom::create([
+            'booking_id' => $otherBooking->id,
+            'service_name' => 'Garden Suite',
+            'weekday_price' => 1000,
+            'weekend_price' => 1000,
+            'line_total' => 1000,
+        ]);
+
+        $this->actingAs($admin)
+            ->getJson('/api/reports?report=bookings&search=Ocean')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.reference', 'VC-ROOM-001')
+            ->assertJsonPath('data.0.detail', 'Ocean View Room');
     }
 }

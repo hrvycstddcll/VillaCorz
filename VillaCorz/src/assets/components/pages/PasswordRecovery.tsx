@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import axios from 'axios'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { MailCheck, ShieldCheck } from 'lucide-react'
 import AccountPasswordInput from '../ui/FormComponents/AccountPasswordInput'
 import {
@@ -9,6 +9,9 @@ import {
 } from '../../../services/accountService'
 
 type RecoveryLocationState = { email?: string } | null
+
+const RESET_ID_STORAGE_KEY = 'villacorz.passwordResetId'
+const RESET_EMAIL_STORAGE_KEY = 'villacorz.passwordResetEmail'
 
 const getErrorMessage = (error: unknown, fallback: string) => {
     if (!axios.isAxiosError(error)) return fallback
@@ -26,10 +29,18 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 const PasswordRecovery = () => {
     const location = useLocation()
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
+    const queryResetId = searchParams.get('reset_id') ?? ''
+    const queryEmail = searchParams.get('email') ?? ''
     const initialEmail =
-        (location.state as RecoveryLocationState)?.email ?? ''
+        (location.state as RecoveryLocationState)?.email
+        ?? queryEmail
+        ?? window.sessionStorage.getItem(RESET_EMAIL_STORAGE_KEY)
+        ?? ''
     const [email, setEmail] = useState(initialEmail)
-    const [resetId, setResetId] = useState('')
+    const [resetId, setResetId] = useState(
+        queryResetId || window.sessionStorage.getItem(RESET_ID_STORAGE_KEY) || '',
+    )
     const [developmentCode, setDevelopmentCode] = useState('')
     const [code, setCode] = useState('')
     const [newPassword, setNewPassword] = useState('')
@@ -46,7 +57,10 @@ const PasswordRecovery = () => {
 
         try {
             const response = await requestPasswordResetCode(email.trim())
-            setResetId(response.data.reset_id)
+            const nextResetId = String(response.data.reset_id ?? '')
+            setResetId(nextResetId)
+            window.sessionStorage.setItem(RESET_ID_STORAGE_KEY, nextResetId)
+            window.sessionStorage.setItem(RESET_EMAIL_STORAGE_KEY, email.trim())
             setDevelopmentCode(response.data.development_code ?? '')
             setStatus(response.data.message)
         } catch (error) {
@@ -77,6 +91,11 @@ const PasswordRecovery = () => {
                 passwordConfirmation,
             )
             setStatus(response.data.message)
+            window.sessionStorage.removeItem(RESET_ID_STORAGE_KEY)
+            window.sessionStorage.removeItem(RESET_EMAIL_STORAGE_KEY)
+            setResetId('')
+            setCode('')
+            setDevelopmentCode('')
             setNewPassword('')
             setPasswordConfirmation('')
         } catch (error) {
@@ -199,6 +218,9 @@ const PasswordRecovery = () => {
                         <button
                             type="button"
                             onClick={() => {
+                                window.sessionStorage.removeItem(RESET_ID_STORAGE_KEY)
+                                window.sessionStorage.removeItem(RESET_EMAIL_STORAGE_KEY)
+                                setSearchParams({}, { replace: true })
                                 setResetId('')
                                 setCode('')
                                 setDevelopmentCode('')

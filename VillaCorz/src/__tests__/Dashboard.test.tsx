@@ -400,7 +400,7 @@ describe('Dashboard', () => {
         expect(screen.getByText('72.0%')).toBeInTheDocument()
         expect(screen.getByText('36')).toBeInTheDocument()
         expect(screen.getByText('Day 1')).toBeInTheDocument()
-        expect(screen.getByText(/WAPE 9.8%/)).toBeInTheDocument()
+        expect(screen.queryByText(/WAPE 9.8%/)).not.toBeInTheDocument()
     })
 
     it('shows room recommendations and only changes a price after confirmation', async () => {
@@ -425,7 +425,7 @@ describe('Dashboard', () => {
         expect(within(recommendations).getByText('Seaview Room')).toBeInTheDocument()
         expect(within(recommendations).getByText(/₱2,500/)).toBeInTheDocument()
         expect(within(recommendations).getByText(/₱3,000/)).toBeInTheDocument()
-        expect(screen.getByText(/WAPE 9.8%/)).toBeInTheDocument()
+        expect(screen.queryByText(/WAPE 9.8%/)).not.toBeInTheDocument()
         expect(adjustServicePrice).not.toHaveBeenCalled()
 
         fireEvent.click(

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import ServiceTile from '../ui/InteractiveComponents/ServiceTile'
-import type { Stay } from './shared'
+import { stayCategoryConflictMessage, type Stay } from './shared'
 
 export function PublicAccommodationSection({
     rooms,
@@ -10,6 +10,7 @@ export function PublicAccommodationSection({
     selectedStay,
     selectedRoomIds,
     unavailableRoomIds = [],
+    reservationBlocked = false,
     onSelectStay,
     onReserve,
 }: {
@@ -20,6 +21,7 @@ export function PublicAccommodationSection({
     selectedStay: Stay | null
     selectedRoomIds: string[]
     unavailableRoomIds?: string[]
+    reservationBlocked?: boolean
     onSelectStay: (stay: Stay) => void
     onReserve: (stay: Stay) => void
 }) {
@@ -112,6 +114,8 @@ export function PublicAccommodationSection({
                                 selectedRoomIds.indexOf(stay.id) + 1 || undefined
                             }
                             unavailable={unavailableRoomIds.includes(stay.id)}
+                            reservationBlocked={reservationBlocked}
+                            reservationBlockedMessage={stayCategoryConflictMessage(stay)}
                             onSelect={() => onSelectStay(stay)}
                             onToggleReservation={() => onReserve(stay)}
                         />

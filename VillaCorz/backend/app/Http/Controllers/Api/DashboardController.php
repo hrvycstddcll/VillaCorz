@@ -20,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Throwable;
 
 class DashboardController extends Controller
 {
@@ -474,15 +475,27 @@ class DashboardController extends Controller
         $presetDays = max(1, (int) $forecastPreset);
         $forecastEnd = $forecastStart->copy()->addDays($presetDays - 1);
 
-        $pythonForecast = $this->requestPythonForecast(
-            $history,
-            $holidays,
-            $activeServiceCount,
-            self::FORECAST_FULL_DAYS,
-            $backtestRange,
-            $includeHolidays,
-            $includeWeekends,
-        );
+        try {
+            $pythonForecast = $this->requestPythonForecast(
+                $history,
+                $holidays,
+                $activeServiceCount,
+                self::FORECAST_FULL_DAYS,
+                $backtestRange,
+                $includeHolidays,
+                $includeWeekends,
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $pythonForecast = $this->buildFallbackForecast(
+                $history,
+                $holidays,
+                $activeServiceCount,
+                $includeHolidays,
+                $includeWeekends,
+            );
+        }
 
         $forecastStartKey = $forecastStart->toDateString();
         $forecastEndKey = $forecastEnd->toDateString();
@@ -889,6 +902,53 @@ class DashboardController extends Controller
             'model' => 'sarimax',
             'backtest' => $backtest,
             'multipliers' => $multipliers,
+        ];
+    }
+
+    private function buildFallbackForecast(
+        array $history,
+        array $holidays,
+        int $activeServiceCount,
+        bool $includeHolidays,
+        bool $includeWeekends,
+    ): array {
+        $baseline = $history === [] ? 0.0 : (float) (collect($history)->avg('bookings') ?? 0);
+        $forecast = [];
+        $start = now()->startOfDay()->addDay();
+
+        for ($offset = 0; $offset < self::FORECAST_FULL_DAYS; $offset++) {
+            $date = $start->copy()->addDays($offset);
+            $dateKey = $date->toDateString();
+            $factor = 1.0;
+            $isWeekend = $date->dayOfWeek >= 5;
+
+            if ($includeWeekends && $isWeekend) {
+                $factor *= 1.22;
+            }
+
+            $holiday = $includeHolidays ? ($holidays[$dateKey] ?? null) : null;
+            if ($holiday !== null) {
+                $factor *= 1.45;
+            }
+
+            $expected = round($baseline * $factor, 1);
+
+            $forecast[] = [
+                'date' => $dateKey,
+                'label' => $date->format('M j'),
+                'expected_room_nights' => $expected,
+                'expected_occupancy' => min(100.0, round(($expected / max(1, $activeServiceCount)) * 100, 1)),
+                'factor' => round($factor, 2),
+                'is_weekend' => $isWeekend,
+                'holiday' => $holiday,
+            ];
+        }
+
+        return [
+            'forecast' => $forecast,
+            'model' => 'fallback',
+            'backtest' => null,
+            'multipliers' => null,
         ];
     }
 

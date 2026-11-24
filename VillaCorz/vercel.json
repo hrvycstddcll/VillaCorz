@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "${BACKEND_URL}/api/$1",
+      "env": ["BACKEND_URL"]
+    },
+    {
+      "src": "/sanctum/(.*)",
+      "dest": "${BACKEND_URL}/sanctum/$1",
+      "env": ["BACKEND_URL"]
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}

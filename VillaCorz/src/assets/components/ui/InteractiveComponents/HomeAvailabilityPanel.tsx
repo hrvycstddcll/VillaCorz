@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { formatPaidDays, formatStayDateTime } from '../../../../lib/stayDateTime'
-import type { Stay } from '../../services/shared'
+import {
+    stayCategoryConflicts,
+    stayCategoryConflictMessage,
+    type Stay,
+} from '../../services/shared'
 
 export type HomeAvailabilityPanelProps = {
     checkIn: string
@@ -9,6 +13,7 @@ export type HomeAvailabilityPanelProps = {
     choices: Stay[]
     availabilityByServiceId: Record<number, boolean>
     selectedRoomIds: string[]
+    selectedStays: Stay[]
     checkingAvailability: boolean
     availabilityError: string
     roomsLoading: boolean
@@ -22,6 +27,7 @@ const HomeAvailabilityPanel = ({
     choices,
     availabilityByServiceId,
     selectedRoomIds,
+    selectedStays,
     checkingAvailability,
     availabilityError,
     roomsLoading,
@@ -109,16 +115,25 @@ const HomeAvailabilityPanel = ({
                         <ul className="grid gap-1.5 sm:grid-cols-2">
                             {visibleChoices.map((choice) => {
                                 const selected = isSelected(choice)
+                                const conflict = stayCategoryConflicts(
+                                    choice,
+                                    selectedStays,
+                                )
                                 const available =
                                     availabilityByServiceId[Number(choice.id)]
                                 const status = selected
                                     ? 'Added'
-                                    : available === true
-                                      ? 'Available'
-                                      : available === false
-                                        ? 'Unavailable'
-                                        : 'Checking'
-                                const disabled = !selected && available !== true
+                                    : conflict
+                                      ? choice.category === 'exclusive'
+                                        ? 'Villa conflict'
+                                        : 'Room conflict'
+                                      : available === true
+                                        ? 'Available'
+                                        : available === false
+                                          ? 'Unavailable'
+                                          : 'Checking'
+                                const disabled =
+                                    !selected && (available !== true || conflict)
 
                                 return (
                                     <li
@@ -133,7 +148,8 @@ const HomeAvailabilityPanel = ({
                                                 <span
                                                     aria-hidden="true"
                                                     className={`size-1.5 rounded-full ${
-                                                        selected || available === true
+                                                        selected ||
+                                                        (!conflict && available === true)
                                                             ? 'bg-[#006dfc]'
                                                             : available === false
                                                               ? 'bg-slate-300'
@@ -151,11 +167,11 @@ const HomeAvailabilityPanel = ({
                                             type="button"
                                             onClick={() => onToggleRoom(choice)}
                                             disabled={disabled}
-                                            aria-label={`${selected ? 'Remove' : 'Add'} ${choice.title}`}
+                                            aria-label={`${selected ? 'Remove' : 'Add'} ${choice.title}${conflict ? `. ${stayCategoryConflictMessage(choice)}` : ''}`}
                                             className={`inline-flex min-h-9 shrink-0 items-center justify-center rounded-md px-2.5 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] ${
                                                 selected
                                                     ? 'bg-blue-50 text-[#006dfc] hover:bg-blue-100'
-                                                    : available === true
+                                                    : !conflict && available === true
                                                       ? 'bg-[#006dfc] text-white hover:bg-[#005bd4]'
                                                       : 'cursor-not-allowed bg-slate-100 text-slate-400'
                                             }`}

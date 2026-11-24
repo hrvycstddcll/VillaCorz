@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\PaymentEvent;
 use App\Models\Service;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -17,6 +18,7 @@ class PaymentConfirmationService
 {
     public function __construct(
         private readonly BookingAvailability $availability,
+        private readonly VillaRoomConflictResolver $villaRoomConflicts,
     ) {}
 
     /**
@@ -110,6 +112,10 @@ class PaymentConfirmationService
                 // reservations cannot both pass the availability check.
                 Service::query()->lockForUpdate()->get(['id']);
 
+                if ($this->isExclusiveBooking($booking)) {
+                    $this->cancelConflictingRoomBookings($booking, $actor);
+                }
+
                 try {
                     $this->availability->assertBookingAvailable($booking);
                 } catch (ValidationException $exception) {
@@ -192,6 +198,26 @@ class PaymentConfirmationService
             'conflict' => $result['conflict'],
             'message' => $result['message'],
         ];
+    }
+
+    private function isExclusiveBooking(Booking $booking): bool
+    {
+        return $booking->rooms->contains(
+            fn ($room) => $room->kind === 'exclusive',
+        );
+    }
+
+    private function cancelConflictingRoomBookings(Booking $villa, string $actor): void
+    {
+        $conflicts = $this->villaRoomConflicts->conflicts(
+            $villa,
+            CarbonImmutable::now('UTC'),
+            true,
+        );
+
+        foreach ($conflicts as $roomBooking) {
+            $this->villaRoomConflicts->cancelRoomBooking($villa, $roomBooking, $actor);
+        }
     }
 
     /**

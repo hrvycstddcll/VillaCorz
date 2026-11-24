@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Database\NeonPostgresConnection;
+use App\Database\NeonPostgresConnector;
+use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoTransportFactory;
@@ -14,7 +17,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind('db.connector.pgsql', fn () => new NeonPostgresConnector);
+
+        Connection::resolverFor('pgsql', fn ($connection, $database, $prefix, $config) => new NeonPostgresConnection(
+            $connection,
+            $database,
+            $prefix,
+            $config,
+        ));
     }
 
     /**

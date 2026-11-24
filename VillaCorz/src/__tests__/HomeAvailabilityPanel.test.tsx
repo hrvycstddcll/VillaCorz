@@ -6,10 +6,14 @@ import HomeAvailabilityPanel, {
 import { phtDateTimeToIso } from '../lib/stayDateTime'
 import type { Stay } from '../services/shared'
 
-const makeStay = (id: string, title: string): Stay => ({
+const makeStay = (
+    id: string,
+    title: string,
+    category: Stay['category'] = 'public',
+): Stay => ({
     id,
     title,
-    category: 'public',
+    category,
     image: '',
     gallery: [],
     price: 1000,
@@ -18,14 +22,17 @@ const makeStay = (id: string, title: string): Stay => ({
     capacity: 'Good for 2-4 pax',
 })
 
-const choices = [makeStay('1', 'Ocean Room'), makeStay('2', 'Family Suite')]
+const room = makeStay('1', 'Ocean Room')
+const villa = makeStay('3', 'Whole Villa', 'exclusive')
+const choices = [room, makeStay('2', 'Family Suite'), villa]
 
 const baseProps: HomeAvailabilityPanelProps = {
     checkIn: phtDateTimeToIso('2026-12-01', '10:00'),
     paidDays: 2,
     choices,
-    availabilityByServiceId: { 1: true, 2: false },
+    availabilityByServiceId: { 1: true, 2: false, 3: true },
     selectedRoomIds: [],
+    selectedStays: [],
     checkingAvailability: false,
     availabilityError: '',
     roomsLoading: false,
@@ -43,7 +50,7 @@ describe('HomeAvailabilityPanel', () => {
         const onToggleRoom = vi.fn()
         renderPanel({ onToggleRoom })
 
-        expect(screen.getByText(/Available$/)).toBeInTheDocument()
+        expect(screen.getAllByText(/Available$/).length).toBeGreaterThan(0)
         expect(screen.queryByText(/Unavailable$/)).toBeNull()
         expect(screen.queryByRole('button', { name: 'Add Family Suite' })).toBeNull()
 
@@ -100,5 +107,35 @@ describe('HomeAvailabilityPanel', () => {
         expect(
             screen.getByRole('button', { name: 'Remove Family Suite' }),
         ).toBeInTheDocument()
+    })
+
+    it('disables adding the whole villa while a private room is selected', () => {
+        const onToggleRoom = vi.fn()
+        renderPanel({
+            selectedRoomIds: ['1'],
+            selectedStays: [room],
+            onToggleRoom,
+        })
+
+        const addVilla = screen.getByRole('button', { name: /Add Whole Villa/ })
+        expect(addVilla).toBeDisabled()
+        expect(screen.getByText(/Villa conflict/)).toBeInTheDocument()
+        fireEvent.click(addVilla)
+        expect(onToggleRoom).not.toHaveBeenCalled()
+    })
+
+    it('disables adding a private room while the whole villa is selected', () => {
+        const onToggleRoom = vi.fn()
+        renderPanel({
+            selectedRoomIds: ['3'],
+            selectedStays: [villa],
+            onToggleRoom,
+        })
+
+        const addRoom = screen.getByRole('button', { name: /Add Ocean Room/ })
+        expect(addRoom).toBeDisabled()
+        expect(screen.getByText(/Room conflict/)).toBeInTheDocument()
+        fireEvent.click(addRoom)
+        expect(onToggleRoom).not.toHaveBeenCalled()
     })
 })

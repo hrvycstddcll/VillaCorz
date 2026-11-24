@@ -23,13 +23,10 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="mysql"/>
-        <env name="DB_HOST" value="127.0.0.1"/>
-        <env name="DB_PORT" value="3306"/>
-        <env name="DB_DATABASE" value="villacorz_test"/>
-        <env name="DB_USERNAME" value="villacorz"/>
-        <env name="DB_PASSWORD" value="secret"/>
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
+        <env name="TRUSTED_PROXIES" value="10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="OTP_EXPOSE_IN_RESPONSE" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

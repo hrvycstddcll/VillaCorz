@@ -1,24 +1,28 @@
-import axios from 'axios'
-import api, { API_ORIGIN } from './api'
+import api, { clearAuthState, setAuthToken } from './api'
 
-const csrf = () => {
-    return axios.get(`${API_ORIGIN}/sanctum/csrf-cookie`, {
-        withCredentials: true,
-        withXSRFToken: true,
-    })
-}
-
-export const login = async (email: string, password: string) => {
-    await csrf()
-
-    return api.post('/login', {
+export const login = async (email: string, password: string, remember = false) => {
+    const response = await api.post('/login', {
         email,
         password,
+        remember,
     })
+
+    const token = response.data?.token
+    if (typeof token === 'string' && token) {
+        setAuthToken(token, remember, response.data?.expires_at)
+    }
+
+    return response
 }
 
-export const logout = () => {
-    return api.post('/logout')
+export const logout = async () => {
+    try {
+        await api.post('/logout')
+    } catch (error) {
+        void error
+    } finally {
+        clearAuthState()
+    }
 }
 
 export const register = async (
@@ -27,8 +31,6 @@ export const register = async (
     email: string,
     password: string,
 ) => {
-    await csrf()
-
     return api.post('/register', {
         firstname,
         lastname,
@@ -37,18 +39,22 @@ export const register = async (
     })
 }
 
-export const verifyOtp = async (registrationId: string, otp: string) => {
-    await csrf()
-
-    return api.post('/verify-otp', {
+export const verifyOtp = async (registrationId: string, otp: string, remember = false) => {
+    const response = await api.post('/verify-otp', {
         registration_id: registrationId,
         otp,
+        remember,
     })
+
+    const token = response.data?.token
+    if (typeof token === 'string' && token) {
+        setAuthToken(token, remember, response.data?.expires_at)
+    }
+
+    return response
 }
 
 export const resendOtp = async (registrationId: string) => {
-    await csrf()
-
     return api.post('/resend-otp', {
         registration_id: registrationId,
     })

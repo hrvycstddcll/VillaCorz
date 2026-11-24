@@ -39,7 +39,7 @@ class AvailabilityController extends Controller
             'success' => true,
             'data' => [
                 'as_of' => now()->toIso8601String(),
-                'basis' => 'confirmed bookings only',
+                'basis' => 'confirmed and active pending reservations',
                 'check_in' => $checkIn->toIso8601String(),
                 'check_out' => $checkOut->toIso8601String(),
                 'paid_days' => $paidDays,
@@ -71,7 +71,7 @@ class AvailabilityController extends Controller
             'success' => true,
             'data' => [
                 'as_of' => now()->toIso8601String(),
-                'basis' => 'confirmed bookings only',
+                'basis' => 'confirmed and active pending reservations',
                 'service_id' => (int) $service->id,
                 'unavailable_dates' => $availability->unavailableDates($service, $from, $to),
             ],

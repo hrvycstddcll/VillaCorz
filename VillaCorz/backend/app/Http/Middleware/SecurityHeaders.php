@@ -16,6 +16,10 @@ class SecurityHeaders
     {
         $response = $next($request);
 
+        if ($response->getStatusCode() === 204) {
+            $response->setStatusCode(200);
+        }
+
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');

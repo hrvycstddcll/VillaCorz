@@ -3,9 +3,14 @@ import api from './api'
 import type { ApiEnvelope } from './types'
 
 export type BlockingInterval = {
+    booking_id?: number
+    reference?: string
     service_id: number
+    service_kind?: 'room' | 'exclusive'
+    status?: 'confirmed' | 'pending_payment'
     check_in: string
     check_out: string
+    blocking_end?: string
 }
 
 export type ServiceAvailability = {

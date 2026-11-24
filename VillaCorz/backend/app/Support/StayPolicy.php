@@ -30,6 +30,11 @@ class StayPolicy
         return max(0, (int) config('stays.turnover_hours', self::TURNOVER_HOURS));
     }
 
+    public static function turnoverCutoffFor(DateTimeInterface|string $at): CarbonImmutable
+    {
+        return StayTime::toCarbon($at)->utc()->subHours(self::turnoverHours());
+    }
+
     public static function maxPaidDays(): int
     {
         return max(1, (int) config('stays.max_paid_days', 90));

@@ -1,0 +1,97 @@
+services:
+  - type: web
+    name: villacorz-api
+    runtime: docker
+    plan: free
+    region: singapore
+    rootDir: VillaCorz/backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /demo/health
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: APP_NAME
+        value: VillaCorz
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false
+      - key: APP_URL
+        value: https://villacorz-api.onrender.com
+      - key: FRONTEND_URL
+        value: https://villa-corz.vercel.app
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://villa-corz.vercel.app
+      - key: TRUSTED_PROXIES
+        value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+      - key: LOG_LEVEL
+        value: error
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_SSLMODE
+        value: require
+      - key: DB_URL
+        sync: false
+      - key: DB_URL_UNPOOLED
+        sync: false
+      - key: BACKUP_DRIVER
+        value: database
+      - key: BACKUP_KEEP
+        value: "5"
+      - key: PAYMENT_PUBLIC_URL
+        value: https://villacorz-api.onrender.com
+      - key: CACHE_STORE
+        value: file
+      - key: SESSION_DRIVER
+        value: file
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: MAIL_MAILER
+        value: brevo
+      - key: MAIL_FROM_ADDRESS
+        sync: false
+      - key: MAIL_FROM_NAME
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: CONTACT_MAIL_TO
+        sync: false
+      - key: CANCEL_REQUEST_MAIL_TO
+        sync: false
+      - key: OTP_EXPOSE_IN_RESPONSE
+        value: "false"
+      - key: ASSISTANT_ENABLED
+        value: "true"
+      - key: ASSISTANT_PROVIDER
+        value: groq
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_UPLOAD_FOLDER
+        value: villacorz/services
+      - key: FORECAST_SERVICE_URL
+        value: https://villacorz-forecast.onrender.com
+      - key: FORECAST_SERVICE_TIMEOUT
+        value: "90"
+
+  - type: web
+    name: villacorz-forecast
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: VillaCorz/forecasting-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health

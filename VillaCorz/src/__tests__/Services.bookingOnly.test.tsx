@@ -21,6 +21,10 @@ vi.mock('../services/availabilityService', async () => {
     }
 })
 
+vi.mock('../assets/components/ui/InteractiveComponents/ServiceReviews', () => ({
+    default: () => null,
+}))
+
 const service = {
     id: 1,
     created_by: null,
@@ -99,6 +103,114 @@ describe('Services availability flows', () => {
         ).toBeInTheDocument()
     })
 
+    it('prevents the whole villa and private rooms from being added together', async () => {
+        vi.mocked(getServices).mockResolvedValue({
+            data: { success: true, data: [service, exclusiveService] },
+        } as never)
+        vi.mocked(getAvailabilityForRange).mockResolvedValue({
+            data: {
+                data: {
+                    rooms: [
+                        { id: 1, available: true, blocked_intervals: [] },
+                        { id: 2, available: true, blocked_intervals: [] },
+                    ],
+                },
+            },
+        } as never)
+
+        render(
+            <MemoryRouter>
+                <Services bookingOnly />
+            </MemoryRouter>,
+        )
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Choose check-in date, time, and paid days',
+            }),
+        )
+        fireEvent.change(screen.getByLabelText('Check-in date'), {
+            target: { value: '2027-01-10' },
+        })
+
+        const addRoom = await screen.findByRole('button', { name: 'Add Ocean Room' })
+        const addVilla = screen.getByRole('button', { name: /Add Whole Villa/ })
+        expect(addVilla).toBeEnabled()
+
+        fireEvent.click(addRoom)
+        expect(
+            screen.getByRole('button', { name: 'Remove Ocean Room' }),
+        ).toBeInTheDocument()
+        expect(
+            screen.getByRole('button', { name: /Add Whole Villa/ }),
+        ).toBeDisabled()
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Remove Ocean Room' }),
+        )
+        const addVillaAfterRemoval = screen.getByRole('button', {
+            name: 'Add Whole Villa',
+        })
+        expect(addVillaAfterRemoval).toBeEnabled()
+        fireEvent.click(addVillaAfterRemoval)
+
+        expect(
+            screen.getByRole('button', { name: 'Remove Whole Villa' }),
+        ).toBeInTheDocument()
+        expect(
+            screen.getByRole('button', { name: /Add Ocean Room/ }),
+        ).toBeDisabled()
+    })
+
+    it('disables room tiles when the whole villa is added from the service page', async () => {
+        vi.mocked(getServices).mockResolvedValue({
+            data: { success: true, data: [service, exclusiveService] },
+        } as never)
+
+        render(
+            <MemoryRouter>
+                <Services />
+            </MemoryRouter>,
+        )
+
+        const addVilla = await screen.findByRole('button', {
+            name: 'Add Whole Villa to your booking',
+        })
+        const addRoom = screen.getByRole('button', {
+            name: 'Add Ocean Room to your booking, good for Good for 2 pax',
+        })
+        expect(addRoom).toBeEnabled()
+
+        fireEvent.click(addVilla)
+        expect(
+            screen.getByRole('button', { name: 'Remove Whole Villa from your booking' }),
+        ).toBeInTheDocument()
+        expect(
+            screen.getByRole('button', {
+                name: /Ocean Room cannot be added/,
+            }),
+        ).toBeDisabled()
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'View Ocean Room photo and details',
+            }),
+        )
+        expect(screen.getByRole('button', { name: 'Blocked' })).toBeDisabled()
+        fireEvent.click(screen.getByRole('button', { name: 'Back to rooms' }))
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Remove Whole Villa from your booking',
+            }),
+        )
+        expect(
+            screen.getByRole('button', {
+                name: 'Add Ocean Room to your booking, good for Good for 2 pax',
+            }),
+        ).toBeEnabled()
+    })
+
     it('marks every room unavailable when the whole villa is booked', async () => {
         vi.mocked(getServices).mockResolvedValue({
             data: { success: true, data: [service, exclusiveService] },
@@ -114,6 +226,8 @@ describe('Services availability flows', () => {
                             blocked_intervals: [
                                 {
                                     service_id: 2,
+                                    service_kind: 'exclusive',
+                                    status: 'confirmed',
                                     check_in: '2027-01-10T02:00:00.000Z',
                                     check_out: '2027-01-12T00:00:00.000Z',
                                 },

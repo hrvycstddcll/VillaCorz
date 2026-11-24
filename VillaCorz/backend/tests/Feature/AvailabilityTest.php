@@ -27,7 +27,7 @@ class AvailabilityTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.rooms.0.id', $service->id)
             ->assertJsonPath('data.rooms.0.available', false)
-            ->assertJsonPath('data.basis', 'confirmed bookings only');
+            ->assertJsonPath('data.basis', 'confirmed and active pending reservations');
     }
 
     public function test_a_pending_payment_does_not_mark_the_room_unavailable(): void
@@ -42,6 +42,58 @@ class AvailabilityTest extends TestCase
         ]))
             ->assertOk()
             ->assertJsonPath('data.rooms.0.available', true);
+    }
+
+    public function test_an_active_pending_whole_villa_booking_marks_rooms_unavailable(): void
+    {
+        $room = $this->makeRoomService(['name' => 'Room 1']);
+        $villa = $this->makeVillaService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDay()->toDateString();
+        $this->seedBooking($villa, $date, 'pending_payment', now()->addHour());
+
+        $this->getJson('/api/services/availability?'.http_build_query([
+            'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+            'paid_days' => 1,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('data.rooms.0.id', $room->id)
+            ->assertJsonPath('data.rooms.0.available', false);
+    }
+
+    public function test_an_expired_pending_whole_villa_booking_does_not_block_rooms(): void
+    {
+        $room = $this->makeRoomService(['name' => 'Room 1']);
+        $villa = $this->makeVillaService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDay()->toDateString();
+        $this->seedBooking($villa, $date, 'pending_payment', now()->subHour());
+
+        $this->getJson('/api/services/availability?'.http_build_query([
+            'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+            'paid_days' => 1,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('data.rooms.0.id', $room->id)
+            ->assertJsonPath('data.rooms.0.available', true)
+            ->assertJsonPath('data.rooms.1.id', $villa->id)
+            ->assertJsonPath('data.rooms.1.available', true);
+    }
+
+    public function test_an_active_pending_room_booking_blocks_the_whole_villa(): void
+    {
+        $room = $this->makeRoomService(['name' => 'Room 1']);
+        $villa = $this->makeVillaService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDay()->toDateString();
+        $this->seedBooking($room, $date, 'pending_payment', now()->addHour());
+
+        $this->getJson('/api/services/availability?'.http_build_query([
+            'check_in' => StayTime::parseLocal($date, '10:00')->toIso8601String(),
+            'paid_days' => 1,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('data.rooms.0.id', $room->id)
+            ->assertJsonPath('data.rooms.0.available', true)
+            ->assertJsonPath('data.rooms.1.id', $villa->id)
+            ->assertJsonPath('data.rooms.1.available', false);
     }
 
     public function test_back_to_back_booking_remains_available_after_turnover(): void
@@ -149,8 +201,25 @@ class AvailabilityTest extends TestCase
         ], $overrides));
     }
 
-    private function seedBooking(Service $service, string $date, string $status): Booking
+    private function makeVillaService(array $overrides = []): Service
     {
+        return Service::create(array_merge([
+            'name' => 'The Whole Villa',
+            'description' => 'Entire property.',
+            'kind' => 'exclusive',
+            'price' => 15000,
+            'weekend_price' => 18000,
+            'pax' => 12,
+            'status' => 'active',
+        ], $overrides));
+    }
+
+    private function seedBooking(
+        Service $service,
+        string $date,
+        string $status,
+        mixed $expiresAt = null,
+    ): Booking {
         $user = User::create([
             'firstname' => 'Existing',
             'lastname' => 'Guest',
@@ -177,6 +246,7 @@ class AvailabilityTest extends TestCase
             'currency' => 'PHP',
             'status' => $status,
             'payment_method' => 'GCash',
+            'expires_at' => $expiresAt,
             'confirmed_at' => $status === 'confirmed' ? now() : null,
         ]);
 

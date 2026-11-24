@@ -16,7 +16,7 @@ class LoginThrottleTest extends TestCase
             'password' => 'CorrectPassword123',
         ]);
 
-        for ($attempt = 0; $attempt < 5; $attempt++) {
+        for ($attempt = 0; $attempt < 20; $attempt++) {
             $this->postJson('/api/login', [
                 'email' => $user->email,
                 'password' => 'IncorrectPassword123',

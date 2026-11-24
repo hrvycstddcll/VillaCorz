@@ -84,6 +84,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'registration_id' => 'required|uuid',
             'otp' => 'required|string|digits:6',
+            'remember' => 'sometimes|boolean',
         ]);
 
         $registrationId = $validated['registration_id'];
@@ -156,8 +157,10 @@ class AuthController extends Controller
         Cache::forget($cacheKey);
         Cache::forget($attemptsKey);
 
-        Auth::login($user);
-        $request->session()->regenerate();
+        if ($request->hasSession()) {
+            Auth::login($user);
+            $request->session()->regenerate();
+        }
 
         ActivityLogger::record(
             'registered',
@@ -169,9 +172,14 @@ class AuthController extends Controller
             $request,
         );
 
+        $token = $this->issueSpaToken($user, $request->boolean('remember'));
+
         return response()->json([
             'message' => 'Email verified and account created successfully.',
             'user' => $user->accountPayload(),
+            'token' => $token['token'],
+            'token_type' => $token['token_type'],
+            'expires_at' => $token['expires_at'],
         ], 201);
     }
 
@@ -240,7 +248,13 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required|string|min:8',
+            'remember' => 'sometimes|boolean',
         ]);
+
+        $credentials = [
+            'email' => $credentials['email'],
+            'password' => $credentials['password'],
+        ];
 
         if (! Auth::attempt($credentials)) {
             ActivityLogger::record(
@@ -258,7 +272,9 @@ class AuthController extends Controller
             ]);
         }
 
-        $request->session()->regenerate();
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
 
         $user = Auth::user();
 
@@ -272,10 +288,27 @@ class AuthController extends Controller
             $request,
         );
 
+        $token = $this->issueSpaToken($user, $request->boolean('remember'));
+
         return response()->json([
             'message' => 'Login successful.',
             'user' => $user->accountPayload(),
+            'token' => $token['token'],
+            'token_type' => $token['token_type'],
+            'expires_at' => $token['expires_at'],
         ]);
+    }
+
+    private function issueSpaToken(User $user, bool $remember): array
+    {
+        $expiresAt = now()->addDays($remember ? 30 : 1);
+        $token = $user->createToken('villacorz-spa', ['*'], $expiresAt)->plainTextToken;
+
+        return [
+            'token' => $token,
+            'token_type' => 'Bearer',
+            'expires_at' => $expiresAt->toIso8601String(),
+        ];
     }
 
     public function logout(Request $request)
@@ -294,10 +327,28 @@ class AuthController extends Controller
             );
         }
 
-        Auth::guard('web')->logout();
+        $currentToken = $user?->currentAccessToken();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if ($currentToken && method_exists($currentToken, 'delete')) {
+            $currentToken->delete();
+        } else {
+            $bearerToken = $request->bearerToken();
+            $tokenId = $bearerToken
+                ? explode('|', $bearerToken, 2)[0]
+                : null;
+
+            if ($tokenId !== null) {
+                $user?->tokens()->where('id', $tokenId)->delete();
+            }
+        }
+
+        if ($request->hasSession()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
+        Auth::forgetGuards();
 
         return response()->json([
             'message' => 'Logout successful.',
