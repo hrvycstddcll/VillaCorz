@@ -1,8 +1,10 @@
 import api, { clearAuthState, setAuthToken } from './api'
 
+export const normalizeEmail = (email: string) => email.trim().toLowerCase()
+
 export const login = async (email: string, password: string, remember = false) => {
     const response = await api.post('/login', {
-        email,
+        email: normalizeEmail(email),
         password,
         remember,
     })
@@ -34,7 +36,7 @@ export const register = async (
     return api.post('/register', {
         firstname,
         lastname,
-        email,
+        email: normalizeEmail(email),
         password,
     })
 }

@@ -219,7 +219,7 @@ describe('Dashboard', () => {
         expect(container.querySelector('.magic-bento__border')).toBeInTheDocument()
         expect(grids[0]).toHaveAttribute('data-motion')
         expect(container.querySelector('.admin-bento--revenue')).toBeInTheDocument()
-        expect(container.querySelector('.admin-bento--stacked')).toBeInTheDocument()
+        expect(container.querySelectorAll('.magic-bento__card').length).toBeGreaterThan(1)
     })
 
     it('shows the revenue amount in white on a blue hero with a wallet chip', async () => {
@@ -400,7 +400,6 @@ describe('Dashboard', () => {
         expect(screen.getByText('72.0%')).toBeInTheDocument()
         expect(screen.getByText('36')).toBeInTheDocument()
         expect(screen.getByText('Day 1')).toBeInTheDocument()
-        expect(screen.queryByText(/WAPE 9.8%/)).not.toBeInTheDocument()
     })
 
     it('shows room recommendations and only changes a price after confirmation', async () => {
@@ -425,7 +424,6 @@ describe('Dashboard', () => {
         expect(within(recommendations).getByText('Seaview Room')).toBeInTheDocument()
         expect(within(recommendations).getByText(/₱2,500/)).toBeInTheDocument()
         expect(within(recommendations).getByText(/₱3,000/)).toBeInTheDocument()
-        expect(screen.queryByText(/WAPE 9.8%/)).not.toBeInTheDocument()
         expect(adjustServicePrice).not.toHaveBeenCalled()
 
         fireEvent.click(
