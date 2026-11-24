@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Service;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +14,30 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        foreach ([
+            ['Room 1', 3000, 2, ['TV', 'Private CR', 'Airconditioned']],
+            ['Room 2', 3000, 2, ['TV', 'Private CR', 'Airconditioned']],
+            ['Room 3', 3000, 2, ['TV', 'Private CR', 'Airconditioned']],
+            ['Room 4', 4000, 6, ['TV', 'Private CR', 'Airconditioned']],
+            ['Room 5', 4000, 6, ['TV', 'Private CR', 'Airconditioned']],
+        ] as [$name, $price, $pax, $amenities]) {
+            Service::updateOrCreate(
+                ['name' => $name],
+                [
+                    'description' => 'A comfortable seaside room with air conditioning, a TV, and a private CR.',
+                    'price' => $price,
+                    'weekend_price' => null,
+                    'status' => 'active',
+                    'kind' => 'room',
+                    'pax' => $pax,
+                    'features' => [],
+                    'amenities' => $amenities,
+                ],
+            );
+        }
+
+        $this->call(WholeVillaOfferSeeder::class);
+
         User::updateOrCreate(
             ['email' => 'dlord0260@gmail.com'],
             [

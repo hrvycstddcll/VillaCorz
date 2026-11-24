@@ -3,6 +3,25 @@
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
+$neonAppUrl = env('DB_URL', env('DATABASE_URL'));
+$neonMigrationsUrl = env('DB_URL_UNPOOLED', env('DATABASE_URL_UNPOOLED', $neonAppUrl));
+$neonEndpointFromUrl = static function ($url) {
+    if (! is_string($url) || $url === '') {
+        return null;
+    }
+
+    $host = parse_url($url, PHP_URL_HOST);
+    if (! is_string($host) || $host === '') {
+        return null;
+    }
+
+    $label = explode('.', $host, 2)[0];
+
+    return str_starts_with($label, 'ep-') ? $label : null;
+};
+$neonAppEndpoint = env('NEON_ENDPOINT_ID', $neonEndpointFromUrl($neonAppUrl));
+$neonMigrationsEndpoint = env('NEON_MIGRATIONS_ENDPOINT_ID', $neonEndpointFromUrl($neonMigrationsUrl));
+
 return [
 
     /*
@@ -86,7 +105,7 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
-            'url' => env('DB_URL'),
+            'url' => env('DB_URL', env('DATABASE_URL')),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'laravel'),
@@ -97,6 +116,23 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'server_options' => $neonAppEndpoint ? ['endpoint' => $neonAppEndpoint] : [],
+        ],
+
+        'pgsql_migrations' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_URL_UNPOOLED', env('DATABASE_URL_UNPOOLED', env('DB_URL', env('DATABASE_URL')))),
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '5432'),
+            'database' => env('DB_DATABASE', 'laravel'),
+            'username' => env('DB_USERNAME', 'root'),
+            'password' => env('DB_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'server_options' => $neonMigrationsEndpoint ? ['endpoint' => $neonMigrationsEndpoint] : [],
         ],
 
         'sqlsrv' => [

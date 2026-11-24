@@ -32,3 +32,4 @@ dist-ssr
 # Local-only helper scripts (never commit)
 /start.ps1
 /.tunnel-url.txt
+.neon

@@ -29,4 +29,4 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 EXPOSE 10000
 
-CMD ["sh", "-c", "php artisan migrate --force && exec supervisord -c /etc/supervisor/conf.d/supervisord.conf"]
+CMD ["sh", "-c", "php artisan migrate --force --database=pgsql_migrations && exec supervisord -c /etc/supervisor/conf.d/supervisord.conf"]
