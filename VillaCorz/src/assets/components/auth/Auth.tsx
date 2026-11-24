@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../services/useAuth'
-import axios from 'axios'
+import { authErrorMessage } from '../../../services/authErrors'
 import { Mail } from 'lucide-react'
 import { login, register } from '../../../services/authService'
 import PasswordField from '../ui/FormComponents/PasswordField'
@@ -33,7 +33,7 @@ type PostAuthLocationState = {
 const getPostAuthDestination = (
     user: PostAuthUser,
     state: unknown,
-): { pathname: string; search?: string; hash?: string; state?: unknown } => {
+): { pathname: string; search?: string; hash?: string } => {
     const requested = (state as PostAuthLocationState | null)?.from
     const path = requested?.pathname
     const customerPrefixes = ['/reservation', '/payment', '/bookings', '/settings']
@@ -48,7 +48,6 @@ const getPostAuthDestination = (
             pathname: path,
             search: requested?.search,
             hash: requested?.hash,
-            state: requested?.state,
         }
     }
 
@@ -357,22 +356,7 @@ const Auth = () => {
             })
 
         } catch (error) {
-            const data = axios.isAxiosError(error)
-                ? error.response?.data as {
-                    message?: string
-                    errors?: Record<string, string[]>
-                } | undefined
-                : undefined
-
-            const validationError = Object.values(data?.errors ?? {}).flat()[0]
-
-            setFeedback(
-                validationError ||
-                (!data && axios.isAxiosError(error) && !error.response
-                    ? 'Unable to connect to the server. Please try again.'
-                    : data?.message || 'Something went wrong. Please try again.')
-            )
-
+            setFeedback(authErrorMessage(error))
             setFeedbackType('error')
         } finally {
             setIsSubmitting(false)

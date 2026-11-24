@@ -17,7 +17,9 @@ export const login = async (email: string, password: string, remember = false) =
 
 export const logout = async () => {
     try {
-        return await api.post('/logout')
+        await api.post('/logout')
+    } catch (error) {
+        void error
     } finally {
         clearAuthState()
     }

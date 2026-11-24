@@ -62,7 +62,7 @@ Route::post('/resend-otp', [AuthController::class, 'resendOtp'])
 
 // Login and logout
 Route::post('/login', [AuthController::class, 'login'])
-    ->middleware('throttle:5,1');
+    ->middleware('throttle:20,1');
 
 Route::post('/logout', [AuthController::class, 'logout'])
     ->middleware('auth:sanctum');
