@@ -7,14 +7,20 @@ use App\Models\Booking;
 use App\Models\Service;
 use App\Models\ServiceReview;
 use App\Models\ServiceReviewImage;
+use App\Services\CloudinaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
+use Throwable;
 
 class ServiceReviewController extends Controller
 {
     private const MAX_IMAGES = 5;
+
+    private const CLOUDINARY_FOLDER = 'villacorz/reviews';
 
     public function index(int $serviceId): JsonResponse
     {
@@ -42,7 +48,7 @@ class ServiceReviewController extends Controller
         ]);
     }
 
-    public function store(Request $request, int $serviceId): JsonResponse
+    public function store(Request $request, int $serviceId, CloudinaryService $cloudinary): JsonResponse
     {
         $user = $request->user();
         $service = Service::findOrFail($serviceId);
@@ -76,18 +82,53 @@ class ServiceReviewController extends Controller
             ]);
         }
 
-        $review = ServiceReview::updateOrCreate(
-            ['user_id' => $user->id, 'service_id' => $service->id],
-            [
-                'booking_id' => $completedBooking->id,
-                'rating' => $validated['rating'],
-                'title' => $validated['title'] ?? null,
-                'comment' => $validated['comment'] ?? null,
-                'status' => 'published',
-            ]
-        );
+        $files = $this->uploadedImages($request);
+        $existingCount = ServiceReview::query()
+            ->where('user_id', $user->id)
+            ->where('service_id', $service->id)
+            ->withCount('images')
+            ->first()?->images_count ?? 0;
 
-        $this->storeImages($request, $review);
+        $this->assertImageCapacity($existingCount, count($files));
+
+        $uploaded = [];
+        if ($files !== []) {
+            if (! $cloudinary->isConfigured()) {
+                return $this->imageConfigurationError();
+            }
+
+            try {
+                $uploaded = $this->uploadImages($cloudinary, $files);
+            } catch (RuntimeException $exception) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                ], 422);
+            }
+        }
+
+        try {
+            $review = DB::transaction(function () use ($user, $service, $completedBooking, $validated, $uploaded) {
+                $review = ServiceReview::updateOrCreate(
+                    ['user_id' => $user->id, 'service_id' => $service->id],
+                    [
+                        'booking_id' => $completedBooking->id,
+                        'rating' => $validated['rating'],
+                        'title' => $validated['title'] ?? null,
+                        'comment' => $validated['comment'] ?? null,
+                        'status' => 'published',
+                    ]
+                );
+
+                $this->persistImages($review, $uploaded);
+
+                return $review;
+            });
+        } catch (Throwable $exception) {
+            $this->destroyUploaded($cloudinary, $uploaded);
+
+            throw $exception;
+        }
 
         $review->load(['user', 'images', 'booking']);
 
@@ -98,7 +139,7 @@ class ServiceReviewController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update(Request $request, int $id, CloudinaryService $cloudinary): JsonResponse
     {
         $review = ServiceReview::with(['user', 'images', 'booking', 'service'])->findOrFail($id);
         $user = $request->user();
@@ -113,22 +154,81 @@ class ServiceReviewController extends Controller
             'comment' => ['nullable', 'string', 'max:2000'],
             'images' => ['nullable', 'array', 'max:' . self::MAX_IMAGES],
             'images.*' => ['image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
+            'removed_image_ids' => ['nullable', 'array', 'max:'.self::MAX_IMAGES],
+            'removed_image_ids.*' => ['integer'],
         ]);
 
-        // Apply provided fields directly.
-        if (array_key_exists('rating', $validated)) {
-            $review->rating = $validated['rating'];
-        }
-        if (array_key_exists('title', $validated)) {
-            $review->title = $validated['title'];
-        }
-        if (array_key_exists('comment', $validated)) {
-            $review->comment = $validated['comment'];
-        }
-        $review->save();
+        $files = $this->uploadedImages($request);
+        $removedIds = array_values(array_unique(array_map(
+            fn (mixed $value): int => (int) $value,
+            $validated['removed_image_ids'] ?? [],
+        )));
 
-        if ($request->hasFile('images')) {
-            $this->storeImages($request, $review);
+        $removedImages = $review->images()->whereIn('id', $removedIds)->get();
+
+        if ($removedImages->count() !== count($removedIds)) {
+            throw ValidationException::withMessages([
+                'removed_image_ids' => 'One or more images do not belong to this review.',
+            ]);
+        }
+
+        $this->assertImageCapacity(
+            $review->images()->count() - $removedImages->count(),
+            count($files),
+        );
+
+        $uploaded = [];
+        if ($files !== []) {
+            if (! $cloudinary->isConfigured()) {
+                return $this->imageConfigurationError();
+            }
+
+            try {
+                $uploaded = $this->uploadImages($cloudinary, $files);
+            } catch (RuntimeException $exception) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                ], 422);
+            }
+        }
+
+        $removedPublicIds = $removedImages
+            ->pluck('public_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        try {
+            DB::transaction(function () use ($review, $validated, $removedImages, $uploaded) {
+                if ($removedImages->isNotEmpty()) {
+                    ServiceReviewImage::query()
+                        ->whereIn('id', $removedImages->pluck('id'))
+                        ->delete();
+                }
+
+                if (array_key_exists('rating', $validated)) {
+                    $review->rating = $validated['rating'];
+                }
+                if (array_key_exists('title', $validated)) {
+                    $review->title = $validated['title'];
+                }
+                if (array_key_exists('comment', $validated)) {
+                    $review->comment = $validated['comment'];
+                }
+                $review->save();
+
+                $this->persistImages($review, $uploaded);
+            });
+        } catch (Throwable $exception) {
+            $this->destroyUploaded($cloudinary, $uploaded);
+
+            throw $exception;
+        }
+
+        foreach ($removedPublicIds as $publicId) {
+            $cloudinary->destroy($publicId);
         }
 
         $review->load(['user', 'images', 'booking']);
@@ -140,24 +240,27 @@ class ServiceReviewController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, int $id): JsonResponse
+    public function destroy(Request $request, int $id, CloudinaryService $cloudinary): JsonResponse
     {
-        $review = ServiceReview::findOrFail($id);
+        $review = ServiceReview::with('images')->findOrFail($id);
         $user = $request->user();
 
         if ($review->user_id !== $user->id && $user->role !== 'admin') {
             return response()->json(['success' => false, 'message' => 'Forbidden.'], 403);
         }
 
-        foreach ($review->images as $image) {
-            if ($image->public_id) {
-                // Cloudinary not used for reviews; local disk only.
-            }
-            $path = str_replace('/storage/', '', (string) parse_url($image->image_url, PHP_URL_PATH));
-            Storage::disk('public')->delete($path);
-        }
+        $publicIds = $review->images
+            ->pluck('public_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
-        $review->delete();
+        DB::transaction(fn () => $review->delete());
+
+        foreach ($publicIds as $publicId) {
+            $cloudinary->destroy($publicId);
+        }
 
         return response()->json([
             'success' => true,
@@ -211,33 +314,73 @@ class ServiceReviewController extends Controller
         ]);
     }
 
-    private function storeImages(Request $request, ServiceReview $review): void
+    private function uploadedImages(Request $request): array
     {
         $files = $request->file('images', []);
+
         if (! is_array($files)) {
             $files = [$files];
         }
-        $files = array_values(array_filter($files));
 
-        if ($files === []) {
-            return;
-        }
+        return array_values(array_filter($files));
+    }
 
-        $existingCount = $review->images()->count();
-        if ($existingCount + count($files) > self::MAX_IMAGES) {
+    private function assertImageCapacity(int $existingCount, int $newCount): void
+    {
+        if ($existingCount + $newCount > self::MAX_IMAGES) {
             throw ValidationException::withMessages([
                 'images' => 'A review can have at most ' . self::MAX_IMAGES . ' images.',
             ]);
         }
+    }
 
-        foreach ($files as $index => $file) {
-            $path = $file->store('reviews', 'public');
+    private function uploadImages(CloudinaryService $cloudinary, array $files): array
+    {
+        $uploaded = [];
+
+        try {
+            foreach ($files as $index => $file) {
+                $uploaded[$index] = $cloudinary->upload($file, self::CLOUDINARY_FOLDER);
+            }
+        } catch (Throwable $exception) {
+            $this->destroyUploaded($cloudinary, $uploaded);
+
+            throw $exception;
+        }
+
+        return $uploaded;
+    }
+
+    private function persistImages(ServiceReview $review, array $uploaded): void
+    {
+        if ($uploaded === []) {
+            return;
+        }
+
+        $startOrder = $review->images()->count();
+
+        foreach ($uploaded as $index => $image) {
             $review->images()->create([
-                'image_url' => Storage::disk('public')->url($path),
-                'public_id' => null,
-                'sort_order' => $existingCount + $index,
+                'image_url' => $image['url'],
+                'public_id' => $image['public_id'],
+                'sort_order' => $startOrder + $index,
             ]);
         }
+    }
+
+    private function destroyUploaded(CloudinaryService $cloudinary, array $uploaded): void
+    {
+        foreach ($uploaded as $image) {
+            $cloudinary->destroy($image['public_id']);
+        }
+    }
+
+    private function imageConfigurationError(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Cloudinary image uploads are not configured. Add the Cloudinary credentials to the backend environment.',
+        ], 422);
     }
 
     private function reviewPayload(ServiceReview $review): array

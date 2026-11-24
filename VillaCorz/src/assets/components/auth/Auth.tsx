@@ -16,7 +16,56 @@ type FormProps = {
     isSubmitting: boolean
     feedback: string
     feedbackType: 'success' | 'error'
+    remember: boolean
 }
+
+type PostAuthUser = { role?: string }
+
+type PostAuthLocationState = {
+    from?: {
+        pathname?: string
+        search?: string
+        hash?: string
+        state?: unknown
+    }
+}
+
+const getPostAuthDestination = (
+    user: PostAuthUser,
+    state: unknown,
+): { pathname: string; search?: string; hash?: string; state?: unknown } => {
+    const requested = (state as PostAuthLocationState | null)?.from
+    const path = requested?.pathname
+    const customerPrefixes = ['/reservation', '/payment', '/bookings', '/settings']
+    const adminPrefixes = [...customerPrefixes, '/dashboard', '/manageOffers', '/reports']
+    const prefixes = user.role === 'admin' ? adminPrefixes : customerPrefixes
+    const canRestore = path
+        ? prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+        : false
+
+    if (canRestore && path) {
+        return {
+            pathname: path,
+            search: requested?.search,
+            hash: requested?.hash,
+            state: requested?.state,
+        }
+    }
+
+    return { pathname: user.role === 'admin' ? '/dashboard' : '/' }
+}
+
+const RememberMeField = ({ checked }: { checked: boolean }) => (
+    <label className="flex items-center gap-2 text-sm text-[#333333]">
+        <input
+            type="checkbox"
+            name="remember"
+            defaultChecked={checked}
+            className="size-4 accent-[#0866e8]"
+        />
+        Keep me signed in on this device
+    </label>
+)
 
 const logo =
     'https://res.cloudinary.com/ql4hruc3/image/upload/v1791786033/VillaCorzLogo.png'
@@ -73,6 +122,7 @@ const FormLogin = ({
     isSubmitting,
     feedback,
     feedbackType,
+    remember,
 }: FormProps & { onForgot: () => void }) => (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-6 sm:gap-8">
         <header className="flex w-full flex-col items-start gap-2">
@@ -101,6 +151,8 @@ const FormLogin = ({
                 label="Password"
                 autoComplete="current-password"
             />
+
+            <RememberMeField checked={remember} />
 
             <p
                 role={feedbackType === 'error' ? 'alert' : 'status'}
@@ -143,7 +195,7 @@ const FormLogin = ({
     </form>
 )
 
-const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType }: FormProps) => (
+const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType, remember }: FormProps) => (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-5 sm:gap-6">
         <header className="flex w-full flex-col items-start gap-2">
             <h1 className="text-3xl font-extrabold tracking-tight text-[#5571ff] sm:text-[2.7rem]">
@@ -194,6 +246,8 @@ const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType
                 label="Confirm Password"
                 autoComplete="new-password"
             />
+
+            <RememberMeField checked={remember} />
         </div>
 
         <p
@@ -238,6 +292,7 @@ const Auth = () => {
         searchParams.get('mode') === 'register' ? 'register' : 'login'
 
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [remember, setRemember] = useState(false)
     const [feedback, setFeedback] = useState('')
     const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('error')
     const [verification, setVerification] = useState<{
@@ -258,52 +313,22 @@ const Auth = () => {
         const formData = new FormData(form)
         const email = String(formData.get('email') || '').trim()
         const password = String(formData.get('password') || '')
+        const keepSignedIn = formData.get('remember') === 'on'
+        setRemember(keepSignedIn)
 
         setIsSubmitting(true)
 
         try {
             if (mode === 'login') {
-                const response = await login(email, password)
+                const response = await login(email, password, keepSignedIn)
 
                 setUser(response.data.user)
-                const requestedLocation = (
-                    location.state as {
-                        from?: {
-                          pathname?: string
-                          search?: string
-                          hash?: string
-                          state?: unknown
-                        }
-                    } | null
-                )?.from
-                const requestedPath = requestedLocation?.pathname
-                const adminPaths = ['/dashboard', '/manageOffers', '/reports']
-                const requestedBookingPath =
-                    requestedPath === '/reservation' ||
-                    requestedPath === '/payment'
-                const destination =
-                    requestedBookingPath
-                        ? requestedPath
-                        : response.data.user.role === 'admin'
-                        ? adminPaths.find((path) => path === requestedPath) ??
-                        '/dashboard'
-                        : '/'
-
-                navigate(
-                    requestedBookingPath
-                        ? {
-                            pathname: destination,
-                            search: requestedLocation?.search,
-                            hash: requestedLocation?.hash,
-                        }
-                        : destination,
-                    {
-                        state: requestedBookingPath
-                          ? requestedLocation?.state
-                          : undefined,
-                        replace: true,
-                    },
+                const destination = getPostAuthDestination(
+                    response.data.user,
+                    location.state,
                 )
+
+                navigate(destination, { replace: true })
                 return
             }
 
@@ -380,6 +405,7 @@ const Auth = () => {
                             isSubmitting={isSubmitting}
                             feedback={feedback}
                             feedbackType={feedbackType}
+                            remember={remember}
                         />
                     ) : (
                         <FormLogin
@@ -389,6 +415,7 @@ const Auth = () => {
                             isSubmitting={isSubmitting}
                             feedback={feedback}
                             feedbackType={feedbackType}
+                            remember={remember}
                         />
                     )}
                     <button
@@ -408,10 +435,11 @@ const Auth = () => {
                     expiresIn={verification.expiresIn}
                     delivery={verification.delivery}
                     developmentCode={verification.developmentCode}
+                    remember={remember}
                     onVerified={(user) => {
                         setUser(user)
                         setVerification(null)
-                        navigate('/')
+                        navigate(getPostAuthDestination(user, location.state), { replace: true })
                     }}
                     onClose={() => setVerification(null)}
                 />

@@ -13,6 +13,7 @@ type VerificationModalProps = {
     expiresIn: number
     delivery: 'email' | 'log'
     developmentCode: string | null
+    remember: boolean
     onVerified: (user: User) => void
     onClose: () => void
 }
@@ -29,6 +30,7 @@ const VerificationModal = ({
     expiresIn,
     delivery,
     developmentCode: initialDevelopmentCode,
+    remember,
     onVerified,
     onClose,
 }: VerificationModalProps) => {
@@ -178,7 +180,7 @@ const VerificationModal = ({
         setIsSubmitting(true)
 
         try {
-            const response = await verifyOtp(registrationId, otp)
+            const response = await verifyOtp(registrationId, otp, remember)
             onVerified(response.data.user as User)
         } catch (error) {
             if (!axios.isAxiosError(error) || !error.response) {

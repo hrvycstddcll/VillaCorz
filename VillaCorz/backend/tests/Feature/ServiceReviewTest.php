@@ -6,14 +6,22 @@ use App\Models\Booking;
 use App\Models\BookingRoom;
 use App\Models\Service;
 use App\Models\ServiceReview;
+use App\Models\ServiceReviewImage;
 use App\Models\User;
+use App\Services\CloudinaryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
+use Tests\UsesSqliteInMemory;
 
 class ServiceReviewTest extends TestCase
 {
     use RefreshDatabase;
+    use UsesSqliteInMemory;
+
+    private const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
     public function test_customer_can_review_a_service_after_a_recent_completed_stay(): void
     {
@@ -89,6 +97,149 @@ class ServiceReviewTest extends TestCase
             ->assertJsonValidationErrors('service');
     }
 
+    public function test_review_images_are_uploaded_to_cloudinary(): void
+    {
+        $customer = $this->makeUser('customer');
+        $service = $this->makeRoom();
+        $this->completedStay($customer, $service, now()->subDays(5));
+
+        Storage::fake('public');
+
+        $cloudinary = $this->mock(CloudinaryService::class);
+        $cloudinary->shouldReceive('isConfigured')->once()->andReturn(true);
+        $cloudinary->shouldReceive('upload')
+            ->once()
+            ->with(\Mockery::type(UploadedFile::class), 'villacorz/reviews')
+            ->andReturn([
+                'url' => 'https://res.cloudinary.com/demo/image/upload/villacorz/reviews/review.png',
+                'public_id' => 'villacorz/reviews/review',
+            ]);
+
+        $this->actingAs($customer)
+            ->post('/api/services/'.$service->id.'/reviews', [
+                'rating' => 5,
+                'comment' => 'Lovely stay.',
+                'images' => [$this->fakePng('review.png')],
+            ])
+            ->assertCreated()
+            ->assertJsonPath(
+                'data.images.0.url',
+                'https://res.cloudinary.com/demo/image/upload/villacorz/reviews/review.png',
+            )
+            ->assertJsonPath('data.images.0.sort_order', 0);
+
+        $this->assertDatabaseHas('service_review_images', [
+            'image_url' => 'https://res.cloudinary.com/demo/image/upload/villacorz/reviews/review.png',
+            'public_id' => 'villacorz/reviews/review',
+            'sort_order' => 0,
+        ]);
+
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_review_image_upload_reports_missing_cloudinary_configuration(): void
+    {
+        $customer = $this->makeUser('customer');
+        $service = $this->makeRoom();
+        $this->completedStay($customer, $service, now()->subDays(5));
+
+        $cloudinary = $this->mock(CloudinaryService::class);
+        $cloudinary->shouldReceive('isConfigured')->once()->andReturn(false);
+
+        $this->actingAs($customer)
+            ->post('/api/services/'.$service->id.'/reviews', [
+                'rating' => 5,
+                'comment' => 'Lovely stay.',
+                'images' => [$this->fakePng('review.png')],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Cloudinary image uploads are not configured. Add the Cloudinary credentials to the backend environment.');
+
+        $this->assertDatabaseCount('service_review_images', 0);
+    }
+
+    public function test_review_update_replaces_images_and_deletes_old_cloudinary_assets(): void
+    {
+        $customer = $this->makeUser('customer');
+        $service = $this->makeRoom();
+        $booking = $this->completedStay($customer, $service, now()->subDays(5));
+
+        $review = ServiceReview::create([
+            'service_id' => $service->id,
+            'user_id' => $customer->id,
+            'booking_id' => $booking->id,
+            'rating' => 4,
+            'status' => 'published',
+        ]);
+
+        $oldImage = ServiceReviewImage::create([
+            'service_review_id' => $review->id,
+            'image_url' => 'https://res.cloudinary.com/demo/image/upload/villacorz/reviews/old.png',
+            'public_id' => 'villacorz/reviews/old',
+            'sort_order' => 0,
+        ]);
+
+        $cloudinary = $this->mock(CloudinaryService::class);
+        $cloudinary->shouldReceive('isConfigured')->once()->andReturn(true);
+        $cloudinary->shouldReceive('upload')
+            ->once()
+            ->with(\Mockery::type(UploadedFile::class), 'villacorz/reviews')
+            ->andReturn([
+                'url' => 'https://res.cloudinary.com/demo/image/upload/villacorz/reviews/new.png',
+                'public_id' => 'villacorz/reviews/new',
+            ]);
+        $cloudinary->shouldReceive('destroy')->once()->with('villacorz/reviews/old');
+
+        $this->actingAs($customer)
+            ->put("/api/reviews/{$review->id}", [
+                'rating' => 5,
+                'removed_image_ids' => [$oldImage->id],
+                'images' => [$this->fakePng('new.png')],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.images.0.url', 'https://res.cloudinary.com/demo/image/upload/villacorz/reviews/new.png')
+            ->assertJsonPath('data.images.0.sort_order', 0);
+
+        $this->assertDatabaseMissing('service_review_images', ['id' => $oldImage->id]);
+        $this->assertDatabaseHas('service_review_images', [
+            'service_review_id' => $review->id,
+            'public_id' => 'villacorz/reviews/new',
+        ]);
+    }
+
+    public function test_deleting_a_review_deletes_its_cloudinary_images(): void
+    {
+        $customer = $this->makeUser('customer');
+        $service = $this->makeRoom();
+        $booking = $this->completedStay($customer, $service, now()->subDays(5));
+
+        $review = ServiceReview::create([
+            'service_id' => $service->id,
+            'user_id' => $customer->id,
+            'booking_id' => $booking->id,
+            'rating' => 4,
+            'status' => 'published',
+        ]);
+
+        ServiceReviewImage::create([
+            'service_review_id' => $review->id,
+            'image_url' => 'https://res.cloudinary.com/demo/image/upload/villacorz/reviews/old.png',
+            'public_id' => 'villacorz/reviews/old',
+            'sort_order' => 0,
+        ]);
+
+        $cloudinary = $this->mock(CloudinaryService::class);
+        $cloudinary->shouldReceive('destroy')->once()->with('villacorz/reviews/old');
+
+        $this->actingAs($customer)
+            ->deleteJson("/api/reviews/{$review->id}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('service_reviews', ['id' => $review->id]);
+        $this->assertDatabaseMissing('service_review_images', ['service_review_id' => $review->id]);
+    }
+
     private function makeUser(string $role): User
     {
         return User::create([
@@ -149,5 +300,13 @@ class ServiceReviewTest extends TestCase
         ]);
 
         return $booking;
+    }
+
+    private function fakePng(string $name): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent(
+            $name,
+            base64_decode(self::PNG),
+        );
     }
 }

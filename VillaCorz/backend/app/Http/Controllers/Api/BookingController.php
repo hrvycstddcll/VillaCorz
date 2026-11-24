@@ -9,13 +9,13 @@ use App\Models\PaymentEvent;
 use App\Models\Service;
 use App\Rules\PhoneNumberRule;
 use App\Services\ActivityLogger;
+use App\Services\CancellationProofStore;
 use App\Support\StayPolicy;
 use App\Support\StayTime;
 use App\Services\BookingAvailability;
 use App\Services\PricingService;
 use App\Mail\CancellationRequestMail;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use App\Support\PhoneNumber;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -446,8 +446,12 @@ public function cancel(Request $request, string $reference): JsonResponse
             'data' => $this->bookingPayload($booking->fresh(['rooms', 'payment'])),
         ]);
     }
-    public function requestCancellation(Request $request, string $reference): JsonResponse
-    {
+
+    public function requestCancellation(
+        Request $request,
+        string $reference,
+        CancellationProofStore $proofStore,
+    ): JsonResponse {
         $booking = Booking::query()
             ->where('reference', $reference)
             ->with(['rooms.service.images', 'payment', 'latestCancellationRequest'])
@@ -491,20 +495,40 @@ public function cancel(Request $request, string $reference): JsonResponse
 
         $proofPath = null;
         $proofOriginalName = null;
+        $proof = null;
 
-        if ($request->hasFile('proof')) {
-            $file = $request->file('proof');
-            $proofOriginalName = $file->getClientOriginalName();
-            $proofPath = $file->store("cancel-requests/{$booking->reference}", 'local');
-        }
+        $cancelRequest = DB::transaction(function () use (
+            $request,
+            $booking,
+            $validated,
+            $proofStore,
+            &$proofPath,
+            &$proofOriginalName,
+            &$proof,
+        ) {
+            if ($request->hasFile('proof')) {
+                $proofOriginalName = $request->file('proof')->getClientOriginalName();
+            }
 
-        $cancelRequest = $booking->cancellationRequests()->create([
-            'user_id' => $request->user()?->id,
-            'reason' => $validated['reason'],
-            'proof_path' => $proofPath,
-            'proof_original_name' => $proofOriginalName,
-            'status' => 'pending',
-        ]);
+            $cancelRequest = $booking->cancellationRequests()->create([
+                'user_id' => $request->user()?->id,
+                'reason' => $validated['reason'],
+                'status' => 'pending',
+            ]);
+
+            if ($request->hasFile('proof')) {
+                $proof = $proofStore->store(
+                    $request->file('proof'),
+                    $cancelRequest,
+                    $booking->reference,
+                );
+                $proofPath = $proof->path;
+
+                $cancelRequest->forceFill(['proof_path' => $proofPath])->save();
+            }
+
+            return $cancelRequest;
+        });
 
         $recipient = config('services.cancel_request.recipient');
 
@@ -515,12 +539,19 @@ public function cancel(Request $request, string $reference): JsonResponse
             ], 503);
         }
 
-        Mail::to($recipient)->send(new CancellationRequestMail(
+        $mail = new CancellationRequestMail(
             booking: $booking,
             reason: $validated['reason'],
             proofPath: $proofPath,
             proofOriginalName: $proofOriginalName,
-        ));
+            proof: $proof,
+        );
+
+        try {
+            Mail::to($recipient)->send($mail);
+        } finally {
+            $mail->cleanupProofFile();
+        }
 
         PaymentEvent::record(
             'cancel_requested',

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PhoneNumberController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\ServiceReviewController;
+use App\Http\Controllers\Api\SystemStatusController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -110,6 +111,8 @@ Route::post('/page-views', [DashboardController::class, 'trackPageView'])
 
 // Admin-only service management
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::get('/system/status', SystemStatusController::class);
+
     Route::get('/activity-logs/summary', [ActivityLogController::class, 'summary']);
     Route::get('/activity-logs/export', [ActivityLogController::class, 'export']);
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);

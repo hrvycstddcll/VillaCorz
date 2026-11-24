@@ -1,14 +1,15 @@
-import api, { clearAuthToken, setAuthToken } from './api'
+import api, { clearAuthState, setAuthToken } from './api'
 
-export const login = async (email: string, password: string) => {
+export const login = async (email: string, password: string, remember = false) => {
     const response = await api.post('/login', {
         email,
         password,
+        remember,
     })
 
     const token = response.data?.token
     if (typeof token === 'string' && token) {
-        setAuthToken(token)
+        setAuthToken(token, remember, response.data?.expires_at)
     }
 
     return response
@@ -18,7 +19,7 @@ export const logout = async () => {
     try {
         return await api.post('/logout')
     } finally {
-        clearAuthToken()
+        clearAuthState()
     }
 }
 
@@ -36,15 +37,16 @@ export const register = async (
     })
 }
 
-export const verifyOtp = async (registrationId: string, otp: string) => {
+export const verifyOtp = async (registrationId: string, otp: string, remember = false) => {
     const response = await api.post('/verify-otp', {
         registration_id: registrationId,
         otp,
+        remember,
     })
 
     const token = response.data?.token
     if (typeof token === 'string' && token) {
-        setAuthToken(token)
+        setAuthToken(token, remember, response.data?.expires_at)
     }
 
     return response

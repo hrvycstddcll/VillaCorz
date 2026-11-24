@@ -97,3 +97,23 @@ cd VillaCorz && npm run lint
    under a process manager, and set `FORECAST_SERVICE_URL` in the backend
    environment to its private address. The admin dashboard requires this
    SARIMAX service to be reachable.
+
+## Hosted deployment (Render + Vercel)
+
+The deployed backend is `https://villacorz-api.onrender.com` and the deployed
+frontend is `https://villa-corz.vercel.app`. The Vercel `/api` and `/sanctum`
+rewrites target the backend URL from `BACKEND_URL`; `CORS_ALLOWED_ORIGINS`
+must include the frontend origin. The forecasting service is assumed to be at
+`https://villacorz-forecast.onrender.com`, and `PAYMENT_PUBLIC_URL` uses the
+backend origin so scanned QR codes reach the deployed API.
+
+Production authentication uses Sanctum Bearer tokens: the frontend stores the
+token and sends `Authorization: Bearer <token>` on every API request. Cross-site
+session cookies and the local `sanctum/csrf-cookie` flow are not part of the
+hosted setup. Admin diagnostics are available at `GET /api/system/status` with
+an admin Bearer token and return configuration booleans only.
+
+Render terminates TLS before traffic reaches the container, so
+`TRUSTED_PROXIES` lists the proxy ranges allowed to set forwarded headers for
+HTTPS detection. Adjust that value if the platform's proxy addresses differ;
+never set it to `*` in production.

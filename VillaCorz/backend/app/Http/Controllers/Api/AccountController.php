@@ -81,6 +81,8 @@ class AccountController extends Controller
             'remember_token' => Str::random(60),
         ])->save();
 
+        $this->revokeOtherTokens($user);
+
         ActivityLogger::record(
             'account_password_changed',
             $user,
@@ -194,6 +196,8 @@ class AccountController extends Controller
                 'password' => $validated['password'],
                 'remember_token' => Str::random(60),
             ])->save();
+
+            $user->tokens()->delete();
         });
 
         $this->forgetReset($cacheKey, $attemptsKey);
@@ -211,6 +215,20 @@ class AccountController extends Controller
         return response()->json([
             'message' => 'Password reset successfully. You can now sign in with your new password.',
         ]);
+    }
+
+    private function revokeOtherTokens(User $user): void
+    {
+        $currentToken = $user->currentAccessToken();
+        $currentTokenId = $currentToken && isset($currentToken->id) ? $currentToken->id : null;
+
+        $query = $user->tokens();
+
+        if ($currentTokenId !== null) {
+            $query->where('id', '!=', $currentTokenId);
+        }
+
+        $query->delete();
     }
 
     private function ensureCurrentPassword(User $user, string $password): void
