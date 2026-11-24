@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -99,6 +100,41 @@ class VerificationCodeDeliveryTest extends TestCase
             ->assertJsonPath('verification_delivery', 'log')
             ->assertJsonPath('message', 'A new verification code has been written to the application log.')
             ->assertJsonMissingPath('development_code');
+    }
+
+    public function test_registration_can_be_verified_and_logged_in_with_database_cache(): void
+    {
+        config(['cache.default' => 'database']);
+
+        $otp = null;
+        Mail::shouldReceive('send')
+            ->once()
+            ->andReturnUsing(function ($view, $data) use (&$otp): void {
+                $this->assertSame('emails.verify-otp', $view);
+                $otp = $data['otp'];
+            });
+
+        $registrationData = $this->registrationData();
+        $registration = $this->postJson('/api/register', $registrationData)
+            ->assertOk()
+            ->json();
+
+        $this->assertIsString($otp);
+        $this->assertGreaterThan(0, DB::table('cache')->count());
+
+        $this->postJson('/api/verify-otp', [
+            'registration_id' => $registration['registration_id'],
+            'otp' => $otp,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('user.email', $registrationData['email']);
+
+        $this->postJson('/api/login', [
+            'email' => $registrationData['email'],
+            'password' => $registrationData['password'],
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.email', $registrationData['email']);
     }
 
     private function registrationData(): array
