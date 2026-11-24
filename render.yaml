@@ -21,6 +21,8 @@ services:
         sync: false
       - key: APP_URL
         value: https://villacorz-api.onrender.com
+      - key: APP_FORCE_HTTPS
+        value: "true"
       - key: FRONTEND_URL
         value: https://villa-corz.vercel.app
       - key: CORS_ALLOWED_ORIGINS
