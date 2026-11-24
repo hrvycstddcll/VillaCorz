@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../services/useAuth'
 import { authErrorMessage } from '../../../services/authErrors'
+import { getPostAuthDestination } from '../../../services/authRouting'
+import type { User } from '../../../services/types'
 import { Mail } from 'lucide-react'
 import { login, register } from '../../../services/authService'
 import PasswordField from '../ui/FormComponents/PasswordField'
@@ -17,41 +19,6 @@ type FormProps = {
     feedback: string
     feedbackType: 'success' | 'error'
     remember: boolean
-}
-
-type PostAuthUser = { role?: string }
-
-type PostAuthLocationState = {
-    from?: {
-        pathname?: string
-        search?: string
-        hash?: string
-        state?: unknown
-    }
-}
-
-const getPostAuthDestination = (
-    user: PostAuthUser,
-    state: unknown,
-): { pathname: string; search?: string; hash?: string } => {
-    const requested = (state as PostAuthLocationState | null)?.from
-    const path = requested?.pathname
-    const customerPrefixes = ['/reservation', '/payment', '/bookings', '/settings']
-    const adminPrefixes = [...customerPrefixes, '/dashboard', '/manageOffers', '/reports']
-    const prefixes = user.role === 'admin' ? adminPrefixes : customerPrefixes
-    const canRestore = path
-        ? prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
-        : false
-
-    if (canRestore && path) {
-        return {
-            pathname: path,
-            search: requested?.search,
-            hash: requested?.hash,
-        }
-    }
-
-    return { pathname: user.role === 'admin' ? '/dashboard' : '/' }
 }
 
 const RememberMeField = ({ checked }: { checked: boolean }) => (
@@ -320,14 +287,13 @@ const Auth = () => {
         try {
             if (mode === 'login') {
                 const response = await login(email, password, keepSignedIn)
+                const authenticatedUser = response.data?.user as User | undefined
 
-                setUser(response.data.user)
-                const destination = getPostAuthDestination(
-                    response.data.user,
-                    location.state,
+                setUser(authenticatedUser ?? null)
+                navigate(
+                    getPostAuthDestination(authenticatedUser, location.state),
+                    { replace: true },
                 )
-
-                navigate(destination, { replace: true })
                 return
             }
 
@@ -421,7 +387,7 @@ const Auth = () => {
                     developmentCode={verification.developmentCode}
                     remember={remember}
                     onVerified={(user) => {
-                        setUser(user)
+                        setUser(user ?? null)
                         setVerification(null)
                         navigate(getPostAuthDestination(user, location.state), { replace: true })
                     }}
