@@ -8,10 +8,108 @@ use App\Models\ServiceReview;
 use App\Models\ServiceReviewImage;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class DevelopmentParitySeeder extends Seeder
 {
+    private const SERVICE_FIELDS = [
+        'Room 1' => [
+            'description' => 'Provides a cozy bunk-style setup with air conditioning, a TV, and a private CR, great for small groups and families.',
+            'price' => 3000,
+            'weekend_price' => 3000,
+            'additional_head_weekday_price' => 50,
+            'additional_head_weekend_price' => 100,
+            'weekday_discount_type' => 'fixed',
+            'weekday_discount_value' => 500,
+            'weekend_discount_type' => null,
+            'weekend_discount_value' => null,
+            'pax' => 4,
+            'features' => [],
+            'amenities' => ['TV', 'Private CR', 'Airconditioned'],
+            'status' => 'active',
+            'kind' => 'room',
+        ],
+        'Room 2' => [
+            'description' => 'Offers rustic wooden bunk beds and modern comforts, including AC, TV and a private CR, for a relaxing stay with your family and barkada.',
+            'price' => 3000,
+            'weekend_price' => 3000,
+            'additional_head_weekday_price' => 50,
+            'additional_head_weekend_price' => 100,
+            'weekday_discount_type' => 'fixed',
+            'weekday_discount_value' => 500,
+            'weekend_discount_type' => null,
+            'weekend_discount_value' => null,
+            'pax' => 4,
+            'features' => [],
+            'amenities' => ['TV', 'Private CR', 'Airconditioned'],
+            'status' => 'active',
+            'kind' => 'room',
+        ],
+        'Room 3' => [
+            'description' => 'Offers rustic wooden bunk beds and modern comforts, including AC, TV and a private CR, for a relaxing stay with your family and barkada.',
+            'price' => 3000,
+            'weekend_price' => 3000,
+            'additional_head_weekday_price' => 50,
+            'additional_head_weekend_price' => 100,
+            'weekday_discount_type' => 'fixed',
+            'weekday_discount_value' => 500,
+            'weekend_discount_type' => null,
+            'weekend_discount_value' => null,
+            'pax' => 4,
+            'features' => [],
+            'amenities' => ['TV', 'Private CR', 'Airconditioned'],
+            'status' => 'active',
+            'kind' => 'room',
+        ],
+        'Room 4' => [
+            'description' => 'Offers warm wooden bunk beds and air-conditioned comfort, an ideal pick for guest who wants a simple, peaceful retreat without the extras.',
+            'price' => 4000,
+            'weekend_price' => 4000,
+            'additional_head_weekday_price' => 50,
+            'additional_head_weekend_price' => 100,
+            'weekday_discount_type' => 'fixed',
+            'weekday_discount_value' => 500,
+            'weekend_discount_type' => null,
+            'weekend_discount_value' => null,
+            'pax' => 10,
+            'features' => [],
+            'amenities' => ['Airconditioned'],
+            'status' => 'active',
+            'kind' => 'room',
+        ],
+        'Room 5' => [
+            'description' => 'Features  spacious ,comfty bed with airconditioning and two fans, giving you budget-friendly comfort and a relaxing, easygoing stay.',
+            'price' => 4000,
+            'weekend_price' => 4000,
+            'additional_head_weekday_price' => 50,
+            'additional_head_weekend_price' => 100,
+            'weekday_discount_type' => 'fixed',
+            'weekday_discount_value' => 500,
+            'weekend_discount_type' => null,
+            'weekend_discount_value' => null,
+            'pax' => 10,
+            'features' => [],
+            'amenities' => ['Airconditioned', '2 Fans'],
+            'status' => 'active',
+            'kind' => 'room',
+        ],
+        'The Whole Villa' => [
+            'description' => 'Make the whole beach house yours. Gather in the shared spaces, unwind in comfortable rooms, and enjoy an easygoing seaside stay with your group.',
+            'price' => 15500,
+            'weekend_price' => 17000,
+            'additional_head_weekday_price' => 50,
+            'additional_head_weekend_price' => 100,
+            'weekday_discount_type' => 'fixed',
+            'weekday_discount_value' => 1500,
+            'weekend_discount_type' => null,
+            'weekend_discount_value' => null,
+            'pax' => 35,
+            'features' => [],
+            'amenities' => ['TV', 'Private CR', 'Airconditioned', '2 Fans'],
+            'status' => 'active',
+            'kind' => 'exclusive',
+        ],
+    ];
+
     private const SERVICE_IMAGES = [
         [
             'service' => 'Room 1',
@@ -137,11 +235,17 @@ class DevelopmentParitySeeder extends Seeder
 
     public function run(): void
     {
-        DB::transaction(function () {
-            $this->syncServiceOwners();
-            $this->syncServiceImages();
-            $this->syncReviewImages();
-        });
+        $this->syncServiceFields();
+        $this->syncServiceOwners();
+        $this->syncServiceImages();
+        $this->syncReviewImages();
+    }
+
+    private function syncServiceFields(): void
+    {
+        foreach (self::SERVICE_FIELDS as $name => $fields) {
+            Service::where('name', $name)->update($fields);
+        }
     }
 
     private function syncServiceOwners(): void
