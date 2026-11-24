@@ -54,6 +54,7 @@ class AdminBackupTest extends TestCase
 
         $this->actingAs($admin)->get('/api/backups/'.$filename.'/download')
             ->assertOk()
+            ->assertDownload($filename)
             ->assertHeader('Content-Type', 'application/sql');
     }
 
@@ -79,9 +80,8 @@ class AdminBackupTest extends TestCase
 
         $this->actingAs($admin)->get('/api/backups/'.$filename.'/download')
             ->assertOk()
-            ->assertHeader('Content-Type', 'application/sql')
-            ->assertHeader('Content-Disposition', 'attachment; filename="'.$filename.'"')
-            ->assertSee('-- fake database dump', false);
+            ->assertDownload($filename)
+            ->assertHeader('Content-Type', 'application/sql');
     }
 
     public function test_admin_cannot_download_an_invalid_backup_filename(): void

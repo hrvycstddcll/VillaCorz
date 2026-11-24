@@ -7,7 +7,7 @@ use App\Services\ActivityLogger;
 use App\Services\DatabaseBackupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminBackupController extends Controller
 {
@@ -41,7 +41,7 @@ class AdminBackupController extends Controller
         ], 201);
     }
 
-    public function download(string $filename, Request $request): Response
+    public function download(string $filename, Request $request): StreamedResponse
     {
         $backup = $this->backups->read($filename);
         if ($backup === null) {
@@ -58,8 +58,8 @@ class AdminBackupController extends Controller
             $request,
         );
 
-        return response($backup['contents'], 200)
-            ->header('Content-Type', 'application/sql')
-            ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
+        return response()->streamDownload(function () use ($backup): void {
+            echo $backup['contents'];
+        }, $filename, ['Content-Type' => 'application/sql']);
     }
 }
