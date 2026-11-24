@@ -1,16 +1,6 @@
-import axios from 'axios'
-import api, { API_ORIGIN, clearAuthToken, setAuthToken } from './api'
-
-const csrf = () => {
-    return axios.get(`${API_ORIGIN}/sanctum/csrf-cookie`, {
-        withCredentials: true,
-        withXSRFToken: true,
-    })
-}
+import api, { clearAuthToken, setAuthToken } from './api'
 
 export const login = async (email: string, password: string) => {
-    await csrf()
-
     const response = await api.post('/login', {
         email,
         password,
@@ -38,8 +28,6 @@ export const register = async (
     email: string,
     password: string,
 ) => {
-    await csrf()
-
     return api.post('/register', {
         firstname,
         lastname,
@@ -49,8 +37,6 @@ export const register = async (
 }
 
 export const verifyOtp = async (registrationId: string, otp: string) => {
-    await csrf()
-
     const response = await api.post('/verify-otp', {
         registration_id: registrationId,
         otp,
@@ -65,8 +51,6 @@ export const verifyOtp = async (registrationId: string, otp: string) => {
 }
 
 export const resendOtp = async (registrationId: string) => {
-    await csrf()
-
     return api.post('/resend-otp', {
         registration_id: registrationId,
     })

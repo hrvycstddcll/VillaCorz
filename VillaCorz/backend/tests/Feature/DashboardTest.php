@@ -347,24 +347,28 @@ class DashboardTest extends TestCase
         $this->assertCount(9, $response->json('data.recent_bookings'));
     }
 
-    public function test_dashboard_returns_service_unavailable_when_forecasting_fails(): void
+    public function test_dashboard_uses_fallback_when_forecasting_fails(): void
     {
         Http::fake(['*' => Http::response(['detail' => 'forecast failed'], 500)]);
 
-        $this->actingAs($this->makeUser('admin'))
+        $response = $this->actingAs($this->makeUser('admin'))
             ->getJson('/api/dashboard')
-            ->assertServiceUnavailable()
-            ->assertJsonPath('message', 'SARIMAX forecasting service returned an error.');
+            ->assertOk()
+            ->assertJsonPath('data.demand_forecast.model', 'fallback');
+
+        $this->assertNotEmpty($response->json('data.demand_forecast.forecast'));
     }
 
-    public function test_dashboard_rejects_a_non_sarimax_forecast(): void
+    public function test_dashboard_uses_fallback_when_forecast_model_is_invalid(): void
     {
         $this->fakeSarimaxForecast(['model' => 'weekday_average']);
 
-        $this->actingAs($this->makeUser('admin'))
+        $response = $this->actingAs($this->makeUser('admin'))
             ->getJson('/api/dashboard')
-            ->assertServiceUnavailable()
-            ->assertJsonPath('message', 'SARIMAX forecasting service returned an invalid model.');
+            ->assertOk()
+            ->assertJsonPath('data.demand_forecast.model', 'fallback');
+
+        $this->assertNotEmpty($response->json('data.demand_forecast.forecast'));
     }
 
     public function test_page_view_tracking_records_a_row(): void

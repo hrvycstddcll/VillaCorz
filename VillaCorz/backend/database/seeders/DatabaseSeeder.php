@@ -15,18 +15,54 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         foreach ([
-            ['Room 1', 3000, 2, ['TV', 'Private CR', 'Airconditioned']],
-            ['Room 2', 3000, 2, ['TV', 'Private CR', 'Airconditioned']],
-            ['Room 3', 3000, 2, ['TV', 'Private CR', 'Airconditioned']],
-            ['Room 4', 4000, 6, ['TV', 'Private CR', 'Airconditioned']],
-            ['Room 5', 4000, 6, ['TV', 'Private CR', 'Airconditioned']],
-        ] as [$name, $price, $pax, $amenities]) {
+            [
+                'Room 1',
+                'Provides a cozy bunk-style setup with air conditioning, a TV, and a private CR, great for small groups and families.',
+                3000,
+                4,
+                ['TV', 'Private CR', 'Airconditioned'],
+            ],
+            [
+                'Room 2',
+                'Offers rustic wooden bunk beds and modern comforts, including AC, TV and a private CR, for a relaxing stay with your family and barkada.',
+                3000,
+                4,
+                ['TV', 'Private CR', 'Airconditioned'],
+            ],
+            [
+                'Room 3',
+                'Offers rustic wooden bunk beds and modern comforts, including AC, TV and a private CR, for a relaxing stay with your family and barkada.',
+                3000,
+                4,
+                ['TV', 'Private CR', 'Airconditioned'],
+            ],
+            [
+                'Room 4',
+                'Offers warm wooden bunk beds and air-conditioned comfort, an ideal pick for guest who wants a simple, peaceful retreat without the extras.',
+                4000,
+                10,
+                ['Airconditioned'],
+            ],
+            [
+                'Room 5',
+                'Features  spacious ,comfty bed with airconditioning and two fans, giving you budget-friendly comfort and a relaxing, easygoing stay.',
+                4000,
+                10,
+                ['Airconditioned', '2 Fans'],
+            ],
+        ] as [$name, $description, $price, $pax, $amenities]) {
             Service::updateOrCreate(
                 ['name' => $name],
                 [
-                    'description' => 'A comfortable seaside room with air conditioning, a TV, and a private CR.',
+                    'description' => $description,
                     'price' => $price,
-                    'weekend_price' => null,
+                    'weekend_price' => $price,
+                    'additional_head_weekday_price' => 50,
+                    'additional_head_weekend_price' => 100,
+                    'weekday_discount_type' => 'fixed',
+                    'weekday_discount_value' => 500,
+                    'weekend_discount_type' => null,
+                    'weekend_discount_value' => null,
                     'status' => 'active',
                     'kind' => 'room',
                     'pax' => $pax,
@@ -61,5 +97,6 @@ class DatabaseSeeder extends Seeder
         );
 
         $this->call(DemoReseedSeeder::class);
+        $this->call(DevelopmentParitySeeder::class);
     }
 }

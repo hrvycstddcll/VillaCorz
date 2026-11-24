@@ -71,8 +71,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [setUser])
 
     const handleLogout = async () => {
-        await logout()
-        setUser(null)
+        try {
+            await logout()
+        } finally {
+            setUser(null)
+        }
     }
 
     useEffect(() => {
@@ -85,6 +88,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         void init()
     }, [refreshUser])
+
+    useEffect(() => {
+        const handleUnauthorized = () => setUser(null)
+        window.addEventListener('villacorz:unauthorized', handleUnauthorized)
+
+        return () => window.removeEventListener('villacorz:unauthorized', handleUnauthorized)
+    }, [setUser])
 
     return (
         <AuthContext.Provider value={{ user, loading, refreshUser, setUser, logout:handleLogout }}>

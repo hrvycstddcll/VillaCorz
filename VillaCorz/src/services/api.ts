@@ -56,6 +56,7 @@ api.interceptors.response.use(
         if (error.response?.status === 401 && typeof window !== 'undefined') {
             window.sessionStorage.removeItem(TOKEN_STORAGE_KEY)
             window.sessionStorage.removeItem(USER_STORAGE_KEY)
+            window.dispatchEvent(new CustomEvent('villacorz:unauthorized'))
         }
 
         return Promise.reject(error)

@@ -1,5 +1,4 @@
-import axios from 'axios'
-import api, { API_ORIGIN } from './api'
+import api from './api'
 import type { User } from './types'
 
 type AccountResponse = {
@@ -13,12 +12,6 @@ type PasswordResetResponse = {
     expires_in: number
     development_code?: string
 }
-
-const requestCsrfCookie = () =>
-    axios.get(`${API_ORIGIN}/sanctum/csrf-cookie`, {
-        withCredentials: true,
-        withXSRFToken: true,
-    })
 
 export const updateAccountProfile = (
     firstname: string,
@@ -42,22 +35,18 @@ export const updateAccountPassword = (
         password_confirmation: passwordConfirmation,
     })
 
-export const requestPasswordResetCode = async (email: string) => {
-    await requestCsrfCookie()
-    return api.post<PasswordResetResponse>('/forgot-password', { email })
-}
+export const requestPasswordResetCode = (email: string) =>
+    api.post<PasswordResetResponse>('/forgot-password', { email })
 
 export const resetAccountPassword = async (
     resetId: string,
     code: string,
     password: string,
     passwordConfirmation: string,
-) => {
-    await requestCsrfCookie()
-    return api.post<AccountResponse>('/reset-password', {
+) =>
+    api.post<AccountResponse>('/reset-password', {
         reset_id: resetId,
         code,
         password,
         password_confirmation: passwordConfirmation,
     })
-}
