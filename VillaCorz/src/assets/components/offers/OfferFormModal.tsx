@@ -530,7 +530,7 @@ const OfferFormModal = ({
                 className="rounded-xl border border-slate-200 bg-white p-3.5"
             >
                 <div className="flex items-baseline justify-between gap-2">
-                    <p className="text-xs font-semibold text-[#003079]">
+                    <p className="text-xs font-jakarta-serif font-semibold text-[#003079]">
                         {title}
                     </p>
                     <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
@@ -663,7 +663,7 @@ const OfferFormModal = ({
 
     return (
         <div
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[3px]"
+            className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-950/50 p-4 pt-24 pb-4 backdrop-blur-[3px] sm:pt-28"
             onMouseDown={(event) => {
                 if (event.target === event.currentTarget && !submitting) {
                     onClose()
@@ -674,13 +674,13 @@ const OfferFormModal = ({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="offer-form-title"
-                className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-[0_24px_80px_rgba(0,0,0,0.22)]"
+                className="max-h-[calc(100vh-9rem)] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-[0_24px_80px_rgba(0,0,0,0.22)] sm:max-h-[calc(100vh-10.5rem)]"
             >
                 <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
                     <div>
                         <h2
                             id="offer-form-title"
-                            className="font-serif text-2xl font-bold text-[#003079]"
+                            className="font-jakarta-serif text-2xl font-bold text-[#003079]"
                         >
                             {isEditing ? 'Edit Offer' : 'Add Offer'}
                         </h2>
@@ -975,7 +975,7 @@ const OfferFormModal = ({
 
 
                         <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-                            <legend className="px-1 text-xs font-semibold text-slate-600">
+                            <legend className="px-1 text-xs font-jakarta-serif font-semibold text-slate-600">
                                 Sale / discount
                             </legend>
                             <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -994,7 +994,7 @@ const OfferFormModal = ({
                         </fieldset>
 
                         <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-                            <legend className="text-xs font-semibold text-slate-600">
+                            <legend className="text-xs font-jakarta-serif font-semibold text-slate-600">
                                 Room Features
                             </legend>
                             <div className="mt-2 grid gap-2 sm:grid-cols-2">

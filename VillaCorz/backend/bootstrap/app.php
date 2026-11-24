@@ -13,7 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->statefulApi();
+        // This SPA authenticates with Sanctum bearer tokens (the frontend
+        // sends Authorization: Bearer <token>), not session cookies. Using
+        // statefulApi() would run the web/CSRF middleware on /api requests
+        // coming from the SPA origin and make /api/login fail with a
+        // "CSRF token mismatch" (419) because the SPA never requests the
+        // Sanctum XSRF cookie. Keep the API token-based.
+        // $middleware->statefulApi();
 
         $trustedProxies = array_values(array_filter(array_map(
             'trim',

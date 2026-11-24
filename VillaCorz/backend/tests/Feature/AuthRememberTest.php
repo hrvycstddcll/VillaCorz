@@ -38,6 +38,23 @@ class AuthRememberTest extends TestCase
         $this->withToken($token)->getJson('/api/user')->assertUnauthorized();
     }
 
+    public function test_login_from_spa_origin_does_not_require_csrf_cookie(): void
+    {
+        $user = User::factory()->create([
+            'password' => 'CorrectPassword123',
+        ]);
+
+        $this->withHeaders([
+            'Origin' => 'http://localhost:5173',
+            'Referer' => 'http://localhost:5173/',
+        ])->postJson('/api/login', [
+            'email' => $user->email,
+            'password' => 'CorrectPassword123',
+        ])->assertOk()
+            ->assertJsonPath('user.id', $user->id)
+            ->assertJsonPath('token_type', 'Bearer');
+    }
+
     public function test_remember_me_issues_a_longer_lived_token(): void
     {
         $user = User::factory()->create([
