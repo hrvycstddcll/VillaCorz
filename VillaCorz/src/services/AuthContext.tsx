@@ -4,17 +4,21 @@ import {
     useState,
     type ReactNode,
 } from 'react'
+import { getAuthToken, USER_STORAGE_KEY } from './api'
 import { getUser, logout } from './authService'
 import type { User } from './types'
 import { AuthContext } from './AuthContextValue'
 
-const USER_CACHE_KEY = 'villacorz.user'
-
 const readCachedUser = (): User | null => {
     if (typeof window === 'undefined') return null
 
+    if (!getAuthToken()) {
+        window.sessionStorage.removeItem(USER_STORAGE_KEY)
+        return null
+    }
+
     try {
-        const raw = window.sessionStorage.getItem(USER_CACHE_KEY)
+        const raw = window.sessionStorage.getItem(USER_STORAGE_KEY)
         if (!raw) return null
         const parsed = JSON.parse(raw) as User
         return parsed && typeof parsed === 'object' ? parsed : null
@@ -28,9 +32,9 @@ const writeCachedUser = (user: User | null) => {
 
     try {
         if (user) {
-            window.sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(user))
+            window.sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
         } else {
-            window.sessionStorage.removeItem(USER_CACHE_KEY)
+            window.sessionStorage.removeItem(USER_STORAGE_KEY)
         }
     } catch {
         // Storage can be unavailable (private mode, quota); the in-memory
@@ -50,6 +54,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [])
 
     const refreshUser = useCallback(async () => {
+        if (!getAuthToken()) {
+            setUser(null)
+            setLoading(false)
+            return
+        }
+
         try {
             const response = await getUser()
             setUser(response.data)

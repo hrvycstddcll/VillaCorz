@@ -10,6 +10,7 @@ export const API_ORIGIN = (configuredOrigin ?? 'http://localhost:8000').replace(
 export const API_BASE_URL = `${API_ORIGIN}/api`
 
 export const TOKEN_STORAGE_KEY = 'villacorz.token'
+export const USER_STORAGE_KEY = 'villacorz.user'
 
 export const getAuthToken = (): string | null => {
     if (typeof window === 'undefined') return null
@@ -48,5 +49,17 @@ api.interceptors.request.use((config) => {
 
     return config
 })
+
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401 && typeof window !== 'undefined') {
+            window.sessionStorage.removeItem(TOKEN_STORAGE_KEY)
+            window.sessionStorage.removeItem(USER_STORAGE_KEY)
+        }
+
+        return Promise.reject(error)
+    },
+)
 
 export default api

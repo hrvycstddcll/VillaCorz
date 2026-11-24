@@ -43,7 +43,7 @@ class DatabaseSeeder extends Seeder
             [
                 'firstname' => 'Dlord',
                 'lastname' => 'Admin',
-                'password' => Hash::make('QZ&t5Gg?l-3?Ho-c2F'),
+                'password' => Hash::make('admin123'),
                 'role' => 'admin',
                 'email_verified_at' => now(),
             ],
@@ -54,7 +54,7 @@ class DatabaseSeeder extends Seeder
             [
                 'firstname' => 'Haydee',
                 'lastname' => 'Dacillo',
-                'password' => Hash::make('|AbrB)HK<KXGiJ|7[%'),
+                'password' => Hash::make('customer123'),
                 'role' => 'customer',
                 'email_verified_at' => now(),
             ],
