@@ -292,7 +292,7 @@
                     </p>
                 @endif
 
-                <a class="back" href="{{ config('app.frontend_url') }}">Return to VillaCorz</a>
+                <a class="back" href="{{ $returnUrl }}">Return to your booking</a>
             </div>
         </div>
     </div>
