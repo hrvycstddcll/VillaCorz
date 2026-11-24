@@ -57,6 +57,32 @@ class AdminBackupTest extends TestCase
             ->assertHeader('Content-Type', 'application/sql');
     }
 
+    public function test_admin_can_save_list_and_download_a_database_backup(): void
+    {
+        config()->set('backup.driver', 'database');
+        $this->fakeBackups();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $created = $this->actingAs($admin)->postJson('/api/backups');
+        $created->assertCreated()
+            ->assertJsonPath('success', true);
+
+        $filename = $created->json('data.filename');
+        $this->assertDatabaseHas('backups', [
+            'filename' => $filename,
+            'contents' => '-- fake database dump',
+        ]);
+
+        $this->actingAs($admin)->getJson('/api/backups')
+            ->assertOk()
+            ->assertJsonPath('data.0.filename', $filename);
+
+        $this->actingAs($admin)->get('/api/backups/'.$filename.'/download')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/sql')
+            ->assertSee('-- fake database dump', false);
+    }
+
     public function test_admin_cannot_download_an_invalid_backup_filename(): void
     {
         $this->fakeBackups();

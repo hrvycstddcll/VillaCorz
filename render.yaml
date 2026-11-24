@@ -35,6 +35,10 @@ services:
         sync: false
       - key: DB_URL_UNPOOLED
         sync: false
+      - key: BACKUP_DRIVER
+        value: database
+      - key: BACKUP_KEEP
+        value: "5"
       - key: CACHE_STORE
         value: file
       - key: SESSION_DRIVER
