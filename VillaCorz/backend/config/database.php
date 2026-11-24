@@ -117,6 +117,9 @@ return [
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
             'server_options' => $neonAppEndpoint ? ['endpoint' => $neonAppEndpoint] : [],
+            'options' => [
+                PDO::ATTR_EMULATE_PREPARES => true,
+            ],
         ],
 
         'pgsql_migrations' => [
@@ -133,6 +136,9 @@ return [
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
             'server_options' => $neonMigrationsEndpoint ? ['endpoint' => $neonMigrationsEndpoint] : [],
+            'options' => [
+                PDO::ATTR_EMULATE_PREPARES => true,
+            ],
         ],
 
         'sqlsrv' => [
