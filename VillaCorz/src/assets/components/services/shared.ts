@@ -38,6 +38,17 @@ export type ServicesRouteState = {
     reviewServiceId?: number
 }
 
+export const stayCategoryConflicts = (stay: Stay, selectedStays: Stay[]) =>
+    selectedStays.some(
+        (selected) =>
+            selected.id !== stay.id && selected.category !== stay.category,
+    )
+
+export const stayCategoryConflictMessage = (stay: Stay) =>
+    stay.category === 'exclusive'
+        ? 'Remove your private rooms before adding the whole villa.'
+        : 'Remove the whole villa before adding a private room.'
+
 export const exclusiveDefaults = {
     badge: 'Best Value',
     capacity: 'Good for 30-35 pax',

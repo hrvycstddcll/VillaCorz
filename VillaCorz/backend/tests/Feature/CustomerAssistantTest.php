@@ -160,6 +160,36 @@ class CustomerAssistantTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_long_history_content_is_truncated_automatically(): void
+    {
+        config()->set('assistant.enabled', true);
+        $customer = $this->makeUser('customer');
+        $this->seedService();
+        $this->fakeChat();
+
+        $response = $this->actingAs($customer)->postJson('/api/customer-assistant/chat', [
+            'message' => 'When is my next stay?',
+            'context' => ['page' => 'bookings'],
+            'history' => [
+                ['role' => 'assistant', 'content' => str_repeat('long ', 400)],
+            ],
+        ]);
+
+        $response->assertOk();
+
+        Http::assertSent(function (HttpRequest $request): bool {
+            $messages = $request->data()['messages'] ?? [];
+
+            foreach ($messages as $message) {
+                if (($message['role'] ?? null) === 'assistant') {
+                    return mb_strlen((string) ($message['content'] ?? '')) <= 1200;
+                }
+            }
+
+            return false;
+        });
+    }
+
     public function test_customer_gets_private_grounded_context_and_strict_rules(): void
     {
         config()->set('assistant.enabled', true);

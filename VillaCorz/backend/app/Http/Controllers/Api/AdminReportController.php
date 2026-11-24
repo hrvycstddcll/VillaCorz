@@ -259,7 +259,9 @@ class AdminReportController extends Controller
                 } elseif ($report === 'bookings') {
                     $searchQuery->where('reference', 'like', $term)
                         ->orWhere('contact_name', 'like', $term)
-                        ->orWhere('contact_email', 'like', $term);
+                        ->orWhere('contact_email', 'like', $term)
+                        ->orWhereHas('rooms', fn (Builder $roomQuery) => $roomQuery
+                            ->where('service_name', 'like', $term));
                 } elseif ($report === 'cancellations') {
                     $searchQuery->where('reason', 'like', $term)
                         ->orWhereHas('booking', fn (Builder $bookingQuery) => $bookingQuery

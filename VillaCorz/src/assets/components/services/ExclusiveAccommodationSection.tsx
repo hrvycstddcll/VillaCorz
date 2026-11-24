@@ -1,6 +1,6 @@
 import { Check, X } from 'lucide-react'
 import ServiceTile from '../ui/InteractiveComponents/ServiceTile'
-import type { Stay } from './shared'
+import { stayCategoryConflictMessage, type Stay } from './shared'
 
 export function ExclusiveAccommodationSection({
     stay,
@@ -8,6 +8,7 @@ export function ExclusiveAccommodationSection({
     selectedStay,
     selectedRoomIds,
     unavailable = false,
+    reservationBlocked = false,
     activePhoto,
     onSelectStay,
     onToggleReservation,
@@ -18,6 +19,7 @@ export function ExclusiveAccommodationSection({
     selectedStay: Stay | null
     selectedRoomIds: string[]
     unavailable?: boolean
+    reservationBlocked?: boolean
     activePhoto: string
     onSelectStay: (stay: Stay) => void
     onToggleReservation: (stay: Stay) => void
@@ -107,7 +109,7 @@ export function ExclusiveAccommodationSection({
                     className={`inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold ${
                         isReservationSelected
                             ? 'text-[#006dfc]'
-                            : unavailable
+                            : unavailable || reservationBlocked
                               ? 'text-slate-400'
                               : 'text-slate-500'
                     }`}
@@ -119,6 +121,8 @@ export function ExclusiveAccommodationSection({
                         </>
                     ) : unavailable ? (
                         'Unavailable for these dates'
+                    ) : reservationBlocked ? (
+                        'Remove private rooms first'
                     ) : (
                         'Not added to your booking'
                     )}
@@ -126,13 +130,23 @@ export function ExclusiveAccommodationSection({
                 <button
                     type="button"
                     onClick={() => onToggleReservation(stay)}
-                    disabled={unavailable && !isReservationSelected}
+                    disabled={
+                        (unavailable || reservationBlocked) &&
+                        !isReservationSelected
+                    }
+                    title={
+                        reservationBlocked && !isReservationSelected
+                            ? stayCategoryConflictMessage(stay)
+                            : undefined
+                    }
                     aria-label={
                         isReservationSelected
                             ? `Remove ${stay.title} from your booking`
                             : unavailable
                               ? `${stay.title} is unavailable for these dates`
-                              : `Add ${stay.title} to your booking`
+                              : reservationBlocked
+                                ? `${stay.title} cannot be added. ${stayCategoryConflictMessage(stay)}`
+                                : `Add ${stay.title} to your booking`
                     }
                     className={`inline-flex min-h-11 items-center gap-1 rounded-md px-4 py-2 text-xs font-semibold shadow-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:opacity-60 ${
                         isReservationSelected
@@ -147,6 +161,8 @@ export function ExclusiveAccommodationSection({
                         </>
                     ) : unavailable ? (
                         'Unavailable'
+                    ) : reservationBlocked ? (
+                        'Blocked'
                     ) : (
                         'Add whole villa'
                     )}

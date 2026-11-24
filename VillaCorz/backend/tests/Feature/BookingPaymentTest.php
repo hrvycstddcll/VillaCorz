@@ -745,6 +745,175 @@ class BookingPaymentTest extends TestCase
         $this->assertSame('cancelled', $second->payment->fresh()->status);
     }
 
+    public function test_an_active_pending_whole_villa_booking_rejects_a_room_booking(): void
+    {
+        $user = User::factory()->create();
+        $villa = $this->makeVillaService();
+        $room = $this->makeRoomService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDays(20)->toDateString();
+        $checkIn = StayTime::parseLocal($date, '10:00')->toIso8601String();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($villa, [
+                'check_in' => $checkIn,
+                'paid_days' => 1,
+            ]), ['Idempotency-Key' => 'pending-villa-a'])
+            ->assertCreated();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($room, [
+                'check_in' => $checkIn,
+                'paid_days' => 1,
+            ]), ['Idempotency-Key' => 'pending-villa-b'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('rooms');
+
+        $this->assertSame(1, Booking::query()->count());
+    }
+
+    public function test_an_expired_pending_whole_villa_booking_does_not_reject_a_room_booking(): void
+    {
+        $user = User::factory()->create();
+        $villa = $this->makeVillaService();
+        $room = $this->makeRoomService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDays(21)->toDateString();
+        $checkIn = StayTime::parseLocal($date, '10:00')->toIso8601String();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($villa, [
+                'check_in' => $checkIn,
+                'paid_days' => 1,
+            ]), ['Idempotency-Key' => 'expired-villa-a'])
+            ->assertCreated();
+
+        Booking::query()
+            ->where('idempotency_key', 'expired-villa-a')
+            ->firstOrFail()
+            ->forceFill(['expires_at' => now()->subHour()])
+            ->save();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($room, [
+                'check_in' => $checkIn,
+                'paid_days' => 1,
+            ]), ['Idempotency-Key' => 'expired-villa-b'])
+            ->assertCreated();
+
+        $this->assertSame(2, Booking::query()->count());
+    }
+
+    public function test_an_active_pending_room_booking_rejects_a_whole_villa_booking(): void
+    {
+        $user = User::factory()->create();
+        $villa = $this->makeVillaService();
+        $room = $this->makeRoomService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDays(22)->toDateString();
+        $checkIn = StayTime::parseLocal($date, '10:00')->toIso8601String();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($room, [
+                'check_in' => $checkIn,
+                'paid_days' => 1,
+            ]), ['Idempotency-Key' => 'pending-room-a'])
+            ->assertCreated();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($villa, [
+                'check_in' => $checkIn,
+                'paid_days' => 1,
+            ]), ['Idempotency-Key' => 'pending-room-b'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('rooms');
+
+        $this->assertSame(1, Booking::query()->count());
+    }
+
+    public function test_confirming_the_whole_villa_cancels_a_conflicting_room_booking(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $villa = $this->makeVillaService();
+        $room = $this->makeRoomService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDays(23)->toDateString();
+        $checkIn = StayTime::parseLocal($date, '10:00')->toIso8601String();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($room, [
+                'check_in' => $checkIn,
+                'paid_days' => 1,
+            ]), ['Idempotency-Key' => 'villa-priority-room'])
+            ->assertCreated();
+
+        $roomBooking = Booking::query()
+            ->where('idempotency_key', 'villa-priority-room')
+            ->firstOrFail();
+        $roomBooking->forceFill(['expires_at' => now()->subHour()])->save();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($villa, [
+                'check_in' => $checkIn,
+                'paid_days' => 1,
+            ]), ['Idempotency-Key' => 'villa-priority-villa'])
+            ->assertCreated();
+
+        $villaBooking = Booking::query()
+            ->where('idempotency_key', 'villa-priority-villa')
+            ->firstOrFail();
+        $roomBooking->forceFill(['expires_at' => now()->addHour()])->save();
+
+        $this->confirmOnPhone($villaBooking->payment);
+
+        $this->assertSame('confirmed', $villaBooking->fresh()->status);
+        $this->assertSame('cancelled', $roomBooking->fresh()->status);
+        $this->assertSame('cancelled', $roomBooking->payment->fresh()->status);
+        $this->assertDatabaseHas('payment_events', [
+            'payment_id' => $roomBooking->payment->id,
+            'event' => 'payment_conflict',
+        ]);
+    }
+
+    public function test_confirming_a_room_cancels_the_room_when_a_whole_villa_holds_the_dates(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $villa = $this->makeVillaService();
+        $room = $this->makeRoomService();
+        $date = now()->setTimezone(StayTime::TIMEZONE)->addDays(24)->toDateString();
+        $checkIn = StayTime::parseLocal($date, '10:00')->toIso8601String();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($room, [
+                'check_in' => $checkIn,
+                'paid_days' => 1,
+            ]), ['Idempotency-Key' => 'villa-priority-room-b'])
+            ->assertCreated();
+
+        $roomBooking = Booking::query()
+            ->where('idempotency_key', 'villa-priority-room-b')
+            ->firstOrFail();
+        $roomBooking->forceFill(['expires_at' => now()->subHour()])->save();
+
+        $this->actingAs($user)
+            ->postJson('/api/bookings', $this->bookingPayload($villa, [
+                'check_in' => $checkIn,
+                'paid_days' => 1,
+            ]), ['Idempotency-Key' => 'villa-priority-villa-b'])
+            ->assertCreated();
+
+        $villaBooking = Booking::query()
+            ->where('idempotency_key', 'villa-priority-villa-b')
+            ->firstOrFail();
+        $roomBooking->forceFill(['expires_at' => now()->addHour()])->save();
+
+        $this->confirmOnPhone($roomBooking->payment);
+
+        $this->assertSame('pending_payment', $villaBooking->fresh()->status);
+        $this->assertSame('cancelled', $roomBooking->fresh()->status);
+        $this->assertSame('cancelled', $roomBooking->payment->fresh()->status);
+    }
+
     public function test_a_pending_payment_does_not_hold_the_dates(): void
     {
         $firstUser = User::factory()->create();
@@ -1060,6 +1229,19 @@ class BookingPaymentTest extends TestCase
             'additional_head_weekday_price' => 50,
             'additional_head_weekend_price' => 100,
             'pax' => 4,
+            'status' => 'active',
+        ], $overrides));
+    }
+
+    private function makeVillaService(array $overrides = []): Service
+    {
+        return Service::create(array_merge([
+            'name' => 'The Whole Villa',
+            'description' => 'Entire property.',
+            'kind' => 'exclusive',
+            'price' => 15000,
+            'weekend_price' => 18000,
+            'pax' => 12,
             'status' => 'active',
         ], $overrides));
     }

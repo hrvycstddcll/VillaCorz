@@ -568,7 +568,9 @@ const Reports = () => {
                                                 ? 'Name or email'
                                                 : report === 'traffic'
                                                   ? 'Page or referrer'
-                                                  : 'Reference or name'
+                                                  : report === 'bookings'
+                                                    ? 'Reference, name, or room'
+                                                    : 'Reference or name'
                                         }
                                         className={`h-11 w-full rounded-lg border border-[rgba(0,0,0,0.1)] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#006dfc] focus:ring-2 focus:ring-[#006dfc]/20 ${focusRing}`}
                                     />

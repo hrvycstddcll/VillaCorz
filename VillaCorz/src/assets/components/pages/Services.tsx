@@ -32,6 +32,8 @@ import { PublicAccommodationSection } from '../services/PublicAccommodationSecti
 import { ReservationView } from '../services/ReservationView'
 import { RoomDetailView } from '../services/RoomDetailView'
 import {
+    stayCategoryConflicts,
+    stayCategoryConflictMessage,
     toExclusiveStay,
     toStay,
     type ServicesRouteState,
@@ -206,6 +208,12 @@ export default function Services({
             return stay ? [stay] : []
         })
     }, [selectedRoomIds, publicRooms, exclusiveStay])
+    const hasSelectedExclusive = selectedStays.some(
+        (stay) => stay.category === 'exclusive',
+    )
+    const hasSelectedPublic = selectedStays.some(
+        (stay) => stay.category === 'public',
+    )
 
     useEffect(() => {
         if (services.length === 0 || reservationOnly) return
@@ -494,6 +502,11 @@ export default function Services({
             showNotice(
                 `${stay.title} is already selected in Room ${alreadySelectedIndex + 1}.`,
             )
+            return
+        }
+
+        if (stayCategoryConflicts(stay, selectedStays)) {
+            showNotice(stayCategoryConflictMessage(stay))
             return
         }
 
@@ -846,6 +859,10 @@ export default function Services({
                             stay={selectedStay}
                             selectedPhoto={selectedRoomPhoto}
                             isReservationSelected={selectedRoomIds.includes(selectedStay.id)}
+                            reservationBlocked={stayCategoryConflicts(
+                                selectedStay,
+                                selectedStays,
+                            )}
                             onReserve={() => {
                                 reserveStay(selectedStay)
                                 setIsRoomDetailOpen(false)
@@ -912,6 +929,7 @@ export default function Services({
                         selectedStay={selectedStay}
                         selectedRoomIds={selectedRoomIds}
                         unavailableRoomIds={unavailableRoomIds}
+                        reservationBlocked={hasSelectedExclusive}
                         onSelectStay={selectStay}
                         onReserve={toggleStayReservation}
                     />
@@ -928,6 +946,7 @@ export default function Services({
                                 ? unavailableRoomIds.includes(exclusiveStay.id)
                                 : false
                         }
+                        reservationBlocked={hasSelectedPublic}
                         activePhoto={activePhoto}
                         onSelectStay={selectStay}
                         onToggleReservation={toggleStayReservation}
@@ -995,6 +1014,7 @@ export default function Services({
                             choices={roomChoices}
                             availabilityByServiceId={availabilityByServiceId}
                             selectedRoomIds={selectedRoomIds}
+                            selectedStays={selectedStays}
                             checkingAvailability={checkingAvailability}
                             availabilityError={availabilityError}
                             roomsLoading={roomsLoading}

@@ -882,7 +882,7 @@ const Offers = () => {
                         </div>
                         <p className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
                             <span aria-hidden="true" className="size-1.5 rounded-full bg-slate-400" />
-                            Dates with confirmed bookings are crossed out.
+                            Dates with confirmed or active pending reservations are crossed out.
                         </p>
                     </section>
                 </div>

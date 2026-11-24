@@ -96,4 +96,49 @@ describe('ServiceTile', () => {
         fireEvent.click(removeButton)
         expect(onToggleReservation).toHaveBeenCalledTimes(1)
     })
+
+    it('disables adding a room while the whole villa is selected', () => {
+        const onToggleReservation = vi.fn()
+        const message = 'Remove the whole villa before adding a private room.'
+        const { rerender } = render(
+            <ServiceTile
+                variant="room"
+                stay={stay}
+                isSelected={false}
+                isReservationSelected={false}
+                reservationBlocked
+                reservationBlockedMessage={message}
+                onSelect={vi.fn()}
+                onToggleReservation={onToggleReservation}
+            />,
+        )
+
+        const addButton = screen.getByRole('button', {
+            name: `Ocean Room cannot be added. ${message}`,
+        })
+        expect(addButton).toBeDisabled()
+        expect(addButton).toHaveTextContent('Blocked')
+        fireEvent.click(addButton)
+        expect(onToggleReservation).not.toHaveBeenCalled()
+
+        rerender(
+            <ServiceTile
+                variant="room"
+                stay={stay}
+                isSelected={false}
+                isReservationSelected
+                reservationBlocked
+                reservationBlockedMessage={message}
+                onSelect={vi.fn()}
+                onToggleReservation={onToggleReservation}
+            />,
+        )
+
+        const removeButton = screen.getByRole('button', {
+            name: 'Remove Ocean Room from your booking',
+        })
+        expect(removeButton).toBeEnabled()
+        fireEvent.click(removeButton)
+        expect(onToggleReservation).toHaveBeenCalledTimes(1)
+    })
 })

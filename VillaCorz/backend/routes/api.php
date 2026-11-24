@@ -4,6 +4,7 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AdminAssistantController;
+use App\Http\Controllers\Api\AdminBackupController;
 use App\Http\Controllers\Api\AdminOfferController;
 use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\AuthController;
@@ -112,6 +113,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/activity-logs/summary', [ActivityLogController::class, 'summary']);
     Route::get('/activity-logs/export', [ActivityLogController::class, 'export']);
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+
+    Route::get('/backups', [AdminBackupController::class, 'index']);
+    Route::post('/backups', [AdminBackupController::class, 'store'])
+        ->middleware('throttle:3,1');
+    Route::get('/backups/{filename}/download', [AdminBackupController::class, 'download'])
+        ->middleware('throttle:10,1');
 
     Route::get('/assistant/status', [AdminAssistantController::class, 'status']);
     Route::post('/assistant/chat', [AdminAssistantController::class, 'chat'])

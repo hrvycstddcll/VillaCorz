@@ -115,6 +115,35 @@ class AdminAssistantTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_long_history_content_is_truncated_automatically(): void
+    {
+        config()->set('assistant.enabled', true);
+        $admin = $this->makeUser('admin');
+        $this->seedData($admin);
+        $this->fakeChat();
+
+        $response = $this->actingAs($admin)->postJson('/api/assistant/chat', [
+            'message' => 'What happened with revenue?',
+            'history' => [
+                ['role' => 'assistant', 'content' => str_repeat('long ', 400)],
+            ],
+        ]);
+
+        $response->assertOk();
+
+        Http::assertSent(function (HttpRequest $request): bool {
+            $messages = $request->data()['messages'] ?? [];
+
+            foreach ($messages as $message) {
+                if (($message['role'] ?? null) === 'assistant') {
+                    return mb_strlen((string) ($message['content'] ?? '')) <= 1200;
+                }
+            }
+
+            return false;
+        });
+    }
+
     public function test_admin_can_ask_a_grounded_question(): void
     {
         config()->set('assistant.enabled', true);

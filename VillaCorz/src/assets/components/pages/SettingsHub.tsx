@@ -1,9 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronRight, LogOut, UserRound } from 'lucide-react'
+import {
+    ChevronRight,
+    Database,
+    Download,
+    Loader2,
+    LogOut,
+    UserRound,
+} from 'lucide-react'
 import BackButton from '../ui/InteractiveComponents/BackButton'
 import LogoutModal from '../ui/ModalComponents/LogoutModal'
 import { useAuth } from '../../../services/useAuth'
+import {
+    createBackup,
+    downloadBackup,
+    listBackups,
+    type BackupFile,
+} from '../../../services/backupService'
 
 const optionCardClassName =
     'group flex w-full items-start gap-4 rounded-2xl border border-transparent bg-white p-5 text-left shadow-[0_4px_18px_rgba(15,23,42,0.08)] transition-[border-color,box-shadow] duration-150 hover:border-[#006dfc]/20 hover:shadow-[0_8px_24px_rgba(15,23,42,0.12)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
@@ -15,6 +28,10 @@ const SettingsHub = () => {
     const navigate = useNavigate()
     const { user, logout } = useAuth()
     const [showLogoutModal, setShowLogoutModal] = useState(false)
+    const [backups, setBackups] = useState<BackupFile[]>([])
+    const [backupBusy, setBackupBusy] = useState(false)
+    const [backupError, setBackupError] = useState<string | null>(null)
+    const isAdmin = user?.role === 'admin'
 
     const fullName = [user?.firstname, user?.lastname]
         .filter(Boolean)
@@ -37,6 +54,65 @@ const SettingsHub = () => {
             navigate('/')
         } catch {
             alert('Unable to log out. Please try again.')
+        }
+    }
+
+    useEffect(() => {
+        if (!isAdmin) {
+            return
+        }
+
+        let active = true
+
+        listBackups()
+            .then((response) => {
+                if (active) {
+                    setBackups(response.data.data)
+                }
+            })
+            .catch(() => {
+                if (active) {
+                    setBackupError('Unable to load saved backups.')
+                }
+            })
+
+        return () => {
+            active = false
+        }
+    }, [isAdmin])
+
+    const handleCreateBackup = async () => {
+        setBackupBusy(true)
+        setBackupError(null)
+
+        try {
+            const response = await createBackup()
+            setBackups((previous) => [response.data.data, ...previous])
+        } catch {
+            setBackupError('Unable to save a backup. Please try again.')
+        } finally {
+            setBackupBusy(false)
+        }
+    }
+
+    const handleDownloadBackup = async (filename: string) => {
+        setBackupBusy(true)
+        setBackupError(null)
+
+        try {
+            const response = await downloadBackup(filename)
+            const url = URL.createObjectURL(response.data)
+            const anchor = document.createElement('a')
+            anchor.href = url
+            anchor.download = filename
+            document.body.appendChild(anchor)
+            anchor.click()
+            anchor.remove()
+            URL.revokeObjectURL(url)
+        } catch {
+            setBackupError('Unable to download the backup. Please try again.')
+        } finally {
+            setBackupBusy(false)
         }
     }
 
@@ -132,9 +208,107 @@ const SettingsHub = () => {
                     </button>
                 </div>
 
-                <p className="mt-6 text-xs leading-5 text-slate-500">
-                    System settings will appear here as they become available.
-                </p>
+                {isAdmin ? (
+                    <section className="mt-8" aria-label="System backups">
+                        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                            System
+                        </h2>
+                        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_4px_18px_rgba(15,23,42,0.08)]">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-base font-semibold text-slate-900">
+                                        Save backup
+                                    </p>
+                                    <p className="mt-1 text-sm leading-5 text-slate-600">
+                                        Download a plain SQL backup of the
+                                        database.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleCreateBackup}
+                                    disabled={backupBusy}
+                                    className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#006dfc] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#0057c9] disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {backupBusy ? (
+                                        <Loader2
+                                            aria-hidden="true"
+                                            className="size-4 animate-spin"
+                                        />
+                                    ) : (
+                                        <Database
+                                            aria-hidden="true"
+                                            className="size-4"
+                                        />
+                                    )}
+                                    {backupBusy ? 'Saving…' : 'Save backup'}
+                                </button>
+                            </div>
+
+                            {backupError && (
+                                <p
+                                    role="alert"
+                                    className="mt-3 text-sm text-rose-600"
+                                >
+                                    {backupError}
+                                </p>
+                            )}
+
+                            {backups.length > 0 ? (
+                                <ul className="mt-4 divide-y divide-slate-100 border-t border-slate-100">
+                                    {backups.map((backup) => (
+                                        <li
+                                            key={backup.filename}
+                                            className="flex flex-wrap items-center justify-between gap-3 py-3"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="truncate font-mono text-xs text-slate-700">
+                                                    {backup.filename}
+                                                </p>
+                                                <p className="mt-0.5 text-xs text-slate-500">
+                                                    {new Date(
+                                                        backup.created_at,
+                                                    ).toLocaleString()}{' '}
+                                                    ·{' '}
+                                                    {(
+                                                        backup.size / 1024 / 1024
+                                                    ).toFixed(2)}{' '}
+                                                    MB
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    handleDownloadBackup(
+                                                        backup.filename,
+                                                    )
+                                                }
+                                                disabled={backupBusy}
+                                                aria-label={`Download ${backup.filename}`}
+                                                className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                <Download
+                                                    aria-hidden="true"
+                                                    className="size-3.5"
+                                                />
+                                                Download
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="mt-4 text-xs text-slate-500">
+                                    No backups saved yet.
+                                </p>
+                            )}
+                        </div>
+                    </section>
+                ) : (
+                    <p className="mt-6 text-xs leading-5 text-slate-500">
+                        System settings will appear here as they become
+                        available.
+                    </p>
+                )}
             </div>
 
             {showLogoutModal && (

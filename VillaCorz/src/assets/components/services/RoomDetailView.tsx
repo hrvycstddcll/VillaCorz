@@ -3,12 +3,13 @@ import { money } from '../../../lib/format'
 const airConditioningIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364138/villacorz/ui/src/assets/images/AC.png'
 const tvIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364143/villacorz/ui/src/assets/images/Tv.png'
 const privateBathroomIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364142/villacorz/ui/src/assets/images/Cr.png'
-import { amenityIcon, type Stay } from './shared'
+import { amenityIcon, stayCategoryConflictMessage, type Stay } from './shared'
 
 export function RoomDetailView({
     stay,
     selectedPhoto,
     isReservationSelected,
+    reservationBlocked = false,
     onReserve,
     onSelectPhoto,
     onBack,
@@ -16,6 +17,7 @@ export function RoomDetailView({
     stay: Stay
     selectedPhoto: string
     isReservationSelected: boolean
+    reservationBlocked?: boolean
     onReserve: () => void
     onSelectPhoto: (photo: string) => void
     onBack: () => void
@@ -129,10 +131,23 @@ export function RoomDetailView({
                     <button
                         type="button"
                         onClick={onReserve}
-                        disabled={isReservationSelected}
-                        className="mt-5 min-h-11 rounded-lg bg-[#006dfc] px-4 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:text-sm md:text-xs lg:text-base"
+                        disabled={isReservationSelected || reservationBlocked}
+                        title={
+                            reservationBlocked && !isReservationSelected
+                                ? stayCategoryConflictMessage(stay)
+                                : undefined
+                        }
+                        className={`mt-5 min-h-11 rounded-lg bg-[#006dfc] px-4 text-[13px] font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] sm:text-sm md:text-xs lg:text-base ${
+                            reservationBlocked && !isReservationSelected
+                                ? 'disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500'
+                                : 'disabled:cursor-not-allowed disabled:bg-emerald-700'
+                        }`}
                     >
-                        {isReservationSelected ? 'Added to booking' : 'Add to booking'}
+                        {isReservationSelected
+                            ? 'Added to booking'
+                            : reservationBlocked
+                              ? 'Blocked'
+                              : 'Add to booking'}
                     </button>
 
                     {gallery.length > 1 && (

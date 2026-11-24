@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Assistant\AssistantContextBuilder;
 use App\Services\Assistant\AssistantPrompt;
 use App\Services\Assistant\OllamaClient;
+use App\Support\AssistantHistory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -59,6 +60,10 @@ class AdminAssistantController extends Controller
                 'message' => 'The reporting assistant is disabled.',
             ], 503);
         }
+
+        $request->merge([
+            'history' => AssistantHistory::normalize($request->input('history')),
+        ]);
 
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:600'],

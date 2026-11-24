@@ -25,6 +25,8 @@ type RoomTileProps = {
     isReservationSelected: boolean
     selectedRoomNumber?: number
     unavailable?: boolean
+    reservationBlocked?: boolean
+    reservationBlockedMessage?: string
     onSelect: () => void
     onToggleReservation: () => void
 }
@@ -217,6 +219,8 @@ const ServiceTile = (props: ServiceTileProps) => {
         isReservationSelected,
         selectedRoomNumber,
         unavailable = false,
+        reservationBlocked = false,
+        reservationBlockedMessage = '',
         onSelect,
         onToggleReservation,
     } = props
@@ -335,13 +339,23 @@ const ServiceTile = (props: ServiceTileProps) => {
                             <button
                                 type="button"
                                 onClick={onToggleReservation}
-                                disabled={unavailable && !isReservationSelected}
+                                disabled={
+                                    (unavailable || reservationBlocked) &&
+                                    !isReservationSelected
+                                }
+                                title={
+                                    reservationBlocked && !isReservationSelected
+                                        ? reservationBlockedMessage
+                                        : undefined
+                                }
                                 aria-label={
                                     isReservationSelected
                                         ? `Remove ${stay.title} from your booking`
                                         : unavailable
                                           ? `${stay.title} is unavailable for these dates`
-                                          : `Add ${stay.title} to your booking, good for ${stay.capacity}`
+                                          : reservationBlocked
+                                            ? `${stay.title} cannot be added. ${reservationBlockedMessage}`
+                                            : `Add ${stay.title} to your booking, good for ${stay.capacity}`
                                 }
                                 aria-pressed={isReservationSelected}
                                 className={`pointer-events-auto inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-3 py-2 text-xs font-semibold shadow-sm transition-colors duration-200 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-70 sm:px-3.5 md:min-h-10 md:px-3 ${
@@ -357,6 +371,8 @@ const ServiceTile = (props: ServiceTileProps) => {
                                     </>
                                 ) : unavailable ? (
                                     'Unavailable'
+                                ) : reservationBlocked ? (
+                                    'Blocked'
                                 ) : (
                                     'Add room'
                                 )}
