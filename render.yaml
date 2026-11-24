@@ -44,9 +44,9 @@ services:
       - key: PAYMENT_PUBLIC_URL
         value: https://villacorz-api.onrender.com
       - key: CACHE_STORE
-        value: database
+        value: file
       - key: SESSION_DRIVER
-        value: database
+        value: file
       - key: SESSION_SECURE_COOKIE
         value: "true"
       - key: QUEUE_CONNECTION

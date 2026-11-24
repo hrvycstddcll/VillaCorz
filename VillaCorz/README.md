@@ -110,7 +110,9 @@ backend origin so scanned QR codes reach the deployed API.
 Production authentication uses Sanctum Bearer tokens: the frontend stores the
 token and sends `Authorization: Bearer <token>` on every API request. Cross-site
 session cookies and the local `sanctum/csrf-cookie` flow are not part of the
-hosted setup. Admin diagnostics are available at `GET /api/system/status` with
+hosted setup. Render uses file-backed cache and session stores because the Neon
+pooler does not support the transactional cache increments used by request
+throttling. Admin diagnostics are available at `GET /api/system/status` with
 an admin Bearer token and return configuration booleans only.
 
 Render terminates TLS before traffic reaches the container, so
