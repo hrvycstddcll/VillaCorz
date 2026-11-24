@@ -59,4 +59,19 @@ class AuthRememberTest extends TestCase
             $remembered->json('expires_at') > $session->json('expires_at'),
         );
     }
+
+    public function test_login_accepts_email_with_different_capitalization(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'Harvey.Custodio@example.test',
+            'password' => 'CorrectPassword123',
+        ]);
+
+        $this->postJson('/api/login', [
+            'email' => 'harvey.custodio@example.test',
+            'password' => 'CorrectPassword123',
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.id', $user->id);
+    }
 }

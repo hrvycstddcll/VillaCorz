@@ -257,19 +257,32 @@ class AuthController extends Controller
         ];
 
         if (! Auth::attempt($credentials)) {
-            ActivityLogger::record(
-                'login_failed',
-                null,
-                "Failed sign-in attempt for {$credentials['email']}.",
-                User::class,
-                null,
-                ['email' => $credentials['email']],
-                $request,
-            );
+            $normalizedEmail = mb_strtolower(trim($credentials['email']));
+            $user = User::query()
+                ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
+                ->get()
+                ->first(fn (User $candidate) => Hash::check(
+                    $credentials['password'],
+                    $candidate->password,
+                ));
 
-            throw ValidationException::withMessages([
-                'email' => 'Invalid email or password.',
-            ]);
+            if ($user) {
+                Auth::login($user);
+            } else {
+                ActivityLogger::record(
+                    'login_failed',
+                    null,
+                    "Failed sign-in attempt for {$credentials['email']}.",
+                    User::class,
+                    null,
+                    ['email' => $credentials['email']],
+                    $request,
+                );
+
+                throw ValidationException::withMessages([
+                    'email' => 'Invalid email or password.',
+                ]);
+            }
         }
 
         if ($request->hasSession()) {
