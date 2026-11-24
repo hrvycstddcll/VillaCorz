@@ -44,7 +44,7 @@ services:
       - key: BACKUP_KEEP
         value: "5"
       - key: PAYMENT_PUBLIC_URL
-        value: https://villacorz-api.onrender.com
+        value: https://villa-corz.vercel.app
       - key: CACHE_STORE
         value: file
       - key: SESSION_DRIVER

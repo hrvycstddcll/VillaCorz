@@ -219,6 +219,7 @@ const Payment = () => {
             phoneNumber={booking.contact.phone ?? ''}
             bookingId={booking.reference}
             qrValue={payment.qr_url}
+            returnUrl={`${window.location.origin}/payment/${booking.reference}`}
             checkIn={booking.check_in}
             checkOut={booking.check_out}
             paidDays={booking.paid_days}

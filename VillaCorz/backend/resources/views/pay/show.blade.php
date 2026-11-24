@@ -275,7 +275,14 @@
                 @elseif($expired)
                     <button class="button" type="button" disabled>QR expired</button>
                 @else
-                    <form method="POST" action="{{ route('pay.confirm', ['token' => request()->route('token')]) }}">
+                    @php
+                        $payPath = '/pay/'.rawurlencode((string) request()->route('token'));
+                        $requestedReturnUrl = request()->query('return_url');
+                        if (is_string($requestedReturnUrl) && $requestedReturnUrl !== '') {
+                            $payPath .= '?return_url='.rawurlencode($requestedReturnUrl);
+                        }
+                    @endphp
+                    <form method="POST" action="{{ $payPath }}">
                         @csrf
                         <input type="hidden" name="idempotency_key" value="{{ $payment->idempotency_key }}">
                         <button class="button" type="submit">Confirm demo payment</button>

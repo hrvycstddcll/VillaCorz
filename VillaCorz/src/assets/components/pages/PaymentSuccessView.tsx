@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { ArrowLeft, ArrowUpRight, Check, Clock3, RefreshCw } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { money } from '../../../lib/format'
@@ -12,6 +13,7 @@ type PaymentSuccessViewProps = {
     phoneNumber: string
     bookingId: string
     qrValue: string
+    returnUrl?: string
     checkIn: string
     checkOut: string
     paidDays?: number
@@ -41,6 +43,7 @@ function PaymentSuccessView({
     phoneNumber,
     bookingId,
     qrValue,
+    returnUrl,
     checkIn,
     checkOut,
     paidDays,
@@ -55,6 +58,16 @@ function PaymentSuccessView({
         (sum, room) => sum + room.adults + room.kids,
         0,
     )
+    const confirmationUrl = useMemo(() => {
+        const url = new URL(qrValue, window.location.origin)
+
+        url.searchParams.set(
+            'return_url',
+            returnUrl ?? `${window.location.origin}/payment/${bookingId}`,
+        )
+
+        return url.toString()
+    }, [bookingId, qrValue, returnUrl])
     const roomCount = rooms.length
     const stayLabel =
         paidDays != null
@@ -173,14 +186,14 @@ function PaymentSuccessView({
                                 <QRCodeSVG
                                     aria-label="Scannable Villa Corz demo payment confirmation QR code"
                                     className="size-52 max-w-full sm:size-56"
-                                    value={qrValue}
+                                    value={confirmationUrl}
                                     size={224}
                                     level="Q"
                                     marginSize={4}
                                 />
                             </div>
                             <a
-                                href={qrValue}
+                                href={confirmationUrl}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#006dfc] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#0057c9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"

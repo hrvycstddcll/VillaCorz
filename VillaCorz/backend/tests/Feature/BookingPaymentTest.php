@@ -521,7 +521,8 @@ class BookingPaymentTest extends TestCase
         try {
             $this->get("/pay/{$token}")
                 ->assertOk()
-                ->assertSee('action="https://', false);
+                ->assertSee('action="/pay/', false)
+                ->assertDontSee('action="http://', false);
         } finally {
             URL::forceScheme(null);
         }
