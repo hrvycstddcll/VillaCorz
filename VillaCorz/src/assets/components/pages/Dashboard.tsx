@@ -2,14 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
     CalendarClock,
+    CalendarCheck,
     CircleAlert,
     CreditCard,
     Info,
     MessageSquareText,
     RefreshCw,
     Star,
+    TrendingUp,
     Wallet,
     X,
+    BedDouble,
+    Sun,
 } from 'lucide-react'
 import { money } from '../../../lib/format'
 import { getApiErrorMessage } from '../../../lib/apiError'
@@ -50,12 +54,13 @@ const revenueChartSeries: DashboardChartSeries[] = [
     { key: 'revenue', label: 'Revenue', color: '#006dfc', fill: true },
 ]
 const accuracyChartSeries: DashboardChartSeries[] = [
-    { key: 'actual', label: 'Actual paid days', color: '#64748b' },
+    { key: 'actual', label: 'Actual paid days', color: '#64748b', fill: true },
     {
         key: 'predicted',
         label: 'Predicted paid days',
         color: '#006dfc',
         strokeDasharray: '6 4',
+        fill: true,
     },
 ]
 const occupancyChartSeries: DashboardChartSeries[] = [
@@ -114,13 +119,13 @@ const RevenueHeroSkeleton = () => (
     <div
         role="status"
         aria-label="Loading revenue"
-        className="min-w-0 rounded-2xl bg-[#006dfc] px-4 py-4 sm:px-5 sm:py-5"
+        className="flex h-full min-h-[280px] min-w-0 flex-col justify-between rounded-2xl bg-[#0066FF] px-7 py-7 text-white sm:px-8 sm:py-8"
     >
         <span className="sr-only">Loading revenue</span>
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80">
             Revenue
         </p>
-        <div className="mt-2 flex items-center gap-3">
+        <div className="flex items-center gap-3">
             <div
                 aria-hidden="true"
                 className="h-12 w-48 animate-pulse rounded-md bg-white/30 motion-reduce:animate-none sm:h-16 sm:w-64"
@@ -132,7 +137,7 @@ const RevenueHeroSkeleton = () => (
         </div>
         <div
             aria-hidden="true"
-            className="mt-3 h-3 w-32 animate-pulse rounded-sm bg-white/30 motion-reduce:animate-none"
+            className="h-3 w-32 animate-pulse rounded-sm bg-white/30 motion-reduce:animate-none"
         />
     </div>
 )
@@ -538,7 +543,7 @@ const Dashboard = () => {
                     <span className="block font-medium text-slate-900">
                         {booking.guest}
                     </span>
-                    <span className="font-mono text-[11px] tabular-nums text-slate-500">
+                    <span className="font-jakarta-serif text-[11px] tabular-nums text-slate-500">
                         {booking.reference}
                     </span>
                 </Link>
@@ -572,7 +577,7 @@ const Dashboard = () => {
             label: 'Total',
             align: 'right',
             render: (booking) => (
-                <span className="font-mono text-xs tabular-nums text-slate-800">
+                <span className="font-jakarta-serif text-xs tabular-nums text-slate-800">
                     {money(booking.total)}
                 </span>
             ),
@@ -704,9 +709,9 @@ const Dashboard = () => {
             : ''
 
     return (
-        <main className="min-h-screen bg-white pb-12 text-slate-900">
+        <main className="min-h-screen bg-[#FAF9F6] pb-12 text-slate-900 font-jakarta-serif">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-                <div className="-mx-4 border-b border-[rgba(0,0,0,0.06)] bg-white px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+                <div className="-mx-4 border-b border-[rgba(0,0,0,0.06)] bg-[#FAF9F6] px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
                     <AdminPageHeader
                         eyebrow="Administration / Overview"
                         title="Dashboard"
@@ -776,6 +781,92 @@ const Dashboard = () => {
                     </p>
                 </div>
 
+                <div>
+                    <div className="flex items-center gap-1.5">
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Needs attention
+                        </p>
+                        <WarmTooltip
+                            content="Items that may need your review."
+                            side="top"
+                            size="sm"
+                        >
+                            <span className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm text-slate-400 hover:text-slate-600">
+                                <Info className="size-3.5" aria-hidden="true" />
+                                <span className="sr-only">About action center</span>
+                            </span>
+                        </WarmTooltip>
+                    </div>
+                    <h2 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
+                        Action center
+                    </h2>
+                    {loading ? (
+                        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="h-full w-full rounded-xl border-2 border-slate-200 bg-white/60 p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="h-8 w-16 animate-pulse rounded bg-slate-200/80" />
+                                        <div className="h-6 w-6 animate-pulse rounded bg-slate-200/80" />
+                                    </div>
+                                    <div className="mt-3 h-4 w-32 animate-pulse rounded bg-slate-200/80" />
+                                </div>
+                            ))}
+                        </div>
+                    ) : !data ? (
+                        <div className="mt-3 flex flex-wrap items-center gap-3 py-4">
+                            <p className="text-sm text-slate-600">
+                                Action items unavailable.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setRefreshToken((token) => token + 1)
+                                }
+                                className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {actionItems.map((item, index) => {
+                                const Icon = item.icon
+                                const colorStyles = 'bg-white border border-gray-200 text-slate-900 shadow-sm'
+                                const iconStyles =
+                                    index === 0
+                                        ? 'bg-[#0066FF]/75 border-white/30'
+                                        : index === 1
+                                          ? 'bg-[#06b6d4]/75 border-white/30'
+                                          : index === 2
+                                            ? 'bg-[#5e17eb]/75 border-white/30'
+                                            : 'bg-[#ff0072]/75 border-white/50'
+                                return (
+                                    <Link
+                                        key={item.label}
+                                        to={item.href}
+                                        className={`flex h-full w-full flex-col justify-between rounded-xl p-4 transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.02] ${focusRing} ${colorStyles}`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex flex-col items-start">
+                                                <span className="text-3xl font-bold font-jakarta-serif tabular-nums">
+                                                    {numberFormatter.format(item.count)}
+                                                </span>
+                                                <p className="mt-3 text-sm font-medium text-gray-700">
+                                                    {item.label}
+                                                </p>
+                                            </div>
+                                            <div className={`w-12 h-12 rounded-2xl backdrop-blur-lg border shadow-md flex items-center justify-center text-white shrink-0 ${iconStyles}`}>
+                                                <Icon className="w-6 h-6" aria-hidden="true" />
+                                            </div>
+                                        </div>
+                                    </Link>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+
+
                 <AdminBento className="admin-bento--revenue" ariaBusy={loading}>
 
 
@@ -788,7 +879,7 @@ const Dashboard = () => {
                     ) : (
 
 
-                        <div className="min-w-0 rounded-2xl bg-[#006dfc] px-4 py-4 text-white shadow-sm sm:px-5 sm:py-5">
+                        <div className="flex h-full min-h-[280px] min-w-0 flex-col justify-between rounded-2xl bg-[#0066FF] px-7 py-7 text-white shadow-sm sm:px-8 sm:py-8">
 
 
                             <div className="flex items-center gap-1.5">
@@ -812,7 +903,7 @@ const Dashboard = () => {
                                     side="bottom"
                                     size="sm"
                                 >
-                                    <span className="mt-2 inline-flex max-w-full items-center gap-3 align-middle">
+                                    <span className="inline-flex max-w-full items-center gap-3 align-middle">
                                         <Link
                                             to={reportHref('revenue')}
                                             className="rounded-sm font-jakarta-serif text-5xl font-bold leading-none tracking-tight text-white tabular-nums hover:text-white/90 sm:text-6xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
@@ -827,7 +918,7 @@ const Dashboard = () => {
                             ) : (
 
 
-                                <span className="mt-2 inline-flex max-w-full items-center gap-3 align-middle">
+                                <span className="inline-flex max-w-full items-center gap-3 align-middle">
                                     <span className="font-jakarta-serif text-5xl font-bold leading-none tracking-tight text-white tabular-nums sm:text-6xl">
                                         —
                                     </span>
@@ -844,7 +935,7 @@ const Dashboard = () => {
                                 <p
 
 
-                                    className="mt-3 font-mono text-xs font-medium tabular-nums text-white/90"
+                                    className="font-jakarta-serif text-xs font-medium tabular-nums text-white/90"
 
 
                                 >
@@ -872,6 +963,15 @@ const Dashboard = () => {
 
 
                             )}
+                            <div className="mt-3">
+                                <div className="flex justify-between text-[10px] text-white/80 mb-1">
+                                    <span>Monthly goal progress</span>
+                                    <span>70%</span>
+                                </div>
+                                <div className="h-2 bg-white/30 rounded-full overflow-hidden">
+                                    <div className="h-full bg-white rounded-full" style={{width: '70%'}} />
+                                </div>
+                            </div>
 
 
                         </div>
@@ -881,7 +981,7 @@ const Dashboard = () => {
 
 
 
-                    <AdminCard className="min-w-0 border-0 shadow-none" padding={false}>
+                    <AdminCard className="h-full min-w-0" padding={false}>
 
 
                         <div className="px-3 pb-4 pt-3 sm:px-5">
@@ -1016,7 +1116,7 @@ const Dashboard = () => {
                                                         <dt className="text-[10px] font-medium text-slate-500">
                                                             {item.label}
                                                         </dt>
-                                                        <dd className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-slate-900">
+                                                        <dd className="mt-0.5 font-jakarta-serif text-sm font-semibold tabular-nums text-slate-900">
                                                             {item.value}
                                                         </dd>
                                                     </div>
@@ -1036,16 +1136,9 @@ const Dashboard = () => {
 
                 </AdminBento>
 
-                <AdminBento>
                 {loading ? (
-
-
                     <KpiStripSkeleton className="border-b border-[rgba(0,0,0,0.06)] pb-4" />
-
-
                 ) : (
-
-
                     <AdminStatStrip
                         stats={kpis.map((stat) => ({
                             label: stat.label,
@@ -1062,10 +1155,7 @@ const Dashboard = () => {
                         }))}
                         className="border-b border-[rgba(0,0,0,0.06)] pb-4"
                     />
-
-
                 )}
-                </AdminBento>
 
                 {error && (
                     <div
@@ -1077,116 +1167,6 @@ const Dashboard = () => {
                     </div>
                 )}
 
-                <AdminBento>
-                    <AdminCard>
-                        <div className="flex items-center gap-1.5">
-                            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                Needs attention
-                            </p>
-                            <WarmTooltip
-                                content="Items that may need your review."
-                                side="top"
-                                size="sm"
-                            >
-                                <span className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm text-slate-400 hover:text-slate-600">
-                                    <Info className="size-3.5" aria-hidden="true" />
-                                    <span className="sr-only">About action center</span>
-                                </span>
-                            </WarmTooltip>
-                        </div>
-                        <h2 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
-                            Action center
-                        </h2>
-                        {loading ? (
-
-                            <ActionCenterSkeleton />
-
-                        ) : !data ? (
-                            <div className="mt-3 flex flex-wrap items-center gap-3 py-4">
-                                <p className="text-sm text-slate-600">
-                                    Action items unavailable.
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setRefreshToken((token) => token + 1)
-                                    }
-                                    className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
-                                >
-                                    Retry
-                                </button>
-                            </div>
-                        ) : (
-
-                            <ul className="mt-3 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-4">
-
-                                {actionItems.map((item) => {
-
-                                    const Icon = item.icon
-
-                                    return (
-
-                                        <li key={item.label}>
-
-                                            <Link
-
-                                                to={item.href}
-
-                                                className={`flex min-h-12 items-center gap-3 rounded-sm py-2 ${focusRing}`}
-
-                                            >
-
-                                                <Icon
-
-                                                    className="size-4 shrink-0 text-slate-500"
-
-                                                    aria-hidden="true"
-
-                                                />
-
-                                                <span className="flex-1 text-xs text-slate-700">
-
-                                                    {item.label}
-
-                                                </span>
-
-                                                <span
-
-                                                    className={`font-mono text-sm font-semibold tabular-nums ${item.count > 0
-
-                                                            ? item.tone === 'rose'
-
-                                                                ? 'text-rose-700'
-
-                                                                : item.tone === 'amber'
-
-                                                                    ? 'text-amber-700'
-
-                                                                    : 'text-[#006dfc]'
-
-                                                            : 'text-slate-500'
-
-                                                        }`}
-
-                                                >
-
-                                                    {numberFormatter.format(item.count)}
-
-                                                </span>
-
-                                            </Link>
-
-                                        </li>
-
-                                    )
-
-                                })}
-
-                            </ul>
-
-                        )}
-                    </AdminCard>
-                </AdminBento>
 
                 <section aria-labelledby="forecast-title" className="space-y-4">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -1293,295 +1273,278 @@ const Dashboard = () => {
                         ))}
                     </div>
 
-                    <AdminBento className="admin-bento--stacked">
-                    <AdminCard className="min-w-0">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                            <div>
-                                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                    {isAccuracy
-                                        ? 'Backtest accuracy'
-                                        : 'Predictive outlook'}
-                                </p>
-                                <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
-                                    {isAccuracy
-                                        ? 'Actual vs predicted paid days'
-                                        : 'Forecast occupancy'}
-                                </h3>
-                                <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">
-                                    {isAccuracy
-                                        ? 'Compare recent paid days with the SARIMAX backtest.'
-                                        : 'Expected share of available paid-day capacity occupied each day.'}
-                                </p>
-                            </div>
-                            <div className="flex flex-wrap items-end gap-3">
-                                <label className="grid gap-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                    <WarmTooltip
-                                        content={
-                                            isAccuracy
-                                                ? 'Past days to compare results.'
-                                                : 'Days to forecast occupancy.'
-                                        }
-                                        side="top"
-                                        size="sm"
-                                    >
-                                        <span className="inline-flex items-center gap-1">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                        <div className="lg:col-span-7">
+                            <AdminCard className="min-w-0 h-full border-[1.5px] border-[#0066FF] rounded-2xl">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                                    <div>
+                                        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                             {isAccuracy
-                                                ? 'Backtest window'
-                                                : 'Forecast window'}
-                                            <Info className="size-3" aria-hidden="true" />
-                                        </span>
-                                    </WarmTooltip>
-                                    <select
-                                        value={
-                                            isAccuracy
-                                                ? backtestRange
-                                                : forecastPreset
-                                        }
-                                        onChange={(event) => {
-                                            if (isAccuracy) {
-                                                setBacktestRange(
-                                                    Number(
-                                                        event.target.value,
-                                                    ) as (typeof backtestRanges)[number],
-                                                )
-                                            } else {
-                                                setForecastPreset(
-                                                    event.target
-                                                        .value as (typeof forecastPresets)[number],
-                                                )
-                                            }
-                                        }}
-                                        className={`min-h-11 rounded-lg border border-[rgba(0,0,0,0.12)] bg-white px-3 text-xs font-medium normal-case tracking-normal text-slate-800 ${focusRing}`}
-                                    >
-                                        {isAccuracy
-                                            ? backtestRanges.map((days) => (
-                                                <option
-                                                    key={days}
-                                                    value={days}
-                                                >
-                                                    Last {days} days
-                                                </option>
-                                            ))
-                                            : forecastPresets.map((days) => (
-                                                <option
-                                                    key={days}
-                                                    value={days}
-                                                >
-                                                    {days} days
-                                                </option>
-                                            ))}
-                                    </select>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                            <span className="rounded-full bg-slate-50 px-3 py-1.5 font-mono text-[10px] font-medium capitalize text-slate-600">
-                                {modelLabel(demandForecast?.model ?? 'sarimax')}
-                            </span>
-                            {isAccuracy && demandForecast?.accuracy && (
-                                <WarmTooltip
-                                    content="Prediction error (lower is better)."
-                                    side="top"
-                                    size="sm"
-                                >
-                                    <span className="font-mono text-[10px] tabular-nums text-slate-500">
-                                        MAE {demandForecast.accuracy.mae}
-                                        {demandForecast.accuracy.mape !== null &&
-                                            ` · MAPE ${demandForecast.accuracy.mape}%`}
-                                        {demandForecast.accuracy.wape != null &&
-                                            ` · WAPE ${demandForecast.accuracy.wape}%`}
-                                    </span>
-                                </WarmTooltip>
-                            )}
-                            <ul
-                                className="flex flex-wrap gap-x-4 gap-y-2"
-                                aria-label="Chart legend"
-                            >
-                                {analysisChartSeries.map((series) => (
-                                    <li
-                                        key={series.key}
-                                        className="inline-flex items-center gap-2 text-[10px] text-slate-600"
-                                    >
-                                        <span
-                                            aria-hidden="true"
-                                            className="w-4 border-t-2"
-                                            style={{
-                                                borderColor: series.color,
-                                                borderTopStyle:
-                                                    series.strokeDasharray
-                                                        ? 'dashed'
-                                                        : 'solid',
-                                            }}
-                                        />
-                                        {series.label}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-
-                        {loading ? (
-                            <AnalysisChartSkeleton />
-                        ) : error ? (
-                            <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                                <p className="text-sm text-slate-600">
-                                    {isAccuracy
-                                        ? 'Model accuracy unavailable.'
-                                        : 'Occupancy forecast unavailable.'}
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setRefreshToken((token) => token + 1)
-                                    }
-                                    className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
-                                >
-                                    Retry
-                                </button>
-                            </div>
-                        ) : isAccuracy &&
-                            accuracyChartPoints.length === 0 ? (
-                            <p className="py-16 text-center text-sm text-slate-500">
-                                Not enough stay history to compare a forecast
-                                with actual results yet.
-                            </p>
-                        ) : !isAccuracy && occupancyPoints.length === 0 ? (
-                            <p className="py-16 text-center text-sm text-slate-500">
-                                Occupancy projections are unavailable for this
-                                forecast window.
-                            </p>
-                        ) : (
-                            <div className="mt-4">
-                                <DashboardLineChart
-                                    points={analysisChartPoints}
-                                    series={analysisChartSeries}
-                                    ariaLabel={
-                                        isAccuracy
-                                            ? `Actual and predicted paid days over the last ${demandForecast?.accuracy?.window_days ?? backtestRange} days`
-                                            : `Forecast occupancy over the next ${forecastPreset} days`
-                                    }
-                                    formatValue={
-                                        isAccuracy ? undefined : formatPercent
-                                    }
-                                />
-                            </div>
-                        )}
-                    </AdminCard>
-
-                    <AdminCard>
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                    Forecast summary
-                                </p>
-                                <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
-                                    Demand outlook
-                                </h3>
-                                <p className="mt-1 text-xs leading-5 text-slate-500">
-                                    {demandForecast?.forecast_window
-                                        ? `${demandForecast.forecast_window.start} to ${demandForecast.forecast_window.end}`
-                                        : 'Expected demand for the selected window.'}
-                                </p>
-                            </div>
-                            <span className="font-mono text-xs tabular-nums text-slate-500">
-                                {demandForecast?.forecast.length ?? 0} days
-                            </span>
-                        </div>
-                        {loading ? (
-                            <ForecastSummarySkeleton />
-                        ) : error ? (
-                            <div className="flex flex-wrap items-center gap-3 py-8">
-                                <p className="text-sm text-slate-600">
-                                    Forecast summary unavailable.
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setRefreshToken((token) => token + 1)
-                                    }
-                                    className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
-                                >
-                                    Retry
-                                </button>
-                            </div>
-                        ) : !demandForecast ||
-                          demandForecast.forecast.length === 0 ? (
-                            <p className="py-8 text-sm text-slate-500">
-                                No forecast data is available for this window.
-                            </p>
-                        ) : (
-                            <>
-                                <ul className="mt-3 grid gap-4 sm:grid-cols-2">
-                                    <li className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm">
-                                        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                            Average occupancy
+                                                ? 'Backtest accuracy'
+                                                : 'Predictive outlook'}
                                         </p>
-                                        <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">
-                                            {formatPercent(
-                                                demandForecast.average_forecast_occupancy,
-                                            )}
+                                        <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
+                                            {isAccuracy
+                                                ? 'Actual vs predicted paid days'
+                                                : 'Forecast occupancy'}
+                                        </h3>
+                                        <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">
+                                            {isAccuracy
+                                                ? 'Compare recent paid days with the SARIMAX backtest.'
+                                                : 'Expected share of available paid-day capacity occupied each day.'}
                                         </p>
-                                        <p className="mt-1 text-[11px] text-slate-500">
-                                            Across the selected forecast window.
-                                        </p>
-                                    </li>
-                                    <li className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm">
-                                        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                            Expected paid days
-                                        </p>
-                                        <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">
-                                            {numberFormatter.format(
-                                                demandForecast.expected_room_nights,
-                                            )}
-                                        </p>
-                                        <p className="mt-1 text-[11px] text-slate-500">
-                                            Total paid 22-hour stays projected.
-                                        </p>
-                                    </li>
-                                    <li className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm">
-                                        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                            Peak day
-                                        </p>
-                                        <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">
-                                            {demandForecast.peak_day?.label ?? '—'}
-                                        </p>
-                                        <p className="mt-1 text-[11px] text-slate-500">
-                                            {demandForecast.peak_day
-                                                ? `${formatPercent(demandForecast.peak_day.expected_occupancy)} projected occupancy`
-                                                : 'No peak day projected.'}
-                                        </p>
-                                    </li>
-                                    <li className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm">
-                                        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                            Holiday dates
-                                        </p>
-                                        <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">
-                                            {demandForecast.holiday_days}
-                                        </p>
-                                        <p className="mt-1 text-[11px] text-slate-500">
-                                            Holidays inside the forecast window.
-                                        </p>
-                                    </li>
-                                </ul>
-                                <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2" aria-label="Forecast factors">
-                                    {demandForecast.factors.map((factor) => (
-                                        <li key={factor.key}>
+                                    </div>
+                                    <div className="flex flex-wrap items-end gap-3">
+                                        <label className="grid gap-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                                             <WarmTooltip
-                                                content={factor.impact}
+                                                content={
+                                                    isAccuracy
+                                                        ? 'Past days to compare results.'
+                                                        : 'Days to forecast occupancy.'
+                                                }
                                                 side="top"
                                                 size="sm"
                                             >
-                                                <span className="text-[10px] text-slate-600 underline decoration-dotted underline-offset-4">
-                                                    {factor.label}
+                                                <span className="inline-flex items-center gap-1">
+                                                    {isAccuracy
+                                                        ? 'Backtest window'
+                                                        : 'Forecast window'}
+                                                    <Info className="size-3" aria-hidden="true" />
                                                 </span>
                                             </WarmTooltip>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </>
-                        )}
-                    </AdminCard>
-                    </AdminBento>
+                                            <select
+                                                value={
+                                                    isAccuracy
+                                                        ? backtestRange
+                                                        : forecastPreset
+                                                }
+                                                onChange={(event) => {
+                                                    if (isAccuracy) {
+                                                        setBacktestRange(
+                                                            Number(
+                                                                event.target.value,
+                                                            ) as (typeof backtestRanges)[number],
+                                                        )
+                                                    } else {
+                                                        setForecastPreset(
+                                                            event.target
+                                                                .value as (typeof forecastPresets)[number],
+                                                        )
+                                                    }
+                                                }}
+                                                className={`min-h-11 rounded-lg border border-[rgba(0,0,0,0.12)] bg-white px-3 text-xs font-medium normal-case tracking-normal text-slate-800 ${focusRing}`}
+                                            >
+                                                {isAccuracy
+                                                    ? backtestRanges.map((days) => (
+                                                        <option
+                                                            key={days}
+                                                            value={days}
+                                                        >
+                                                            Last {days} days
+                                                        </option>
+                                                    ))
+                                                    : forecastPresets.map((days) => (
+                                                        <option
+                                                            key={days}
+                                                            value={days}
+                                                        >
+                                                            {days} days
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                                    <span className="rounded-full bg-slate-50 px-3 py-1.5 font-jakarta-serif text-[10px] font-medium capitalize text-slate-600">
+                                        {modelLabel(demandForecast?.model ?? 'sarimax')}
+                                    </span>
+                                    {isAccuracy && demandForecast?.accuracy && (
+                                        <WarmTooltip
+                                            content="Prediction error (lower is better)."
+                                            side="top"
+                                            size="sm"
+                                        >
+                                            <span className="font-jakarta-serif text-[10px] tabular-nums text-slate-500">
+                                                MAE {demandForecast.accuracy.mae}
+                                                {demandForecast.accuracy.mape !== null &&
+                                                    ` • MAPE ${demandForecast.accuracy.mape}%`}
+                                                {demandForecast.accuracy.wape != null &&
+                                                    ` • WAPE ${demandForecast.accuracy.wape}%`}
+                                            </span>
+                                        </WarmTooltip>
+                                    )}
+                                    <ul
+                                        className="flex flex-wrap gap-x-4 gap-y-2"
+                                        aria-label="Chart legend"
+                                    >
+                                        {analysisChartSeries.map((series) => (
+                                            <li
+                                                key={series.key}
+                                                className="inline-flex items-center gap-2 text-[10px] text-slate-600"
+                                            >
+                                                <span
+                                                    aria-hidden="true"
+                                                    className="w-4 border-t-2"
+                                                    style={{
+                                                        borderColor: series.color,
+                                                        borderTopStyle:
+                                                            series.strokeDasharray
+                                                                ? 'dashed'
+                                                                : 'solid',
+                                                    }}
+                                                />
+                                                {series.label}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                {loading ? (
+                                    <AnalysisChartSkeleton />
+                                ) : error ? (
+                                    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+                                        <p className="text-sm text-slate-600">
+                                            {isAccuracy
+                                                ? 'Model accuracy unavailable.'
+                                                : 'Occupancy forecast unavailable.'}
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setRefreshToken((token) => token + 1)
+                                            }
+                                            className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
+                                        >
+                                            Retry
+                                        </button>
+                                    </div>
+                                ) : isAccuracy &&
+                                    accuracyChartPoints.length === 0 ? (
+                                    <p className="py-16 text-center text-sm text-slate-500">
+                                        Not enough stay history to compare a forecast
+                                        with actual results yet.
+                                    </p>
+                                ) : !isAccuracy && occupancyPoints.length === 0 ? (
+                                    <p className="py-16 text-center text-sm text-slate-500">
+                                        Occupancy projections are unavailable for this
+                                        forecast window.
+                                    </p>
+                                ) : (
+                                    <div className="mt-4">
+                                        <DashboardLineChart
+                                            points={analysisChartPoints}
+                                            series={analysisChartSeries}
+                                            ariaLabel={
+                                                isAccuracy
+                                                    ? `Actual and predicted paid days over the last ${demandForecast?.accuracy?.window_days ?? backtestRange} days`
+                                                    : `Forecast occupancy over the next ${forecastPreset} days`
+                                            }
+                                            formatValue={
+                                                isAccuracy ? undefined : formatPercent
+                                            }
+                                        />
+                                    </div>
+                                )}
+                            </AdminCard>
+                        </div>
+                        <div className="lg:col-span-5 flex flex-col justify-between bg-transparent border-0 shadow-none p-0">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                        Forecast summary
+                                    </p>
+                                    <h3 className="mt-1 font-jakarta-serif text-xl font-bold tracking-tight">
+                                        Demand outlook
+                                    </h3>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        {demandForecast?.forecast_window
+                                            ? `${demandForecast.forecast_window.start} to ${demandForecast.forecast_window.end}`
+                                            : 'Expected demand for the selected window.'}
+                                    </p>
+                                </div>
+                                <span className="font-jakarta-serif text-xs tabular-nums text-slate-500">
+                                    {demandForecast?.forecast.length ?? 0} days
+                                </span>
+                            </div>
+                            {loading ? (
+                                <ForecastSummarySkeleton />
+                            ) : error ? (
+                                <div className="flex flex-wrap items-center gap-3 py-8">
+                                    <p className="text-sm text-slate-600">
+                                        Forecast summary unavailable.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setRefreshToken((token) => token + 1)
+                                        }
+                                        className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            ) : !demandForecast ||
+                              demandForecast.forecast.length === 0 ? (
+                                <p className="py-8 text-sm text-slate-500">
+                                    No forecast data is available for this window.
+                                </p>
+                            ) : (
+                                <>
+                                    <div className="mt-4 grid grid-cols-2 gap-3.5">
+                                        <div className="bg-white border-[1.5px] border-[#0066FF] rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
+                                            <div className="flex items-start justify-between">
+                                                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Average occupancy</p>
+                                                <span className="p-2 rounded-xl bg-blue-50 text-blue-600"><BedDouble className="size-4" /></span>
+                                            </div>
+                                            <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">{formatPercent(demandForecast.average_forecast_occupancy)}</p>
+                                            <p className="mt-1 text-[11px] text-slate-500">Across the selected forecast window.</p>
+                                        </div>
+                                        <div className="bg-white border-[1.5px] border-[#0066FF] rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
+                                            <div className="flex items-start justify-between">
+                                                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Expected paid days</p>
+                                                <span className="p-2 rounded-xl bg-blue-50 text-blue-600"><CalendarCheck className="size-4" /></span>
+                                            </div>
+                                            <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">{numberFormatter.format(demandForecast.expected_room_nights)}</p>
+                                            <p className="mt-1 text-[11px] text-slate-500">Total paid 22-hour stays projected.</p>
+                                        </div>
+                                        <div className="bg-white border-[1.5px] border-[#0066FF] rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
+                                            <div className="flex items-start justify-between">
+                                                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Peak day</p>
+                                                <span className="p-2 rounded-xl bg-blue-50 text-blue-600"><TrendingUp className="size-4" /></span>
+                                            </div>
+                                            <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">{demandForecast.peak_day?.label ?? '—'}</p>
+                                            <p className="mt-1 text-[11px] text-slate-500">{demandForecast.peak_day ? `${formatPercent(demandForecast.peak_day.expected_occupancy)} projected occupancy` : 'No peak day projected.'}</p>
+                                        </div>
+                                        <div className="bg-white border-[1.5px] border-[#0066FF] rounded-2xl p-4 shadow-sm hover:shadow-md transition-all">
+                                            <div className="flex items-start justify-between">
+                                                <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">Holiday dates</p>
+                                                <span className="p-2 rounded-xl bg-blue-50 text-blue-600"><Sun className="size-4" /></span>
+                                            </div>
+                                            <p className="mt-2 font-jakarta-serif text-3xl font-bold tracking-tight text-slate-900">{demandForecast.holiday_days}</p>
+                                            <p className="mt-1 text-[11px] text-slate-500">Holidays inside the forecast window.</p>
+                                        </div>
+                                    </div>
+                                    <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2" aria-label="Forecast factors">
+                                        {demandForecast.factors.map((factor) => (
+                                            <li key={factor.key}>
+                                                <WarmTooltip
+                                                    content={factor.impact}
+                                                    side="top"
+                                                    size="sm"
+                                                >
+                                                    <span className="text-[10px] text-slate-600 underline decoration-dotted underline-offset-4">
+                                                        {factor.label}
+                                                    </span>
+                                                </WarmTooltip>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </>
+                            )}
+                        </div>
+                    </div>
                 </section>
 
                 {priceAdjustmentNotice && (
@@ -1590,8 +1553,7 @@ const Dashboard = () => {
                     </p>
                 )}
 
-                <AdminBento>
-                <AdminCard>
+                                <section className="rounded-2xl bg-transparent p-0">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -1601,11 +1563,10 @@ const Dashboard = () => {
                                 Price recommendations
                             </h3>
                             <p className="mt-1 text-xs leading-5 text-slate-500">
-                                Increases are at least ₱500; no price
-                                changes without confirmation.
+                                Increases are at least ₱500; no price changes without confirmation.
                             </p>
                         </div>
-                        <span className="font-mono text-xs tabular-nums text-slate-500">
+                        <span className="font-jakarta-serif text-xs tabular-nums text-slate-500">
                             {recommendations.length} offers
                         </span>
                     </div>
@@ -1633,19 +1594,19 @@ const Dashboard = () => {
                     ) : (
                         <ul
                             aria-label="Room recommendations"
-                            className="mt-3 grid gap-4 sm:grid-cols-2"
+                            className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2"
                         >
                             {recommendations.map((recommendation) => (
                                 <li
                                     key={recommendation.service_id}
-                                    className="rounded-xl border border-[rgba(0,0,0,0.06)] bg-white p-4 shadow-sm"
+                                    className="rounded-2xl bg-white border-[1.5px] border-blue-600 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
                                 >
                                     <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                                         <p className="text-sm font-semibold text-slate-900">
                                             {recommendation.name}
                                         </p>
                                         <span
-                                            className={`font-mono text-[10px] font-medium uppercase tracking-wide ${recommendation.direction === 'increase'
+                                            className={`font-jakarta-serif text-[10px] font-medium uppercase tracking-wide ${recommendation.direction === 'increase'
                                                     ? 'text-emerald-700'
                                                     : recommendation.direction === 'decrease'
                                                         ? 'text-amber-700'
@@ -1661,7 +1622,7 @@ const Dashboard = () => {
                                         {recommendation.reasons.join(' · ')}
                                     </p>
                                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                                        <p className="font-mono text-xs tabular-nums text-slate-800">
+                                        <p className="font-jakarta-serif text-xs tabular-nums text-slate-800">
                                             {money(recommendation.current_price)}
                                             <span className="mx-1.5 text-slate-400">
                                                 →
@@ -1703,10 +1664,9 @@ const Dashboard = () => {
                             ))}
                         </ul>
                     )}
-                </AdminCard>
-                </AdminBento>
+                </section>
 
-                <AdminBento gap={32}>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <AdminCard>
                         <div className="flex items-center gap-1.5">
                             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -1735,9 +1695,7 @@ const Dashboard = () => {
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        setRefreshToken((token) => token + 1)
-                                    }
+                                    onClick={() => setRefreshToken((token) => token + 1)}
                                     className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
                                 >
                                     Retry
@@ -1754,10 +1712,10 @@ const Dashboard = () => {
                                             <span className="min-w-0 flex-1 truncate text-sm font-medium">
                                                 {service.name}
                                             </span>
-                                            <span className="font-mono text-xs tabular-nums text-slate-500">
+                                            <span className="font-jakarta-serif text-xs tabular-nums text-slate-500">
                                                 {service.bookings} bookings
                                             </span>
-                                            <span className="font-mono text-xs tabular-nums">
+                                            <span className="font-jakarta-serif text-xs tabular-nums">
                                                 {money(service.revenue)}
                                             </span>
                                         </Link>
@@ -1790,9 +1748,7 @@ const Dashboard = () => {
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        setRefreshToken((token) => token + 1)
-                                    }
+                                    onClick={() => setRefreshToken((token) => token + 1)}
                                     className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
                                 >
                                     Retry
@@ -1804,83 +1760,37 @@ const Dashboard = () => {
                             </p>
                         ) : (
                             <>
-                                <ol
-                                    className="mt-5 space-y-4"
-                                    aria-label="Visitor to paid booking funnel"
-                                >
+                                <ol className="mt-5 space-y-4" aria-label="Visitor to paid booking funnel">
                                     {funnelSteps.map((step) => {
-                                        const firstCount =
-                                            funnelSteps[0]?.count ?? 0
-                                        const width =
-                                            firstCount > 0
-                                                ? Math.max(
-                                                    step.count > 0 ? 2 : 0,
-                                                    Math.min(
-                                                        100,
-                                                        (step.count /
-                                                            firstCount) *
-                                                        100,
-                                                    ),
-                                                )
-                                                : 0
-
+                                        const firstCount = funnelSteps[0]?.count ?? 0;
+                                        const width = firstCount > 0
+                                            ? Math.max(step.count > 0 ? 2 : 0, Math.min(100, (step.count / firstCount) * 100))
+                                            : 0;
                                         return (
                                             <li key={step.key}>
                                                 <div className="flex items-baseline justify-between gap-3">
-                                                    <span className="text-xs font-medium text-slate-700">
-                                                        {step.label}
-                                                    </span>
-                                                    <span className="font-mono text-xs font-semibold tabular-nums text-slate-900">
-                                                        {numberFormatter.format(
-                                                            step.count,
-                                                        )}
-                                                    </span>
+                                                    <span className="text-xs font-medium text-slate-700">{step.label}</span>
+                                                    <span className="font-jakarta-serif text-xs font-semibold tabular-nums text-slate-900">{numberFormatter.format(step.count)}</span>
                                                 </div>
-                                                <div
-                                                    className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"
-                                                    role="img"
-                                                    aria-label={`${step.label}: ${width.toFixed(1)}% of visitors`}
-                                                >
-                                                    <div
-                                                        className="h-full rounded-full bg-[#006dfc]"
-                                                        style={{
-                                                            width: `${width}%`,
-                                                        }}
-                                                    />
+                                                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100" role="img" aria-label={`${step.label}: ${width.toFixed(1)}% of visitors`}>
+                                                    <div className="h-full rounded-full bg-[#006dfc]" style={{ width: `${width}%` }} />
                                                 </div>
-                                                {step.dropoff !== null &&
-                                                    step.dropoff_rate !==
-                                                    null && (
-                                                        <p className="mt-1 text-[10px] text-slate-500">
-                                                            {
-                                                                numberFormatter.format(
-                                                                    step.dropoff,
-                                                                )
-                                                            }{' '}
-                                                            dropped off ·{' '}
-                                                            {formatPercent(
-                                                                step.dropoff_rate,
-                                                            )}
-                                                        </p>
-                                                    )}
+                                                {step.dropoff !== null && step.dropoff_rate !== null && (
+                                                    <p className="mt-1 text-[10px] text-slate-500">{numberFormatter.format(step.dropoff)} dropped off · {formatPercent(step.dropoff_rate)}</p>
+                                                )}
                                             </li>
-                                        )
+                                        );
                                     })}
                                 </ol>
                                 <p className="mt-4 border-t border-[rgba(0,0,0,0.06)] pt-3 text-[10px] leading-5 text-slate-500">
-                                    Stage totals are period counts, not a
-                                    user-level cohort.{' '}
-                                    {numberFormatter.format(
-                                        data?.funnel.dropoff_total ?? 0,
-                                    )}{' '}
-                                    total stage drop-offs.
+                                    Stage totals are period counts, not a user-level cohort. {numberFormatter.format(data?.funnel.dropoff_total ?? 0)} total stage drop-offs.
                                 </p>
                             </>
                         )}
                     </AdminCard>
-                </AdminBento>
+                </div>
 
-                <AdminBento gap={32}>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <AdminCard>
                         <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                             Stay performance
@@ -1889,71 +1799,32 @@ const Dashboard = () => {
                             Occupancy and yield
                         </h2>
                         {loading ? (
-
                             <OccupancyStatsSkeleton />
-
                         ) : (
-
                             <>
-
                                 <AdminStatStrip
                                     className="mt-3 gap-x-5"
                                     stats={[
-                                        {
-                                            label: 'Occupancy',
-                                            value: data
-                                                ? `${data.operational.occupancy}%`
-                                                : '-',
-                                            tooltip:
-                                                'Share of room-nights booked.',
-                                        },
-                                        {
-                                            label: 'ADR',
-                                            value: data
-                                                ? money(data.operational.adr)
-                                                : '-',
-                                            tooltip:
-                                                'Average revenue per sold room-night.',
-                                        },
-                                        {
-                                            label: 'RevPAR',
-                                            value: data
-                                                ? money(data.operational.revpar)
-                                                : '-',
-                                            tooltip:
-                                                'Revenue per available room-night.',
-                                        },
+                                        { label: 'Occupancy', value: data ? data.operational.occupancy + '%' : '-', tooltip: 'Share of room-nights booked.' },
+                                        { label: 'ADR', value: data ? money(data.operational.adr) : '-', tooltip: 'Average revenue per sold room-night.' },
+                                        { label: 'RevPAR', value: data ? money(data.operational.revpar) : '-', tooltip: 'Revenue per available room-night.' },
                                     ]}
                                 />
-
                                 <div className="mt-3 border-t border-[rgba(0,0,0,0.06)] pt-3">
-                                    <WarmTooltip
-                                        content="Value of confirmed bookings in the next 30 days."
-                                        side="top"
-                                        size="sm"
-                                    >
+                                    <WarmTooltip content="Value of confirmed bookings in the next 30 days." side="top" size="sm">
                                         <p className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                             Booked next 30 days
                                             <Info className="size-3" aria-hidden="true" />
                                         </p>
                                     </WarmTooltip>
-
-                                    <p className="mt-1 font-mono text-lg font-semibold tabular-nums">
-
+                                    <p className="mt-1 font-jakarta-serif text-lg font-semibold tabular-nums">
                                         {data ? money(data.operational.booked_forward_revenue) : '—'}
-
                                     </p>
-
                                     <p className="mt-1 text-xs leading-5 text-slate-500">
-
                                         Confirmed reservations already on the books; not a predictive estimate.
-
                                     </p>
-
                                 </div>
-
                             </>
-
                         )}
                     </AdminCard>
 
@@ -1962,11 +1833,7 @@ const Dashboard = () => {
                             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 Weekly pattern
                             </p>
-                            <WarmTooltip
-                                content="Revenue by day of week."
-                                side="top"
-                                size="sm"
-                            >
+                            <WarmTooltip content="Revenue by day of week." side="top" size="sm">
                                 <span className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm text-slate-400 hover:text-slate-600">
                                     <Info className="size-3.5" aria-hidden="true" />
                                     <span className="sr-only">About revenue by day of week</span>
@@ -1980,50 +1847,29 @@ const Dashboard = () => {
                             {loading && <WeekdaySkeleton />}
                             {!loading && error && (
                                 <div className="flex flex-wrap items-center gap-3 py-4">
-                                    <p className="text-sm text-slate-600">
-                                        Weekday breakdown unavailable.
-                                    </p>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setRefreshToken((token) => token + 1)
-                                        }
-                                        className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}
-                                    >
-                                        Retry
-                                    </button>
+                                    <p className="text-sm text-slate-600">Weekday breakdown unavailable.</p>
+                                    <button type="button" onClick={() => setRefreshToken((token) => token + 1)} className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(0,0,0,0.12)] px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 ${focusRing}`}>Retry</button>
                                 </div>
                             )}
                             {!loading && !error && (data?.revenue_by_weekday ?? []).map((amount, index) => {
-                                const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                                const max = Math.max(1, ...(data?.revenue_by_weekday ?? []))
+                                const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                                const max = Math.max(1, ...(data?.revenue_by_weekday ?? []));
                                 return (
                                     <div key={labels[index]} className="grid grid-cols-[2rem_1fr_auto] items-center gap-3">
-                                        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                            {labels[index]}
-                                        </span>
-                                        <div
-                                            className="h-1 overflow-hidden rounded-full bg-slate-100"
-                                            role="img"
-                                            aria-label={`${labels[index]} revenue ${money(amount)}`}
-                                        >
-                                            <div
-                                                className="h-full rounded-full bg-[#006dfc]"
-                                                style={{ width: `${(amount / max) * 100}%` }}
-                                            />
+                                        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{labels[index]}</span>
+                                        <div className="h-1 overflow-hidden rounded-full bg-slate-100" role="img" aria-label={`${labels[index]} revenue ${money(amount)}`}>
+                                            <div className="h-full rounded-full bg-[#006dfc]" style={{ width: `${(amount / max) * 100}%` }} />
                                         </div>
-                                        <span className="font-mono text-xs tabular-nums">
-                                            {money(amount)}
-                                        </span>
+                                        <span className="font-jakarta-serif text-xs tabular-nums">{money(amount)}</span>
                                     </div>
-                                )
+                                );
                             })}
                             {!loading && !error && data?.revenue_by_weekday.length === 0 && (
                                 <p className="py-4 text-sm text-slate-500">No weekday breakdown available.</p>
                             )}
                         </div>
                     </AdminCard>
-                </AdminBento>
+                </div>
 
                 <AdminBento>
                     <AdminCard padding={false}>
@@ -2105,9 +1951,9 @@ const Dashboard = () => {
                                                 >
                                                     <span className="min-w-0 flex-1">
                                                         <span className="block truncate text-sm font-medium">{booking.guest}</span>
-                                                        <span className="font-mono text-[10px] tabular-nums text-slate-500">{booking.reference}</span>
+                                                        <span className="font-jakarta-serif text-[10px] tabular-nums text-slate-500">{booking.reference}</span>
                                                     </span>
-                                                    <span className="font-mono text-xs tabular-nums">{money(booking.total)}</span>
+                                                    <span className="font-jakarta-serif text-xs tabular-nums">{money(booking.total)}</span>
                                                 </Link>
                                             </li>
                                         ))}

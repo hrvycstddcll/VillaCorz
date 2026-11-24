@@ -1180,9 +1180,16 @@
   align-items: stretch;
 }
 
+.admin-bento--revenue .magic-bento__content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 @media (min-width: 768px) {
   .admin-bento--revenue {
     grid-template-columns: minmax(15rem, 0.7fr) minmax(0, 1.3fr) !important;
-    align-items: center;
+    align-items: stretch;
   }
 }

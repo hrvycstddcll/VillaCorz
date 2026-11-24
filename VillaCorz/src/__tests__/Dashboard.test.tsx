@@ -234,15 +234,32 @@ describe('Dashboard', () => {
         })
 
         const panel = container.querySelector(
-            '.admin-bento--revenue [class*="bg-[#006dfc]"]',
+            '.admin-bento--revenue [class*="bg-[#0066FF]"]',
         ) as HTMLElement
         expect(panel).toBeInTheDocument()
-        expect(panel).toHaveClass('bg-[#006dfc]', 'text-white')
+        expect(panel).toHaveClass('bg-[#0066FF]', 'text-white')
+        expect(panel).toHaveClass(
+            'h-full',
+            'min-h-[280px]',
+            'flex',
+            'flex-col',
+            'justify-between',
+            'rounded-2xl',
+            'px-7',
+            'py-7',
+            'sm:px-8',
+            'sm:py-8',
+        )
         expect(within(panel).getByText('Revenue')).toBeInTheDocument()
 
         const amount = within(panel).getByRole('link', { name: /₱/ })
         expect(amount).toHaveClass('text-white')
         expect(panel.querySelector('[class*="bg-white/20"] svg')).toBeInTheDocument()
+
+        const chartCard = container.querySelector(
+            '.admin-bento--revenue .magic-bento__cell:last-child .magic-bento__content > div',
+        )
+        expect(chartCard).toHaveClass('h-full')
     })
 
     it('links the Churn KPI to cancelled bookings for the dashboard period', async () => {
@@ -310,6 +327,32 @@ describe('Dashboard', () => {
         expect(
             screen.getByRole('heading', { name: 'Occupancy forecast' }),
         ).toBeInTheDocument()
+    })
+
+    it('fills both backtest curves with the sky-blue gradient', async () => {
+        render(
+            <MemoryRouter>
+                <Dashboard />
+            </MemoryRouter>,
+        )
+
+        const accuracyChart = await screen.findByRole('group', {
+            name: /Actual and predicted paid days/,
+        })
+        expect(accuracyChart.querySelectorAll('linearGradient')).toHaveLength(2)
+        expect(
+            accuracyChart.querySelectorAll('path[fill^="url(#chart-area-"]'),
+        ).toHaveLength(2)
+
+        fireEvent.click(screen.getByRole('button', { name: 'Occupancy outlook' }))
+
+        const occupancyChart = await screen.findByRole('group', {
+            name: /Forecast occupancy/,
+        })
+        expect(occupancyChart.querySelectorAll('linearGradient')).toHaveLength(0)
+        expect(
+            occupancyChart.querySelector('path[fill^="url(#chart-area-"]'),
+        ).toBeNull()
     })
 
     it('reveals a selected revenue day with its existing booking and visit data', async () => {

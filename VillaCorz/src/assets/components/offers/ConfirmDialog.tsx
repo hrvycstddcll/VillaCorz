@@ -67,16 +67,7 @@ const ConfirmDialog = ({
                 aria-describedby="confirm-dialog-description"
                 className="w-full max-w-md rounded-2xl bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.22)]"
             >
-                <div className="flex items-start justify-between gap-4">
-                    <span
-                        className={`grid size-11 shrink-0 place-items-center rounded-full ${
-                            confirmVariant === 'primary'
-                                ? 'bg-amber-50 text-amber-700'
-                                : 'bg-rose-50 text-rose-600'
-                        }`}
-                    >
-                        <AlertTriangle className="size-5" aria-hidden="true" />
-                    </span>
+                <div className="flex justify-end">
                     <button
                         type="button"
                         onClick={onCancel}
@@ -87,16 +78,27 @@ const ConfirmDialog = ({
                         <X className="size-4" aria-hidden="true" />
                     </button>
                 </div>
+                <div className="flex justify-center -mt-2 mb-2">
+                    <span
+                        className={`grid size-11 shrink-0 place-items-center rounded-full ${
+                            confirmVariant === 'primary'
+                                ? 'bg-amber-50 text-amber-700'
+                                : 'bg-rose-50 text-rose-600'
+                        }`}
+                    >
+                        <AlertTriangle className="size-5" aria-hidden="true" />
+                    </span>
+                </div>
 
                 <h2
                     id="confirm-dialog-title"
-                    className="mt-4 font-serif text-2xl font-bold text-[#003079]"
+                    className="mt-4 font-jakarta-serif text-2xl font-bold text-[#003079]"
                 >
                     {title}
                 </h2>
                 <p
                     id="confirm-dialog-description"
-                    className="mt-2 text-sm leading-6 text-slate-600"
+                    className="mt-2 text-sm leading-6 text-slate-600 font-jakarta-serif"
                 >
                     {description}
                 </p>

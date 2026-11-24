@@ -8,7 +8,7 @@ type AdminCardProps = {
 
 const AdminCard = ({ children, className = '', padding = true }: AdminCardProps) => (
     <div
-        className={`rounded-2xl border border-[rgba(0,0,0,0.06)] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.025)] ${
+        className={`rounded-2xl border border-[#0066FF]/40 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.025)] transition-colors transition-shadow hover:border-[#0066FF] hover:shadow-md ${
             padding ? 'p-5' : ''
         } ${className}`}
     >
