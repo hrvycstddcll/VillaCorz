@@ -58,9 +58,9 @@ services:
       - key: MAIL_HOST
         value: smtp.gmail.com
       - key: MAIL_PORT
-        value: "587"
+        value: "465"
       - key: MAIL_SCHEME
-        value: smtp
+        value: smtps
       - key: MAIL_USERNAME
         value: harvey.custodio.dacillo@gmail.com
       - key: MAIL_PASSWORD
