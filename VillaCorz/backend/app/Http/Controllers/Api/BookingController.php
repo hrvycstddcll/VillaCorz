@@ -53,6 +53,13 @@ class BookingController extends Controller
 
         $bookings = $query->get();
 
+        foreach ($bookings as $booking) {
+            if ($booking->payment?->isExpired()) {
+                $booking->payment->markExpired();
+                $booking->load(['rooms.service.images', 'payment', 'latestCancellationRequest']);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => $bookings->map(fn (Booking $booking) => $this->bookingPayload($booking))->values(),
@@ -67,6 +74,11 @@ class BookingController extends Controller
             ->firstOrFail();
 
         $this->authorizeOwner($request, $booking);
+
+        if ($booking->payment?->isExpired()) {
+            $booking->payment->markExpired();
+            $booking->load(['rooms.service.images', 'payment', 'latestCancellationRequest']);
+        }
 
         return response()->json([
             'success' => true,
