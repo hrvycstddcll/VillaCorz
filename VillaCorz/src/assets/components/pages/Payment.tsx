@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getApiErrorMessage } from '../../../lib/apiError'
-import { getBooking } from '../../../services/bookingService'
+import { cancelBooking, getBooking } from '../../../services/bookingService'
 import { getPaymentStatus } from '../../../services/paymentService'
 import type { Booking } from '../../../services/types'
 import StateModal from '../ui/ModalComponents/StateModal'
@@ -15,6 +15,7 @@ const Payment = () => {
     const [booking, setBooking] = useState<Booking | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
+    const [cancelling, setCancelling] = useState(false)
 
     const loadBooking = useCallback(async () => {
         if (!reference) {
@@ -54,6 +55,29 @@ const Payment = () => {
             active = false
         }
     }, [reference])
+
+    const handleCancel = async () => {
+        if (!reference || !window.confirm('Cancel this booking? This cannot be undone.')) {
+            return
+        }
+
+        setCancelling(true)
+        setError('')
+
+        try {
+            await cancelBooking(reference)
+            navigate('/bookings', { replace: true })
+        } catch (requestError) {
+            setError(
+                getApiErrorMessage(
+                    requestError,
+                    'Unable to cancel this booking.',
+                ),
+            )
+        } finally {
+            setCancelling(false)
+        }
+    }
 
     const paymentReference = booking?.payment?.reference
     const paymentStatus = booking?.payment?.status
@@ -219,6 +243,7 @@ const Payment = () => {
             phoneNumber={booking.contact.phone ?? ''}
             bookingId={booking.reference}
             qrValue={payment.qr_url}
+            returnUrl={`${window.location.origin}/payment/${booking.reference}`}
             checkIn={booking.check_in}
             checkOut={booking.check_out}
             paidDays={booking.paid_days}
@@ -240,6 +265,8 @@ const Payment = () => {
             onRefresh={() => {
                 void handleRefresh()
             }}
+            onCancel={viewStatus === 'pending' ? handleCancel : undefined}
+            isCancelling={cancelling}
         />
     )
 }

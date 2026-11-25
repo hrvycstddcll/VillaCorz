@@ -18,6 +18,8 @@ class DemoPaymentController extends Controller
         return view('pay.show', [
             'payment' => $payment,
             'booking' => $payment->booking,
+            'returnUrl' => $this->safeReturnUrl(request()->query('return_url'))
+                ?: (string) config('app.frontend_url'),
         ]);
     }
 
@@ -33,7 +35,10 @@ class DemoPaymentController extends Controller
 
         $result = $confirmation->confirm($payment, 'phone', $idempotencyKey, $request);
 
-        $redirect = redirect()->route('pay.show', ['token' => $token]);
+        $returnUrl = $this->safeReturnUrl($request->input('return_url'));
+        $redirect = $returnUrl
+            ? redirect()->to($returnUrl)
+            : redirect()->route('pay.show', ['token' => $token]);
 
         if ($result['conflict']) {
             return $redirect->with(
@@ -43,6 +48,41 @@ class DemoPaymentController extends Controller
         }
 
         return $redirect;
+    }
+
+    private function safeReturnUrl(mixed $returnUrl): ?string
+    {
+        if (! is_string($returnUrl) || $returnUrl === '') {
+            return null;
+        }
+
+        $parts = parse_url($returnUrl);
+        $frontendParts = parse_url((string) config('app.frontend_url'));
+
+        if (! is_array($parts) || ! is_array($frontendParts)) {
+            return null;
+        }
+
+        if (! isset($parts['scheme'], $parts['host'])
+            || ! in_array(strtolower($parts['scheme']), ['http', 'https'], true)) {
+            return null;
+        }
+
+        if (strtolower($parts['host']) !== strtolower((string) ($frontendParts['host'] ?? ''))) {
+            return null;
+        }
+
+        if (($parts['port'] ?? null) !== ($frontendParts['port'] ?? null)) {
+            return null;
+        }
+
+        $path = (string) ($parts['path'] ?? '/');
+
+        if (! str_starts_with($path, '/payment/') && $path !== '/bookings') {
+            return null;
+        }
+
+        return $returnUrl;
     }
 
     private function findPayment(string $token): Payment

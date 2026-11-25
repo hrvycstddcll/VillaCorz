@@ -12,6 +12,7 @@ use App\Services\PricingService;
 use App\Support\StayTime;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class BookingPaymentTest extends TestCase
@@ -505,6 +506,26 @@ class BookingPaymentTest extends TestCase
                 'data.payment.qr_url',
                 'http://192.168.18.25:8000'.$path,
             );
+    }
+
+    public function test_the_phone_payment_form_uses_https_when_https_is_forced(): void
+    {
+        $user = User::factory()->create();
+        $payment = $this->createBooking($user);
+
+        $token = 'demo-https-token-'.uniqid();
+        $payment->forceFill(['qr_token_hash' => hash('sha256', $token)])->save();
+
+        URL::forceScheme('https');
+
+        try {
+            $this->get("/pay/{$token}")
+                ->assertOk()
+                ->assertSee('action="/pay/', false)
+                ->assertDontSee('action="http://', false);
+        } finally {
+            URL::forceScheme(null);
+        }
     }
 
     public function test_the_phone_payment_page_can_confirm_the_payment(): void

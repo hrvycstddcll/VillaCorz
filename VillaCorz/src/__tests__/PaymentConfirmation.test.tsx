@@ -40,14 +40,20 @@ describe('payment confirmation UI', () => {
 
     it('exposes the confirmation link as an external link', () => {
         render(<PaymentSuccessView {...paymentProps} />)
-
         const link = screen.getByRole('link', {
             name: /Open confirmation link/,
         })
 
-        expect(link).toHaveAttribute('href', paymentProps.qrValue)
+        const expectedUrl = new URL(paymentProps.qrValue, window.location.origin)
+        expectedUrl.searchParams.set(
+            'return_url',
+            `${window.location.origin}/payment/${paymentProps.bookingId}`,
+        )
+
+        expect(link).toHaveAttribute('href', expectedUrl.toString())
         expect(link).toHaveAttribute('target', '_blank')
     })
+
 
     it('renders the mascot state modal as an accessible dialog', () => {
         render(

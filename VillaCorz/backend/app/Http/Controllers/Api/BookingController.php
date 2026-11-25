@@ -53,6 +53,13 @@ class BookingController extends Controller
 
         $bookings = $query->get();
 
+        foreach ($bookings as $booking) {
+            if ($booking->payment?->isExpired()) {
+                $booking->payment->markExpired();
+                $booking->load(['rooms.service.images', 'payment', 'latestCancellationRequest']);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => $bookings->map(fn (Booking $booking) => $this->bookingPayload($booking))->values(),
@@ -67,6 +74,11 @@ class BookingController extends Controller
             ->firstOrFail();
 
         $this->authorizeOwner($request, $booking);
+
+        if ($booking->payment?->isExpired()) {
+            $booking->payment->markExpired();
+            $booking->load(['rooms.service.images', 'payment', 'latestCancellationRequest']);
+        }
 
         return response()->json([
             'success' => true,
@@ -402,7 +414,9 @@ public function cancel(Request $request, string $reference): JsonResponse
             ], 422);
         }
 
-        if ($booking->check_in !== null && $booking->check_in->lt(now()->addDays(7))) {
+        if ($booking->status === 'confirmed'
+            && $booking->check_in !== null
+            && $booking->check_in->lt(now()->addDays(7))) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cancellations are only accepted at least 7 days before check-in. For emergencies, please contact the admin to request a refund.',

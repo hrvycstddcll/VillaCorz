@@ -19,6 +19,11 @@ class PaymentController extends Controller
 
         $this->authorizeOwner($request, $payment);
 
+        if ($payment->isExpired()) {
+            $payment->markExpired();
+            $payment->load('booking');
+        }
+
         return response()->json([
             'success' => true,
             'data' => $this->statusPayload($payment),

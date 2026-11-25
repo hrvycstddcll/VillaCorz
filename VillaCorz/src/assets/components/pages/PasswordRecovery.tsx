@@ -7,6 +7,7 @@ import {
     requestPasswordResetCode,
     resetAccountPassword,
 } from '../../../services/accountService'
+import { normalizeEmail } from '../../../services/authService'
 
 type RecoveryLocationState = { email?: string } | null
 
@@ -56,11 +57,12 @@ const PasswordRecovery = () => {
         setIsSubmitting(true)
 
         try {
-            const response = await requestPasswordResetCode(email.trim())
+            const normalizedEmail = normalizeEmail(email)
+            const response = await requestPasswordResetCode(normalizedEmail)
             const nextResetId = String(response.data.reset_id ?? '')
             setResetId(nextResetId)
             window.sessionStorage.setItem(RESET_ID_STORAGE_KEY, nextResetId)
-            window.sessionStorage.setItem(RESET_EMAIL_STORAGE_KEY, email.trim())
+            window.sessionStorage.setItem(RESET_EMAIL_STORAGE_KEY, normalizedEmail)
             setDevelopmentCode(response.data.development_code ?? '')
             setStatus(response.data.message)
         } catch (error) {

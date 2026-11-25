@@ -6,9 +6,7 @@ const configuredOrigin = import.meta.env.VITE_API_URL?.trim()
 // In production the Vercel /api rewrite is used unless VITE_API_URL is set.
 export const API_ORIGIN = configuredOrigin !== undefined
     ? configuredOrigin.replace(/\/+$/, '')
-    : import.meta.env.DEV
-        ? 'http://localhost:8000'
-        : ''
+    : ''
 
 export const API_BASE_URL = `${API_ORIGIN}/api`
 
@@ -112,6 +110,7 @@ export const clearAuthState = () => {
 
 const api = axios.create({
     baseURL: API_BASE_URL,
+    withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',

@@ -12,6 +12,11 @@
       "env": ["BACKEND_URL"]
     },
     {
+      "src": "/pay/(.*)",
+      "dest": "${BACKEND_URL}/pay/$1",
+      "env": ["BACKEND_URL"]
+    },
+    {
       "handle": "filesystem"
     },
     {

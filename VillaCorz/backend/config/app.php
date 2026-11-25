@@ -53,6 +53,7 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+    'force_https' => env('APP_FORCE_HTTPS', false),
     'frontend_url' => env('FRONTEND_URL', env('APP_ENV') === 'production' ? 'https://villa-corz.vercel.app' : 'http://localhost:5173'),
 
     /*

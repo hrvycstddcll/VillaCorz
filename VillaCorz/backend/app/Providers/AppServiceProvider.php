@@ -6,6 +6,7 @@ use App\Database\NeonPostgresConnection;
 use App\Database\NeonPostgresConnector;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoTransportFactory;
 use Symfony\Component\Mailer\Transport\Dsn;
@@ -32,6 +33,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('app.force_https')) {
+            URL::forceScheme('https');
+        }
+
         // HTTPS API mail transport. Sends over port 443, so it keeps working
         // on networks (like campus Wi-Fi) that block outbound SMTP ports.
         Mail::extend('brevo', function () {

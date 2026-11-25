@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -135,6 +136,99 @@ class VerificationCodeDeliveryTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('user.email', $registrationData['email']);
+    }
+
+    public function test_register_rejects_an_existing_email_with_different_capitalization(): void
+    {
+        Mail::fake();
+
+        User::factory()->create([
+            'email' => 'Harvey.Custodio@example.test',
+        ]);
+
+        $registrationData = $this->registrationData();
+        $registrationData['email'] = 'harvey.custodio@example.test';
+
+        $this->postJson('/api/register', $registrationData)
+            ->assertUnprocessable()
+            ->assertJsonPath(
+                'errors.email.0',
+                'An account with this email already exists. Please log in.',
+            );
+
+        Mail::assertNothingSent();
+    }
+
+    public function test_duplicate_pending_registrations_reuse_the_same_registration_id(): void
+    {
+        Mail::fake();
+
+        $registrationData = $this->registrationData();
+
+        $first = $this->postJson('/api/register', $registrationData)
+            ->assertOk()
+            ->json();
+
+        $second = $this->postJson('/api/register', array_merge($registrationData, [
+            'email' => strtoupper($registrationData['email']),
+        ]))
+            ->assertOk()
+            ->json();
+
+        $this->assertSame($first['registration_id'], $second['registration_id']);
+    }
+
+    public function test_resend_rejects_a_pending_registration_after_the_email_becomes_an_account(): void
+    {
+        Mail::fake();
+
+        $registrationData = $this->registrationData();
+        $registration = $this->postJson('/api/register', $registrationData)
+            ->assertOk()
+            ->json();
+
+        User::factory()->create([
+            'email' => strtoupper($registrationData['email']),
+        ]);
+
+        $this->postJson('/api/resend-otp', [
+            'registration_id' => $registration['registration_id'],
+        ])
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'An account with this email already exists. Please log in.');
+    }
+
+    public function test_register_verify_and_login_normalize_email_capitalization(): void
+    {
+        $otp = null;
+        Mail::shouldReceive('send')
+            ->once()
+            ->andReturnUsing(function ($view, $data) use (&$otp): void {
+                $this->assertSame('emails.verify-otp', $view);
+                $otp = $data['otp'];
+            });
+
+        $registrationData = $this->registrationData();
+        $registrationData['email'] = 'Mixed.Case-'.uniqid().'@Example.Test';
+        $normalizedEmail = strtolower($registrationData['email']);
+
+        $registration = $this->postJson('/api/register', $registrationData)
+            ->assertOk()
+            ->json();
+
+        $this->postJson('/api/verify-otp', [
+            'registration_id' => $registration['registration_id'],
+            'otp' => $otp,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('user.email', $normalizedEmail);
+
+        $this->postJson('/api/login', [
+            'email' => strtoupper($normalizedEmail),
+            'password' => $registrationData['password'],
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.email', $normalizedEmail);
     }
 
     private function registrationData(): array

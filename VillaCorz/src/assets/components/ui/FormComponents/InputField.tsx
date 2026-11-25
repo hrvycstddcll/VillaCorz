@@ -7,6 +7,7 @@ type InputFieldProps = {
     type?: 'text' | 'email'
     autoComplete: string
     maxLength?: number
+    defaultValue?: string
     icon?: ReactNode
 }
 
@@ -17,6 +18,7 @@ const InputField = ({
     type = 'text',
     autoComplete,
     maxLength = 55,
+    defaultValue,
     icon,
 }: InputFieldProps) => (
     <div className="input-float w-full">
@@ -28,6 +30,7 @@ const InputField = ({
             required
             maxLength={maxLength}
             autoComplete={autoComplete}
+            defaultValue={defaultValue}
             className={`input-focus ${icon ? 'pr-12' : ''}`}
         />
 

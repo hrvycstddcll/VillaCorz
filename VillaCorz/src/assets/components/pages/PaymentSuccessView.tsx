@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { ArrowLeft, ArrowUpRight, Check, Clock3, RefreshCw } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { money } from '../../../lib/format'
@@ -12,6 +13,7 @@ type PaymentSuccessViewProps = {
     phoneNumber: string
     bookingId: string
     qrValue: string
+    returnUrl?: string
     checkIn: string
     checkOut: string
     paidDays?: number
@@ -21,6 +23,8 @@ type PaymentSuccessViewProps = {
     error?: string
     onConfirm: () => void
     onRefresh: () => void
+    onCancel?: () => void
+    isCancelling?: boolean
 }
 
 function formatReceiptDate(value: string) {
@@ -41,6 +45,7 @@ function PaymentSuccessView({
     phoneNumber,
     bookingId,
     qrValue,
+    returnUrl,
     checkIn,
     checkOut,
     paidDays,
@@ -50,11 +55,23 @@ function PaymentSuccessView({
     error,
     onConfirm,
     onRefresh,
+    onCancel,
+    isCancelling = false,
 }: PaymentSuccessViewProps) {
     const guestCount = rooms.reduce(
         (sum, room) => sum + room.adults + room.kids,
         0,
     )
+    const confirmationUrl = useMemo(() => {
+        const url = new URL(qrValue, window.location.origin)
+
+        url.searchParams.set(
+            'return_url',
+            returnUrl ?? `${window.location.origin}/payment/${bookingId}`,
+        )
+
+        return url.toString()
+    }, [bookingId, qrValue, returnUrl])
     const roomCount = rooms.length
     const stayLabel =
         paidDays != null
@@ -173,14 +190,14 @@ function PaymentSuccessView({
                                 <QRCodeSVG
                                     aria-label="Scannable Villa Corz demo payment confirmation QR code"
                                     className="size-52 max-w-full sm:size-56"
-                                    value={qrValue}
+                                    value={confirmationUrl}
                                     size={224}
                                     level="Q"
                                     marginSize={4}
                                 />
                             </div>
                             <a
-                                href={qrValue}
+                                href={confirmationUrl}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#006dfc] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#0057c9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
@@ -200,6 +217,17 @@ function PaymentSuccessView({
                                 />
                                 Check payment status
                             </button>
+
+                            {onCancel && (
+                                <button
+                                    type="button"
+                                    onClick={onCancel}
+                                    disabled={isCancelling}
+                                    className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {isCancelling ? 'Cancelling…' : 'Cancel booking'}
+                                </button>
+                            )}
 
                             <p className="mt-4 w-full rounded-xl border border-[rgba(0,0,0,0.06)] bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
                                 Demo only: no real payment is processed. Complete confirmation on the linked page.

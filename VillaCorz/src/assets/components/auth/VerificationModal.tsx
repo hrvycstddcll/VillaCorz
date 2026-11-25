@@ -15,6 +15,7 @@ type VerificationModalProps = {
     developmentCode: string | null
     remember: boolean
     onVerified: (user: User) => void
+    onExistingAccount: (email: string) => void
     onClose: () => void
 }
 
@@ -32,6 +33,7 @@ const VerificationModal = ({
     developmentCode: initialDevelopmentCode,
     remember,
     onVerified,
+    onExistingAccount,
     onClose,
 }: VerificationModalProps) => {
     const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''))
@@ -207,8 +209,8 @@ const VerificationModal = ({
                     setError(data?.message || 'Too many incorrect attempts. Please register again.')
                     setLocked(true)
                 } else if (status === 409) {
-                    setError(data?.message || 'An account with this email already exists. Please log in.')
-                    setLocked(true)
+                    onExistingAccount(email)
+                    return
                 } else {
                     setError(data?.message || 'Something went wrong. Please try again.')
                 }

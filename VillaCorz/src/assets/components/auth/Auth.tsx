@@ -5,7 +5,7 @@ import { authErrorMessage } from '../../../services/authErrors'
 import { getPostAuthDestination } from '../../../services/authRouting'
 import type { User } from '../../../services/types'
 import { Mail } from 'lucide-react'
-import { login, register } from '../../../services/authService'
+import { login, normalizeEmail, register } from '../../../services/authService'
 import PasswordField from '../ui/FormComponents/PasswordField'
 import InputField from '../ui/FormComponents/InputField'
 import VerificationModal from './VerificationModal'
@@ -89,7 +89,8 @@ const FormLogin = ({
     feedback,
     feedbackType,
     remember,
-}: FormProps & { onForgot: () => void }) => (
+    initialEmail,
+}: FormProps & { onForgot: () => void; initialEmail?: string }) => (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-6 sm:gap-8">
         <header className="flex w-full flex-col items-start gap-2">
             <h1 className="text-3xl font-extrabold tracking-tight text-[#5571ff] sm:text-[2.7rem]">
@@ -108,6 +109,7 @@ const FormLogin = ({
                 label="E-mail"
                 type="email"
                 autoComplete="email"
+                defaultValue={initialEmail}
                 icon={<Mail className="size-5" />}
             />
 
@@ -259,6 +261,7 @@ const Auth = () => {
 
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [remember, setRemember] = useState(false)
+    const [loginEmail, setLoginEmail] = useState('')
     const [feedback, setFeedback] = useState('')
     const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('error')
     const [verification, setVerification] = useState<{
@@ -277,7 +280,7 @@ const Auth = () => {
 
         const form = event.currentTarget
         const formData = new FormData(form)
-        const email = String(formData.get('email') || '').trim()
+        const email = normalizeEmail(String(formData.get('email') || ''))
         const password = String(formData.get('password') || '')
         const keepSignedIn = formData.get('remember') === 'on'
         setRemember(keepSignedIn)
@@ -333,6 +336,7 @@ const Auth = () => {
         setSearchParams({
             mode: mode === 'login' ? 'register' : 'login',
         })
+        setLoginEmail('')
         setFeedback('')
     }
 
@@ -361,6 +365,7 @@ const Auth = () => {
                         <FormLogin
                             onSwitch={switchForm}
                             onForgot={() => navigate('/forgot-password')}
+                            initialEmail={loginEmail}
                             onSubmit={handleSubmit}
                             isSubmitting={isSubmitting}
                             feedback={feedback}
@@ -397,6 +402,13 @@ const Auth = () => {
                         setUser(user)
                         setVerification(null)
                         navigate(getPostAuthDestination(user, location.state), { replace: true })
+                    }}
+                    onExistingAccount={(existingEmail) => {
+                        setLoginEmail(existingEmail)
+                        setVerification(null)
+                        setSearchParams({ mode: 'login' })
+                        setFeedback('An account with this email already exists. Please log in.')
+                        setFeedbackType('error')
                     }}
                     onClose={() => setVerification(null)}
                 />

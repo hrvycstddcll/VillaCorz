@@ -49,7 +49,7 @@ export default defineConfig(({ mode }) => {
       host: true,
       port: 5173,
       allowedHosts: isTunnel ? ['.trycloudflare.com'] : [],
-      proxy: isTunnel ? backendProxy : undefined,
+      proxy: backendProxy,
     },
   }
 })
