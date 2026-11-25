@@ -3,6 +3,13 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../services/useAuth'
 import { authErrorMessage } from '../../../services/authErrors'
 import { getPostAuthDestination } from '../../../services/authRouting'
+import {
+    clearPendingVerification,
+    loadPendingVerification,
+    savePendingVerification,
+    type PendingVerification,
+} from '../../../services/pendingVerification'
+import { setAuthToken } from '../../../services/api'
 import type { User } from '../../../services/types'
 import { Mail } from 'lucide-react'
 import { login, normalizeEmail, register } from '../../../services/authService'
@@ -19,6 +26,8 @@ type FormProps = {
     feedback: string
     feedbackType: 'success' | 'error'
     remember: boolean
+    pendingVerification?: PendingVerification | null
+    onResumeVerification?: () => void
 }
 
 const RememberMeField = ({ checked }: { checked: boolean }) => (
@@ -163,7 +172,7 @@ const FormLogin = ({
     </form>
 )
 
-const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType, remember }: FormProps) => (
+const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType, remember, pendingVerification, onResumeVerification }: FormProps) => (
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-5 sm:gap-6">
         <header className="flex w-full flex-col items-start gap-2">
             <h1 className="text-3xl font-extrabold tracking-tight text-[#5571ff] sm:text-[2.7rem]">
@@ -228,6 +237,17 @@ const FormRegister = ({ onSwitch, onSubmit, isSubmitting, feedback, feedbackType
             {feedback}
         </p>
 
+        {pendingVerification && (
+            <button
+                type="button"
+                onClick={onResumeVerification}
+                className="w-full rounded-xl border border-[#006dfc]/25 bg-[#006dfc]/5 px-4 py-3 text-left text-sm text-[#172033] transition hover:bg-[#006dfc]/10"
+            >
+                <span className="font-semibold text-[#006dfc]">Continue email verification</span>
+                <span className="block text-xs text-gray-500">{pendingVerification.email}</span>
+            </button>
+        )}
+
         <div className="flex w-full flex-col gap-4">
             <button
                 type="submit"
@@ -260,19 +280,16 @@ const Auth = () => {
         searchParams.get('mode') === 'register' ? 'register' : 'login'
 
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [remember, setRemember] = useState(false)
     const [loginEmail, setLoginEmail] = useState('')
     const [feedback, setFeedback] = useState('')
     const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('error')
-    const [verification, setVerification] = useState<{
-        registrationId: string
-        email: string
-        expiresIn: number
-        delivery: 'email' | 'log'
-        developmentCode: string | null
-    } | null>(null)
+    const [verification, setVerification] = useState<PendingVerification | null>(
+        () => loadPendingVerification(),
+    )
+    const [remember, setRemember] = useState(() => verification?.remember ?? false)
 
     const isRegistering = mode === 'register'
+    const storedVerification = isRegistering && !verification ? loadPendingVerification() : null
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -311,18 +328,32 @@ const Auth = () => {
             }
 
             const response = await register(firstname, lastname, email, password)
+            const registrationId = response.data?.registration_id
 
-            setFeedback('')
-            setVerification({
-                registrationId: String(response.data.registration_id),
+            if (typeof registrationId !== 'string' || !registrationId) {
+                throw new Error('Registration did not return a verification ID. Please try again.')
+            }
+
+            const expiresAt = Date.parse(response.data?.expires_at)
+            if (!Number.isFinite(expiresAt)) {
+                throw new Error('Registration did not return a valid expiry. Please try again.')
+            }
+
+            const pending: PendingVerification = {
+                registrationId,
                 email,
-                expiresIn: Number(response.data.expires_in) || 600,
-                delivery: response.data.verification_delivery === 'log' ? 'log' : 'email',
+                expiresAt,
+                delivery: response.data?.verification_delivery === 'log' ? 'log' : 'email',
                 developmentCode:
-                    typeof response.data.development_code === 'string'
+                    typeof response.data?.development_code === 'string'
                         ? response.data.development_code
                         : null,
-            })
+                remember: keepSignedIn,
+            }
+
+            savePendingVerification(pending)
+            setFeedback('')
+            setVerification(pending)
 
         } catch (error) {
             setFeedback(authErrorMessage(error))
@@ -360,6 +391,10 @@ const Auth = () => {
                             feedback={feedback}
                             feedbackType={feedbackType}
                             remember={remember}
+                            pendingVerification={storedVerification}
+                            onResumeVerification={() => {
+                                if (storedVerification) setVerification(storedVerification)
+                            }}
                         />
                     ) : (
                         <FormLogin
@@ -383,31 +418,42 @@ const Auth = () => {
                 </div>
             </section>
 
-            {verification && (
+            {verification && isRegistering && (
                 <VerificationModal
                     email={verification.email}
                     registrationId={verification.registrationId}
-                    expiresIn={verification.expiresIn}
+                    expiresAt={verification.expiresAt}
                     delivery={verification.delivery}
                     developmentCode={verification.developmentCode}
-                    remember={remember}
-                    onVerified={(user) => {
-                        if (!user?.id) {
-                            setFeedback('Verification did not return your account. Please try again.')
-                            setFeedbackType('error')
-                            setVerification(null)
-                            return
-                        }
-
+                    remember={verification.remember}
+                    onVerified={(user, token, tokenExpiresAt) => {
+                        clearPendingVerification()
+                        setAuthToken(token, verification.remember, tokenExpiresAt)
                         setUser(user)
                         setVerification(null)
                         navigate(getPostAuthDestination(user, location.state), { replace: true })
                     }}
                     onExistingAccount={(existingEmail) => {
+                        clearPendingVerification()
                         setLoginEmail(existingEmail)
                         setVerification(null)
                         setSearchParams({ mode: 'login' })
                         setFeedback('An account with this email already exists. Please log in.')
+                        setFeedbackType('error')
+                    }}
+                    onVerificationUpdated={(expiresAt, developmentCode) => {
+                        setVerification((current) => current
+                            ? {
+                                ...current,
+                                expiresAt,
+                                developmentCode,
+                            }
+                            : current)
+                    }}
+                    onInvalidated={(message) => {
+                        clearPendingVerification()
+                        setVerification(null)
+                        setFeedback(message)
                         setFeedbackType('error')
                     }}
                     onClose={() => setVerification(null)}
