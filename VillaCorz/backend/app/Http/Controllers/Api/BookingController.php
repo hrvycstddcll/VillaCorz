@@ -402,7 +402,9 @@ public function cancel(Request $request, string $reference): JsonResponse
             ], 422);
         }
 
-        if ($booking->check_in !== null && $booking->check_in->lt(now()->addDays(7))) {
+        if ($booking->status === 'confirmed'
+            && $booking->check_in !== null
+            && $booking->check_in->lt(now()->addDays(7))) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cancellations are only accepted at least 7 days before check-in. For emergencies, please contact the admin to request a refund.',

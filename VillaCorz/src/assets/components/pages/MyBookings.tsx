@@ -109,12 +109,19 @@ const MyBookings = () => {
     const canCancel = (booking: Booking) => {
         // Cancelled, expired and completed stays can never be cancelled again.
         if (!isCancellable(booking)) return false
+
+        // A booking that has not been paid yet can be cancelled at any time.
+        if (booking.status === 'pending_payment') return true
+
         const checkIn = Date.parse(booking.check_in)
         return (
             Number.isFinite(checkIn) &&
             checkIn - new Date().getTime() >= SEVEN_DAYS_MS
         )
     }
+
+    const canContinuePayment = (booking: Booking) =>
+        booking.status === 'pending_payment'
 
     const cancellationClosed = (booking: Booking) => {
         const checkIn = Date.parse(booking.check_in)
@@ -311,7 +318,10 @@ const MyBookings = () => {
                                 cancellationClosed(booking) &&
                                 !booking.cancellation_request
                             const hasActions =
-                                canReview || canCancel(booking) || canRequestCancellation
+                                canReview ||
+                                canContinuePayment(booking) ||
+                                canCancel(booking) ||
+                                canRequestCancellation
                             const lifecycleMeta =
                                 booking.lifecycle === 'booked'
                                     ? {
@@ -469,6 +479,17 @@ const MyBookings = () => {
                                                 className="inline-flex min-h-11 items-center rounded-lg bg-[#006dfc] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(0,109,252,0.24)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                                             >
                                                 Leave a review
+                                            </button>
+                                        )}
+                                        {canContinuePayment(booking) && (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    navigate(`/payment/${booking.reference}`)
+                                                }
+                                                className="inline-flex min-h-11 items-center rounded-lg bg-[#006dfc] px-4 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(109,252,0.24)] transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
+                                            >
+                                                Continue payment
                                             </button>
                                         )}
                                         {canCancel(booking) && (

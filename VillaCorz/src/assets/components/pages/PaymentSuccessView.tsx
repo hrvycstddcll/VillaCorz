@@ -23,6 +23,8 @@ type PaymentSuccessViewProps = {
     error?: string
     onConfirm: () => void
     onRefresh: () => void
+    onCancel?: () => void
+    isCancelling?: boolean
 }
 
 function formatReceiptDate(value: string) {
@@ -53,6 +55,8 @@ function PaymentSuccessView({
     error,
     onConfirm,
     onRefresh,
+    onCancel,
+    isCancelling = false,
 }: PaymentSuccessViewProps) {
     const guestCount = rooms.reduce(
         (sum, room) => sum + room.adults + room.kids,
@@ -213,6 +217,17 @@ function PaymentSuccessView({
                                 />
                                 Check payment status
                             </button>
+
+                            {onCancel && (
+                                <button
+                                    type="button"
+                                    onClick={onCancel}
+                                    disabled={isCancelling}
+                                    className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc] disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {isCancelling ? 'Cancelling…' : 'Cancel booking'}
+                                </button>
+                            )}
 
                             <p className="mt-4 w-full rounded-xl border border-[rgba(0,0,0,0.06)] bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
                                 Demo only: no real payment is processed. Complete confirmation on the linked page.
