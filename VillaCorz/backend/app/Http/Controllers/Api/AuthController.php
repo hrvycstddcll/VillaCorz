@@ -35,45 +35,68 @@ class AuthController extends Controller
             ]);
         }
 
-        $registrationId = (string) Str::uuid();
-        $otp = (string) random_int(100000, 999999);
-
-        $cacheKey = "pending_registration:{$registrationId}";
-        $attemptsKey = "pending_registration_attempts:{$registrationId}";
         $emailIndexKey = $this->pendingEmailCacheKey($email);
         $existingRegistrationId = Cache::get($emailIndexKey);
 
-        if (is_string($existingRegistrationId)) {
-            if (Cache::has("pending_registration:{$existingRegistrationId}")) {
-                return response()->json([
-                    'message' => 'A verification code is already pending for this email. Check your email or request a new code.',
-                    'registration_id' => $existingRegistrationId,
-                    'expires_in' => 600,
-                ], 200);
+        if (is_string($existingRegistrationId) && Cache::has("pending_registration:{$existingRegistrationId}")) {
+            $registrationId = $existingRegistrationId;
+            $cacheKey = "pending_registration:{$existingRegistrationId}";
+            $attemptsKey = "pending_registration_attempts:{$existingRegistrationId}";
+            $pending = Cache::get($cacheKey, []);
+
+            $otp = (string) random_int(100000, 999999);
+            $pending['firstname'] = $validated['firstname'];
+            $pending['lastname'] = $validated['lastname'];
+            $pending['email'] = $email;
+            $pending['password'] = Hash::make($validated['password']);
+            $pending['otp_hash'] = Hash::make($otp);
+
+            Cache::put($cacheKey, $pending, now()->addMinutes(10));
+            Cache::put($attemptsKey, 0, now()->addMinutes(10));
+        } else {
+            if (is_string($existingRegistrationId)) {
+                Cache::forget($emailIndexKey);
             }
 
-            Cache::forget($emailIndexKey);
+            $registrationId = (string) Str::uuid();
+            $otp = (string) random_int(100000, 999999);
+            $cacheKey = "pending_registration:{$registrationId}";
+            $attemptsKey = "pending_registration_attempts:{$registrationId}";
+
+            if (! Cache::add($emailIndexKey, $registrationId, now()->addMinutes(10))) {
+                $existingRegistrationId = Cache::get($emailIndexKey);
+
+                if (is_string($existingRegistrationId) && Cache::has("pending_registration:{$existingRegistrationId}")) {
+                    $registrationId = $existingRegistrationId;
+                    $cacheKey = "pending_registration:{$existingRegistrationId}";
+                    $attemptsKey = "pending_registration_attempts:{$existingRegistrationId}";
+                    $pending = Cache::get($cacheKey, []);
+                    $otp = (string) random_int(100000, 999999);
+                    $pending['firstname'] = $validated['firstname'];
+                    $pending['lastname'] = $validated['lastname'];
+                    $pending['email'] = $email;
+                    $pending['password'] = Hash::make($validated['password']);
+                    $pending['otp_hash'] = Hash::make($otp);
+
+                    Cache::put($cacheKey, $pending, now()->addMinutes(10));
+                    Cache::put($attemptsKey, 0, now()->addMinutes(10));
+                } else {
+                    return response()->json([
+                        'message' => 'Unable to start registration. Please try again.',
+                    ], 500);
+                }
+            }
+
+            Cache::put($cacheKey, [
+                'firstname' => $validated['firstname'],
+                'lastname' => $validated['lastname'],
+                'email' => $email,
+                'password' => Hash::make($validated['password']),
+                'otp_hash' => Hash::make($otp),
+            ], now()->addMinutes(10));
+
+            Cache::put($attemptsKey, 0, now()->addMinutes(10));
         }
-
-        if (! Cache::add($emailIndexKey, $registrationId, now()->addMinutes(10))) {
-            $existingRegistrationId = Cache::get($emailIndexKey);
-
-            return response()->json([
-                'message' => 'A verification code is already pending for this email. Check your email or request a new code.',
-                'registration_id' => is_string($existingRegistrationId) ? $existingRegistrationId : $registrationId,
-                'expires_in' => 600,
-            ], 200);
-        }
-
-        Cache::put($cacheKey, [
-            'firstname' => $validated['firstname'],
-            'lastname' => $validated['lastname'],
-            'email' => $email,
-            'password' => Hash::make($validated['password']),
-            'otp_hash' => Hash::make($otp),
-        ], now()->addMinutes(10));
-
-        Cache::put($attemptsKey, 0, now()->addMinutes(10));
 
         try {
             Mail::send('emails.verify-otp', [
