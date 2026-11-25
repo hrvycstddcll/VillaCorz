@@ -1,5 +1,19 @@
 <?php
 
+$allowedOrigins = array_values(array_filter(array_map(
+    'trim',
+    explode(',', env(
+        'CORS_ALLOWED_ORIGINS',
+        'http://localhost:5173,http://127.0.0.1:5173,https://villa-corz.vercel.app',
+    )),
+)));
+
+$productionOrigins = [
+    'https://villacorz.site',
+    'https://www.villacorz.site',
+    'https://villa-corz.vercel.app',
+];
+
 return [
 
     /*
@@ -19,13 +33,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_values(array_filter(array_map(
-        'trim',
-        explode(',', env(
-            'CORS_ALLOWED_ORIGINS',
-            'http://localhost:5173,http://127.0.0.1:5173,https://villacorz.site,https://www.villacorz.site,https://villa-corz.vercel.app',
-        )),
-    ))),
+    'allowed_origins' => array_values(array_unique(array_merge($productionOrigins, $allowedOrigins))),
 
     // During local development Vite can pick the next free port (5174, 5175,
     // ...) and the app can be opened through either localhost or 127.0.0.1.
