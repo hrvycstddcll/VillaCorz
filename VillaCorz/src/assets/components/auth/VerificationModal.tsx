@@ -1,21 +1,31 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react'
 import axios from 'axios'
 import { Loader2, ShieldCheck, X } from 'lucide-react'
+import { authErrorMessage } from '../../../services/authErrors'
 import { resendOtp, verifyOtp } from '../../../services/authService'
 import type { User } from '../../../services/types'
 
 const OTP_LENGTH = 6
 const RESEND_COOLDOWN = 30
 
+type VerificationErrorData = {
+    code?: string
+    message?: string
+    attempts_remaining?: number
+    errors?: Record<string, string[]>
+}
+
 type VerificationModalProps = {
     email: string
     registrationId: string
-    expiresIn: number
+    expiresAt: number
     delivery: 'email' | 'log'
     developmentCode: string | null
     remember: boolean
-    onVerified: (user: User) => void
+    onVerified: (user: User, token: string, expiresAt: string | undefined) => void
     onExistingAccount: (email: string) => void
+    onVerificationUpdated: (expiresAt: number, developmentCode: string | null) => void
+    onInvalidated: (message: string) => void
     onClose: () => void
 }
 
@@ -25,15 +35,34 @@ const formatTime = (totalSeconds: number) => {
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+const headerValue = (headers: unknown, name: string): string | undefined => {
+    if (!headers || typeof headers !== 'object') return undefined
+
+    const withGet = headers as { get?: (key: string) => string | undefined }
+    if (typeof withGet.get === 'function') {
+        return withGet.get.call(headers, name)
+    }
+
+    const record = headers as Record<string, unknown>
+    const key = Object.keys(record).find((candidate) => candidate.toLowerCase() === name.toLowerCase())
+    if (!key) return undefined
+
+    const value = record[key]
+    if (Array.isArray(value)) return String(value[0] ?? '')
+    return value === undefined ? undefined : String(value)
+}
+
 const VerificationModal = ({
     email,
     registrationId,
-    expiresIn,
+    expiresAt,
     delivery,
     developmentCode: initialDevelopmentCode,
     remember,
     onVerified,
     onExistingAccount,
+    onVerificationUpdated,
+    onInvalidated,
     onClose,
 }: VerificationModalProps) => {
     const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''))
@@ -41,17 +70,17 @@ const VerificationModal = ({
     const [notice, setNotice] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isResending, setIsResending] = useState(false)
-    const [locked, setLocked] = useState(false)
-    const [secondsLeft, setSecondsLeft] = useState(expiresIn)
+    const [secondsLeft, setSecondsLeft] = useState(() => Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)))
     const [cooldown, setCooldown] = useState(RESEND_COOLDOWN)
     const [developmentCode, setDevelopmentCode] = useState(initialDevelopmentCode)
 
     const inputsRef = useRef<Array<HTMLInputElement | null>>([])
+    const submittingRef = useRef(false)
+    const resendingRef = useRef(false)
 
     const otp = digits.join('')
     const isComplete = otp.length === OTP_LENGTH
     const isExpired = secondsLeft <= 0
-    const isLocked = locked || isExpired
 
     useEffect(() => {
         inputsRef.current[0]?.focus()
@@ -59,7 +88,7 @@ const VerificationModal = ({
 
     useEffect(() => {
         const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-            if (event.key === 'Escape') onClose()
+            if (event.key === 'Escape' && !submittingRef.current) onClose()
         }
 
         window.addEventListener('keydown', handleKeyDown)
@@ -91,7 +120,7 @@ const VerificationModal = ({
     }
 
     const handleChange = (index: number, raw: string) => {
-        if (isLocked) return
+        if (isExpired) return
         setError('')
         setNotice('')
 
@@ -150,7 +179,7 @@ const VerificationModal = ({
     }
 
     const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
-        if (isLocked) return
+        if (isExpired) return
         event.preventDefault()
 
         const text = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH)
@@ -175,54 +204,72 @@ const VerificationModal = ({
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
-        if (!isComplete || isSubmitting || isLocked) return
+        if (!isComplete || submittingRef.current || isExpired) return
 
+        submittingRef.current = true
         setError('')
         setNotice('')
         setIsSubmitting(true)
+        let completed = false
 
         try {
             const response = await verifyOtp(registrationId, otp, remember)
-            onVerified(response.data.user as User)
+            const user = response.data?.user as User | undefined
+            const token = response.data?.token
+            const tokenExpiresAt = typeof response.data?.expires_at === 'string'
+                ? response.data.expires_at
+                : undefined
+
+            if (!user?.id || typeof token !== 'string' || !token) {
+                setError('Verification did not return your account. Please try again.')
+                return
+            }
+
+            completed = true
+            onVerified(user, token, tokenExpiresAt)
         } catch (error) {
             if (!axios.isAxiosError(error) || !error.response) {
                 setError('Unable to connect to the server. Please try again.')
             } else {
                 const status = error.response.status
-                const data = error.response.data as
-                    | { message?: string; attempts_remaining?: number }
-                    | undefined
+                const data = error.response.data as VerificationErrorData | undefined
+                const message = authErrorMessage(error)
 
-                if (status === 422 && typeof data?.attempts_remaining === 'number') {
-                    const remaining = data.attempts_remaining
+                if (status === 409) {
+                    onExistingAccount(email)
+                } else if (status === 422 && data?.code === 'registration_expired') {
+                    onInvalidated(message)
+                } else if (status === 429 && data?.code === 'too_many_attempts') {
+                    onInvalidated(message)
+                } else if (status === 422 && (data?.code === 'invalid_otp' || typeof data?.attempts_remaining === 'number')) {
+                    const remaining = data?.attempts_remaining
                     setError(
-                        `Invalid verification code. ${remaining} ${
-                            remaining === 1 ? 'attempt' : 'attempts'
-                        } remaining.`,
+                        typeof remaining === 'number'
+                            ? `Invalid verification code. ${remaining} ${remaining === 1 ? 'attempt' : 'attempts'} remaining.`
+                            : 'Invalid verification code.',
                     )
                     setDigits(Array(OTP_LENGTH).fill(''))
                     focusInput(0)
-                } else if (status === 422) {
-                    setError(data?.message || 'This registration has expired. Please register again.')
-                    setLocked(true)
                 } else if (status === 429) {
-                    setError(data?.message || 'Too many incorrect attempts. Please register again.')
-                    setLocked(true)
-                } else if (status === 409) {
-                    onExistingAccount(email)
-                    return
+                    const retryAfter = Number(headerValue(error.response.headers, 'retry-after')) || 30
+                    setCooldown((current) => Math.max(current, retryAfter))
+                    setError(`${message} Retry in ${retryAfter}s.`)
+                } else if ([500, 502, 503, 504].includes(status)) {
+                    setError('The server is temporarily unavailable. Please try again.')
                 } else {
-                    setError(data?.message || 'Something went wrong. Please try again.')
+                    setError(message)
                 }
             }
         } finally {
-            setIsSubmitting(false)
+            submittingRef.current = false
+            if (!completed) setIsSubmitting(false)
         }
     }
 
     const handleResend = async () => {
-        if (isResending || cooldown > 0 || isSubmitting) return
+        if (resendingRef.current || cooldown > 0 || submittingRef.current || isExpired) return
 
+        resendingRef.current = true
         setError('')
         setNotice('')
         setIsResending(true)
@@ -230,19 +277,24 @@ const VerificationModal = ({
         try {
             const response = await resendOtp(registrationId)
             const nextExpiry = Number(response.data?.expires_in) || 600
+            const responseExpiresAt = Date.parse(response.data?.expires_at)
+            const nextDevelopmentCode = typeof response.data?.development_code === 'string'
+                ? response.data.development_code
+                : null
 
+            if (!Number.isFinite(responseExpiresAt)) {
+                setError('The server did not return a valid expiry. Please try again.')
+                return
+            }
+
+            onVerificationUpdated(responseExpiresAt, nextDevelopmentCode)
             setDigits(Array(OTP_LENGTH).fill(''))
-            setLocked(false)
             setSecondsLeft(nextExpiry)
             setCooldown(RESEND_COOLDOWN)
-            setDevelopmentCode(
-                typeof response.data?.development_code === 'string'
-                    ? response.data.development_code
-                    : null,
-            )
+            setDevelopmentCode(nextDevelopmentCode)
             setNotice(
                 delivery === 'log'
-                    ? typeof response.data?.development_code === 'string'
+                    ? nextDevelopmentCode
                         ? 'A new development code is ready above.'
                         : 'A new verification code was written to the local application log.'
                     : 'A new verification code has been sent.',
@@ -252,16 +304,32 @@ const VerificationModal = ({
             if (!axios.isAxiosError(error) || !error.response) {
                 setError('Unable to connect to the server. Please try again.')
             } else {
-                const data = error.response.data as { message?: string } | undefined
-                setError(data?.message || 'Unable to resend the code. Please try again.')
+                const status = error.response.status
+                const data = error.response.data as VerificationErrorData | undefined
+                const message = authErrorMessage(error)
+
+                if (status === 409) {
+                    onExistingAccount(email)
+                } else if (status === 422 && data?.code === 'registration_expired') {
+                    onInvalidated(message)
+                } else if (status === 429) {
+                    const retryAfter = Number(headerValue(error.response.headers, 'retry-after')) || 30
+                    setCooldown((current) => Math.max(current, retryAfter))
+                    setError(`${message} Retry in ${retryAfter}s.`)
+                } else if ([500, 502, 503, 504].includes(status)) {
+                    setError('The server is temporarily unavailable. Please try again.')
+                } else {
+                    setError(message)
+                }
             }
         } finally {
+            resendingRef.current = false
             setIsResending(false)
         }
     }
 
     const handleClose = () => {
-        if (isSubmitting) return
+        if (submittingRef.current || resendingRef.current) return
         onClose()
     }
 
@@ -358,11 +426,12 @@ const VerificationModal = ({
                                     value={digit}
                                     onChange={(event) => handleChange(index, event.target.value)}
                                     onKeyDown={(event) => handleKeyDownInput(index, event)}
+                                    onFocus={(event) => event.currentTarget.select()}
                                     inputMode="numeric"
                                     autoComplete={index === 0 ? 'one-time-code' : 'off'}
                                     maxLength={1}
                                     aria-label={`Digit ${index + 1}`}
-                                    disabled={isLocked}
+                                    disabled={isExpired}
                                     className="h-13 w-11 rounded-xl border border-gray-200 bg-white text-center text-lg font-semibold text-[#172033] shadow-sm transition focus:border-[#006dfc] focus:outline-none focus:ring-2 focus:ring-[#006dfc]/30 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 sm:w-12"
                                 />
                             ))}
@@ -390,10 +459,10 @@ const VerificationModal = ({
                             ) : null}
                         </div>
 
-                        {isLocked ? (
+                        {isExpired ? (
                             <button
                                 type="button"
-                                onClick={handleClose}
+                                onClick={() => onInvalidated('Your verification code has expired. Please register again.')}
                                 className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]"
                             >
                                 Back to registration
@@ -410,7 +479,7 @@ const VerificationModal = ({
                         )}
                     </form>
 
-                    {!isLocked && (
+                    {!isExpired && (
                         <p className="mt-5 text-center text-[13px] text-gray-500">
                             Didn&apos;t get the code?{' '}
                             <button
@@ -422,8 +491,8 @@ const VerificationModal = ({
                                 {isResending
                                     ? 'Sending...'
                                     : cooldown > 0
-                                      ? `Resend in ${cooldown}s`
-                                      : 'Resend code'}
+                                        ? `Resend in ${cooldown}s`
+                                        : 'Resend code'}
                             </button>
                         </p>
                     )}

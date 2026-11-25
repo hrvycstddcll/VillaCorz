@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PendingRegistration;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -35,67 +35,41 @@ class AuthController extends Controller
             ]);
         }
 
-        $emailIndexKey = $this->pendingEmailCacheKey($email);
-        $existingRegistrationId = Cache::get($emailIndexKey);
+        $otp = (string) random_int(100000, 999999);
+        $expiresAt = now()->addMinutes(10);
+        $attributes = [
+            'email' => $email,
+            'firstname' => $validated['firstname'],
+            'lastname' => $validated['lastname'],
+            'password' => Hash::make($validated['password']),
+            'otp_hash' => Hash::make($otp),
+            'attempts' => 0,
+            'expires_at' => $expiresAt,
+            'last_sent_at' => now(),
+        ];
 
-        if (is_string($existingRegistrationId) && Cache::has("pending_registration:{$existingRegistrationId}")) {
-            $registrationId = $existingRegistrationId;
-            $cacheKey = "pending_registration:{$existingRegistrationId}";
-            $attemptsKey = "pending_registration_attempts:{$existingRegistrationId}";
-            $pending = Cache::get($cacheKey, []);
+        $pending = PendingRegistration::where('email', $email)->first();
+        $registrationId = $pending?->id;
 
-            $otp = (string) random_int(100000, 999999);
-            $pending['firstname'] = $validated['firstname'];
-            $pending['lastname'] = $validated['lastname'];
-            $pending['email'] = $email;
-            $pending['password'] = Hash::make($validated['password']);
-            $pending['otp_hash'] = Hash::make($otp);
-
-            Cache::put($cacheKey, $pending, now()->addMinutes(10));
-            Cache::put($attemptsKey, 0, now()->addMinutes(10));
+        if ($pending) {
+            $pending->fill($attributes)->save();
         } else {
-            if (is_string($existingRegistrationId)) {
-                Cache::forget($emailIndexKey);
-            }
-
             $registrationId = (string) Str::uuid();
-            $otp = (string) random_int(100000, 999999);
-            $cacheKey = "pending_registration:{$registrationId}";
-            $attemptsKey = "pending_registration_attempts:{$registrationId}";
 
-            if (! Cache::add($emailIndexKey, $registrationId, now()->addMinutes(10))) {
-                $existingRegistrationId = Cache::get($emailIndexKey);
+            try {
+                $pending = PendingRegistration::create(array_merge([
+                    'id' => $registrationId,
+                ], $attributes));
+            } catch (QueryException $exception) {
+                $pending = PendingRegistration::where('email', $email)->first();
 
-                if (is_string($existingRegistrationId) && Cache::has("pending_registration:{$existingRegistrationId}")) {
-                    $registrationId = $existingRegistrationId;
-                    $cacheKey = "pending_registration:{$existingRegistrationId}";
-                    $attemptsKey = "pending_registration_attempts:{$existingRegistrationId}";
-                    $pending = Cache::get($cacheKey, []);
-                    $otp = (string) random_int(100000, 999999);
-                    $pending['firstname'] = $validated['firstname'];
-                    $pending['lastname'] = $validated['lastname'];
-                    $pending['email'] = $email;
-                    $pending['password'] = Hash::make($validated['password']);
-                    $pending['otp_hash'] = Hash::make($otp);
-
-                    Cache::put($cacheKey, $pending, now()->addMinutes(10));
-                    Cache::put($attemptsKey, 0, now()->addMinutes(10));
-                } else {
-                    return response()->json([
-                        'message' => 'Unable to start registration. Please try again.',
-                    ], 500);
+                if (! $pending) {
+                    throw $exception;
                 }
+
+                $registrationId = $pending->id;
+                $pending->fill($attributes)->save();
             }
-
-            Cache::put($cacheKey, [
-                'firstname' => $validated['firstname'],
-                'lastname' => $validated['lastname'],
-                'email' => $email,
-                'password' => Hash::make($validated['password']),
-                'otp_hash' => Hash::make($otp),
-            ], now()->addMinutes(10));
-
-            Cache::put($attemptsKey, 0, now()->addMinutes(10));
         }
 
         try {
@@ -109,11 +83,10 @@ class AuthController extends Controller
         } catch (Throwable $exception) {
             report($exception);
 
-            Cache::forget($cacheKey);
-            Cache::forget($attemptsKey);
-            Cache::forget($emailIndexKey);
+            $pending->delete();
 
             return response()->json([
+                'code' => 'mail_send_failed',
                 'message' => 'Unable to send the verification email. Please try again.',
             ], 500);
         }
@@ -124,6 +97,7 @@ class AuthController extends Controller
             && config('services.verification.expose_development_code', false);
 
         return response()->json(array_filter([
+            'code' => 'verification_code_sent',
             'message' => $exposeDevelopmentCode
                 ? 'A verification code is ready for local development.'
                 : ($localDevelopmentMailer
@@ -133,6 +107,7 @@ class AuthController extends Controller
             'development_code' => $exposeDevelopmentCode ? $otp : null,
             'registration_id' => $registrationId,
             'expires_in' => 600,
+            'expires_at' => $expiresAt->toIso8601String(),
         ], fn ($value) => $value !== null), 200);
     }
 
@@ -145,86 +120,85 @@ class AuthController extends Controller
         ]);
 
         $registrationId = $validated['registration_id'];
+        $pending = PendingRegistration::find($registrationId);
 
-        $cacheKey = "pending_registration:{$registrationId}";
-        $attemptsKey = "pending_registration_attempts:{$registrationId}";
+        if (! $pending || $pending->expires_at->isPast()) {
+            $pending?->delete();
 
-        $pending = Cache::get($cacheKey);
-
-        if (! $pending) {
             return response()->json([
+                'code' => 'registration_expired',
                 'message' => 'This registration has expired. Please register again.',
             ], 422);
         }
 
-        $pendingEmail = $this->normalizeEmail((string) ($pending['email'] ?? ''));
-
-        $attempts = (int) Cache::get($attemptsKey, 0);
-
-        if ($attempts >= 5) {
-            $this->forgetPendingRegistration($registrationId, $pendingEmail);
+        if ($pending->attempts >= 5) {
+            $pending->delete();
 
             return response()->json([
+                'code' => 'too_many_attempts',
                 'message' => 'Too many incorrect attempts. Please register again.',
             ], 429);
         }
 
-        if (! Hash::check($validated['otp'], $pending['otp_hash'])) {
-            $attempts = Cache::increment($attemptsKey);
+        if (! Hash::check($validated['otp'], $pending->otp_hash)) {
+            $pending->attempts += 1;
+            $pending->save();
 
-            if ($attempts >= 5) {
-                $this->forgetPendingRegistration($registrationId, $pendingEmail);
+            if ($pending->attempts >= 5) {
+                $pending->delete();
 
                 return response()->json([
+                    'code' => 'too_many_attempts',
                     'message' => 'Too many incorrect attempts. Please register again.',
                 ], 429);
             }
 
             return response()->json([
+                'code' => 'invalid_otp',
                 'message' => 'Invalid verification code.',
-                'attempts_remaining' => 5 - $attempts,
+                'attempts_remaining' => 5 - $pending->attempts,
             ], 422);
         }
 
+        $pendingEmail = $this->normalizeEmail((string) $pending->email);
+
         if (User::whereRaw('LOWER(email) = ?', [$pendingEmail])->exists()) {
-            $this->forgetPendingRegistration($registrationId, $pendingEmail);
+            $pending->delete();
 
             return response()->json([
+                'code' => 'duplicate_account',
                 'message' => 'An account with this email already exists. Please log in.',
             ], 409);
         }
 
-        $duplicateDuringWrite = false;
-
         try {
-            $user = DB::transaction(function () use ($pending, $pendingEmail, &$duplicateDuringWrite) {
+            DB::transaction(function () use ($pending, $pendingEmail, &$user) {
                 if (User::whereRaw('LOWER(email) = ?', [$pendingEmail])->exists()) {
-                    $duplicateDuringWrite = true;
+                    $user = null;
 
-                    return null;
+                    return;
                 }
 
                 $user = User::create([
-                    'firstname' => $pending['firstname'],
-                    'lastname' => $pending['lastname'],
+                    'firstname' => $pending->firstname,
+                    'lastname' => $pending->lastname,
                     'email' => $pendingEmail,
-                    'password' => $pending['password'],
+                    'password' => $pending->password,
                     'role' => 'customer',
                 ]);
 
                 $user->forceFill([
                     'email_verified_at' => now(),
                 ])->save();
-
-                return $user;
             });
         } catch (QueryException $exception) {
             $message = strtolower($exception->getMessage());
 
             if (str_contains($message, 'duplicate key') || str_contains($message, 'unique constraint')) {
-                $this->forgetPendingRegistration($registrationId, $pendingEmail);
+                $pending->delete();
 
                 return response()->json([
+                    'code' => 'duplicate_account',
                     'message' => 'An account with this email already exists. Please log in.',
                 ], 409);
             }
@@ -232,10 +206,11 @@ class AuthController extends Controller
             throw $exception;
         }
 
-        $this->forgetPendingRegistration($registrationId, $pendingEmail);
-
         if (! $user) {
+            $pending->delete();
+
             return response()->json([
+                'code' => 'duplicate_account',
                 'message' => 'An account with this email already exists. Please log in.',
             ], 409);
         }
@@ -256,8 +231,10 @@ class AuthController extends Controller
         );
 
         $token = $this->issueSpaToken($user, $request->boolean('remember'));
+        $pending->delete();
 
         return response()->json([
+            'code' => 'email_verified',
             'message' => 'Email verified and account created successfully.',
             'user' => $user->accountPayload(),
             'token' => $token['token'],
@@ -273,51 +250,55 @@ class AuthController extends Controller
         ]);
 
         $registrationId = $validated['registration_id'];
+        $pending = PendingRegistration::find($registrationId);
 
-        $cacheKey = "pending_registration:{$registrationId}";
-        $attemptsKey = "pending_registration_attempts:{$registrationId}";
+        if (! $pending || $pending->expires_at->isPast()) {
+            $pending?->delete();
 
-        $pending = Cache::get($cacheKey);
-
-        if (! $pending) {
             return response()->json([
+                'code' => 'registration_expired',
                 'message' => 'This registration has expired. Please register again.',
             ], 422);
         }
 
-        $pendingEmail = $this->normalizeEmail((string) ($pending['email'] ?? ''));
+        $pendingEmail = $this->normalizeEmail((string) $pending->email);
 
         if (User::whereRaw('LOWER(email) = ?', [$pendingEmail])->exists()) {
-            $this->forgetPendingRegistration($registrationId, $pendingEmail);
+            $pending->delete();
 
             return response()->json([
+                'code' => 'duplicate_account',
                 'message' => 'An account with this email already exists. Please log in.',
             ], 409);
         }
 
         $otp = (string) random_int(100000, 999999);
-
-        $pending['email'] = $pendingEmail;
-        $pending['otp_hash'] = Hash::make($otp);
-
-        Cache::put($cacheKey, $pending, now()->addMinutes(10));
-        Cache::put($attemptsKey, 0, now()->addMinutes(10));
+        $expiresAt = now()->addMinutes(10);
 
         try {
             Mail::send('emails.verify-otp', [
                 'otp' => $otp,
-                'firstname' => $pending['firstname'],
-            ], function ($message) use ($pending) {
-                $message->to($pending['email'])
+                'firstname' => $pending->firstname,
+            ], function ($message) use ($pendingEmail) {
+                $message->to($pendingEmail)
                     ->subject('VillaCorz Email Verification');
             });
         } catch (Throwable $exception) {
             report($exception);
 
             return response()->json([
+                'code' => 'mail_send_failed',
                 'message' => 'Unable to send the verification email. Please try again.',
             ], 500);
         }
+
+        $pending->fill([
+            'email' => $pendingEmail,
+            'otp_hash' => Hash::make($otp),
+            'attempts' => 0,
+            'expires_at' => $expiresAt,
+            'last_sent_at' => now(),
+        ])->save();
 
         $localDevelopmentMailer = app()->environment('local')
             && config('mail.default') === 'log';
@@ -325,15 +306,17 @@ class AuthController extends Controller
             && config('services.verification.expose_development_code', false);
 
         return response()->json(array_filter([
+            'code' => 'verification_code_resent',
             'message' => $exposeDevelopmentCode
                 ? 'A new verification code is ready for local development.'
                 : ($localDevelopmentMailer
-                    ? 'A new verification code has been written to the application log.'
+                    ? 'A new verification code has been written to the local application log.'
                     : 'A new verification code has been sent to your email.'),
             'verification_delivery' => $localDevelopmentMailer ? 'log' : 'email',
             'development_code' => $exposeDevelopmentCode ? $otp : null,
             'registration_id' => $registrationId,
             'expires_in' => 600,
+            'expires_at' => $expiresAt->toIso8601String(),
         ], fn ($value) => $value !== null), 200);
     }
 
@@ -349,6 +332,22 @@ class AuthController extends Controller
             'email' => $this->normalizeEmail($credentials['email']),
             'password' => $credentials['password'],
         ];
+
+        $pending = PendingRegistration::where('email', $credentials['email'])->first();
+
+        if ($pending && $pending->expires_at->isPast()) {
+            $pending->delete();
+            $pending = null;
+        }
+
+        if ($pending) {
+            return response()->json([
+                'code' => 'verification_pending',
+                'message' => 'Please verify your email before logging in.',
+                'registration_id' => $pending->id,
+                'expires_at' => $pending->expires_at->toIso8601String(),
+            ], 422);
+        }
 
         if (! Auth::attempt($credentials)) {
             $normalizedEmail = $credentials['email'];
@@ -421,21 +420,6 @@ class AuthController extends Controller
     private function normalizeEmail(string $email): string
     {
         return mb_strtolower(trim($email));
-    }
-
-    private function pendingEmailCacheKey(string $email): string
-    {
-        return 'pending_registration_email:'.sha1($email);
-    }
-
-    private function forgetPendingRegistration(string $registrationId, string $email): void
-    {
-        Cache::forget("pending_registration:{$registrationId}");
-        Cache::forget("pending_registration_attempts:{$registrationId}");
-
-        if ($email !== '' && Cache::get($this->pendingEmailCacheKey($email)) === $registrationId) {
-            Cache::forget($this->pendingEmailCacheKey($email));
-        }
     }
 
     public function logout(Request $request)

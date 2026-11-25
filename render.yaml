@@ -24,11 +24,11 @@ services:
       - key: APP_FORCE_HTTPS
         value: "true"
       - key: FRONTEND_URL
-        value: https://villa-corz.vercel.app
+        value: https://villacorz.site
       - key: CORS_ALLOWED_ORIGINS
-        value: https://villa-corz.vercel.app
+        value: "https://villacorz.site,https://www.villacorz.site,https://villa-corz.vercel.app"
       - key: TRUSTED_PROXIES
-        value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+        value: "*"
       - key: LOG_LEVEL
         value: error
       - key: DB_CONNECTION
@@ -44,7 +44,7 @@ services:
       - key: BACKUP_KEEP
         value: "5"
       - key: PAYMENT_PUBLIC_URL
-        value: https://villa-corz.vercel.app
+        value: https://villacorz.site
       - key: CACHE_STORE
         value: file
       - key: SESSION_DRIVER
@@ -56,9 +56,9 @@ services:
       - key: MAIL_MAILER
         value: brevo
       - key: MAIL_FROM_ADDRESS
-        sync: false
+        value: no-reply@villacorz.site
       - key: MAIL_FROM_NAME
-        sync: false
+        value: VillaCorz
       - key: BREVO_API_KEY
         sync: false
       - key: CONTACT_MAIL_TO
