@@ -6,7 +6,7 @@ import {
     type ReactNode,
 } from 'react'
 import axios from 'axios'
-import { Fan, Loader2, Trash2, X } from 'lucide-react'
+import { BadgePercent, Fan, FilePenLine, ListChecks, Loader2, Trash2, UsersRound, X } from 'lucide-react'
 const acIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364138/villacorz/ui/src/assets/images/AC.png'
 const crIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364142/villacorz/ui/src/assets/images/Cr.png'
 const tvIcon = 'https://res.cloudinary.com/ql4hruc3/image/upload/v1795364143/villacorz/ui/src/assets/images/Tv.png'
@@ -68,13 +68,13 @@ const toDiscountEntry = (
 }
 
 const focusRing =
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0066FF]'
 
 const inputClass = (hasError: boolean) =>
-    `mt-1 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
+    `mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:ring-4 ${
         hasError
             ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
-            : 'border-slate-200 focus:border-[#006dfc] focus:ring-[#006dfc]/10'
+            : 'border-[rgba(0,0,0,0.1)] focus:border-[#0066FF] focus:ring-[#0066FF]/15'
     }`
 
 type RoomFeatureOption = {
@@ -492,15 +492,11 @@ const OfferFormModal = ({
 
     const renderDayDiscount = ({
         group,
-        title,
-        hint,
         entry,
         setEntry,
         pricing,
     }: {
         group: 'weekday' | 'weekend'
-        title: string
-        hint: string
         entry: DiscountEntry
         setEntry: (next: DiscountEntry) => void
         pricing: OfferPricing
@@ -525,20 +521,8 @@ const OfferFormModal = ({
         }
 
         return (
-            <div
-                key={group}
-                className="rounded-xl border border-slate-200 bg-white p-3.5"
-            >
-                <div className="flex items-baseline justify-between gap-2">
-                    <p className="text-xs font-jakarta-serif font-semibold text-[#003079]">
-                        {title}
-                    </p>
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                        {hint}
-                    </span>
-                </div>
-
-                <div className="mt-2">
+            <>
+                <div>
                     <label
                         htmlFor={`offer-${group}-discount-type`}
                         className="text-xs font-semibold text-slate-600"
@@ -635,11 +619,11 @@ const OfferFormModal = ({
                     </div>
                 )}
 
-                <p className="mt-2 text-[11px] leading-5 text-slate-500">
+                <p className="mt-3 rounded-lg bg-slate-100 px-3 py-2.5 text-[11px] leading-5 text-slate-500">
                     {pricing.hasDiscount ? (
                         <>
                             Sale price{' '}
-                            <span className="font-semibold text-[#003079]">
+                            <span className="font-semibold text-[#0066FF]">
                                 {money(pricing.price)}
                             </span>{' '}
                             · save{' '}
@@ -651,19 +635,19 @@ const OfferFormModal = ({
                     ) : (
                         <>
                             Regular price{' '}
-                            <span className="font-semibold text-[#003079]">
+                            <span className="font-semibold text-slate-900">
                                 {money(safePrice)}
                             </span>
                         </>
                     )}
                 </p>
-            </div>
+            </>
         )
     }
 
     return (
         <div
-            className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-950/50 p-4 pt-24 pb-4 backdrop-blur-[3px] sm:pt-28"
+            className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-slate-950/45 p-4 pt-20 pb-3 backdrop-blur-[4px] sm:pt-24 sm:pb-4"
             onMouseDown={(event) => {
                 if (event.target === event.currentTarget && !submitting) {
                     onClose()
@@ -674,139 +658,178 @@ const OfferFormModal = ({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="offer-form-title"
-                className="max-h-[calc(100vh-9rem)] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-[0_24px_80px_rgba(0,0,0,0.22)] sm:max-h-[calc(100vh-10.5rem)]"
+                className="max-h-[calc(100vh-5.75rem)] w-full max-w-2xl overflow-y-auto rounded-none border border-[#0066FF]/15 bg-white font-jakarta shadow-[0_24px_80px_rgba(0,48,121,0.18)] sm:max-h-[calc(100vh-7rem)]"
             >
-                <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
+                <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[rgba(0,0,0,0.06)] bg-white/95 px-5 py-5 backdrop-blur sm:px-6">
                     <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0066FF]">
+                            {isEditing ? 'Catalogue / Edit' : 'Catalogue / New'}
+                        </p>
                         <h2
                             id="offer-form-title"
-                            className="font-jakarta-serif text-2xl font-bold text-[#003079]"
+                            className="mt-1 font-jakarta text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl"
                         >
                             {isEditing ? 'Edit Offer' : 'Add Offer'}
                         </h2>
+                        <p className="mt-1 text-sm text-slate-500">
+                            {isEditing
+                                ? 'Update details, pricing, and images for this offer.'
+                                : 'Create a new room or villa offer for your catalogue.'}
+                        </p>
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
                         disabled={submitting}
                         aria-label="Close offer form"
-                        className={`inline-grid size-9 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-40 ${focusRing}`}
+                        className={`inline-grid size-10 shrink-0 place-items-center rounded-xl border border-[rgba(0,0,0,0.08)] bg-white text-slate-500 transition hover:border-[#0066FF]/25 hover:bg-[#0066FF]/5 hover:text-[#0066FF] disabled:opacity-40 ${focusRing}`}
                     >
                         <X className="size-5" aria-hidden="true" />
                     </button>
                 </header>
 
                 <form onSubmit={handleSubmit} noValidate>
-                    <div className="space-y-5 px-5 py-5 sm:px-6">
+                    <div className="space-y-6 px-5 py-5 sm:px-6 sm:py-6">
                         {generalError && (
                             <p
                                 role="alert"
-                                className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm leading-6 text-rose-700"
+                                className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700"
                             >
                                 {generalError}
                             </p>
                         )}
 
-                        <div>
-                            <label
-                                htmlFor="offer-name"
-                                className="text-xs font-semibold text-slate-600"
-                            >
-                                Offer name <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                                id="offer-name"
-                                type="text"
-                                value={name}
-                                onChange={(event) => {
-                                    setName(event.target.value)
-                                    clearFieldError('name')
-                                }}
-                                maxLength={255}
-                                placeholder="e.g. Whole Villa Stay"
-                                aria-invalid={Boolean(fieldErrors.name)}
-                                className={inputClass(Boolean(fieldErrors.name))}
+                        <div className="border-b border-[rgba(0,0,0,0.06)] pb-6">
+                            <OfferImageManager
+                                images={images}
+                                primaryKey={primaryKey}
+                                onChange={setImages}
+                                onPrimaryChange={setPrimaryKey}
+                                disabled={submitting}
+                                error={fieldErrors.images}
                             />
-                            {fieldErrors.name && (
-                                <p className="mt-1.5 text-xs text-rose-600">
-                                    {fieldErrors.name}
-                                </p>
-                            )}
                         </div>
 
-                        <div className="grid gap-5 sm:grid-cols-2">
-                        {!isEditing && (
-                            <div>
-                                <label
-                                    htmlFor="offer-kind"
-                                    className="text-xs font-semibold text-slate-600"
-                                >
-                                    Accommodation type{' '}
-                                    <span className="text-rose-500">*</span>
-                                </label>
-                                <select
-                                    id="offer-kind"
-                                    value={kind}
-                                    disabled={submitting}
-                                    onChange={(event) =>
-                                        setKind(event.target.value as ServiceKind)
-                                    }
-                                    className={inputClass(Boolean(fieldErrors.kind))}
-                                >
-                                    <option value="room">Room</option>
-                                    <option value="exclusive">
-                                        Whole villa
-                                    </option>
-                                </select>
-                                {fieldErrors.kind && (
-                                    <p className="mt-1.5 text-xs text-rose-600">
-                                        {fieldErrors.kind}
+                        <div className="rounded-xl border border-[rgba(0,0,0,0.08)] bg-white p-5">
+                            <div className="flex items-start gap-3">
+                                <span className="inline-grid size-10 shrink-0 place-items-center rounded-xl bg-[#0066FF] text-white shadow-[0_1px_2px_rgba(0,102,255,0.25)]">
+                                    <FilePenLine className="size-5" aria-hidden="true" />
+                                </span>
+                                <div className="min-w-0">
+                                    <h3 className="text-sm font-semibold text-slate-900">
+                                        Offer Details
+                                    </h3>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        Set the basic information and base price for this offer.
                                     </p>
-                                )}
-                                <p className="mt-1.5 text-xs text-slate-500">
-                                    Only one whole-villa offer can exist.
-                                </p>
-                            </div>
-                        )}
-
-                            <div>
-                                <label
-                                    htmlFor="offer-price"
-                                    className="text-xs font-semibold text-slate-600"
-                                >
-                                    Price <span className="text-rose-500">*</span>
-                                </label>
-                                <div className="relative">
-                                    <span
-                                        aria-hidden="true"
-                                        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400"
-                                    >
-                                        &#8369;
-                                    </span>
-                                    <input
-                                        id="offer-price"
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        inputMode="decimal"
-                                        value={price}
-                                        onChange={(event) => {
-                                            setPrice(event.target.value)
-                                            clearFieldError('price')
-                                        }}
-                                        placeholder="0.00"
-                                        aria-invalid={Boolean(fieldErrors.price)}
-                                        className={`${inputClass(Boolean(fieldErrors.price))} pl-8`}
-                                    />
                                 </div>
-                                {fieldErrors.price && (
-                                    <p className="mt-1.5 text-xs text-rose-600">
-                                        {fieldErrors.price}
-                                    </p>
-                                )}
                             </div>
 
-                            {!isEditing ? null : (
+                            <div className="mt-5 space-y-5">
+                                <div>
+                                    <label
+                                        htmlFor="offer-name"
+                                        className="text-xs font-semibold text-slate-600"
+                                    >
+                                        Offer name <span className="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        id="offer-name"
+                                        type="text"
+                                        value={name}
+                                        onChange={(event) => {
+                                            setName(event.target.value)
+                                            clearFieldError('name')
+                                        }}
+                                        maxLength={255}
+                                        placeholder="e.g. Whole Villa Stay"
+                                        aria-invalid={Boolean(fieldErrors.name)}
+                                        className={inputClass(Boolean(fieldErrors.name))}
+                                    />
+                                    {fieldErrors.name && (
+                                        <p className="mt-1.5 text-xs text-rose-600">
+                                            {fieldErrors.name}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="grid gap-5 sm:grid-cols-2">
+                                    {!isEditing && (
+                                        <div>
+                                            <label
+                                                htmlFor="offer-kind"
+                                                className="text-xs font-semibold text-slate-600"
+                                            >
+                                                Accommodation type{' '}
+                                                <span className="text-rose-500">*</span>
+                                            </label>
+                                            <select
+                                                id="offer-kind"
+                                                value={kind}
+                                                disabled={submitting}
+                                                onChange={(event) =>
+                                                    setKind(event.target.value as ServiceKind)
+                                                }
+                                                className={inputClass(Boolean(fieldErrors.kind))}
+                                            >
+                                                <option value="room">Room</option>
+                                                <option value="exclusive">
+                                                    Whole villa
+                                                </option>
+                                            </select>
+                                            {fieldErrors.kind && (
+                                                <p className="mt-1.5 text-xs text-rose-600">
+                                                    {fieldErrors.kind}
+                                                </p>
+                                            )}
+                                            <p className="mt-1.5 text-xs text-slate-500">
+                                                Only one whole-villa offer can exist.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label
+                                            htmlFor="offer-price"
+                                            className="text-xs font-semibold text-slate-600"
+                                        >
+                                            Price <span className="text-rose-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                            <span
+                                                aria-hidden="true"
+                                                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400"
+                                            >
+                                                &#8369;
+                                            </span>
+                                            <input
+                                                id="offer-price"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                inputMode="decimal"
+                                                value={price}
+                                                onChange={(event) => {
+                                                    setPrice(event.target.value)
+                                                    clearFieldError('price')
+                                                }}
+                                                placeholder="0.00"
+                                                aria-invalid={Boolean(fieldErrors.price)}
+                                                className={`${inputClass(Boolean(fieldErrors.price))} pl-8`}
+                                            />
+                                        </div>
+                                        {fieldErrors.price && (
+                                            <p className="mt-1.5 text-xs text-rose-600">
+                                                {fieldErrors.price}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {isEditing && (
+                            <div className="grid gap-5 sm:grid-cols-2">
                                 <div>
                                     <label
                                         htmlFor="offer-status"
@@ -833,171 +856,208 @@ const OfferFormModal = ({
                                         </p>
                                     )}
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            <div>
-                                <label
-                                    htmlFor="offer-pax"
-                                    className="text-xs font-semibold text-slate-600"
-                                >
-                                    Included guests (pax)
-                                </label>
-                                <input
-                                    id="offer-pax"
-                                    type="number"
-                                    min="1"
-                                    max="1000"
-                                    step="1"
-                                    inputMode="numeric"
-                                    value={pax}
-                                    onChange={(event) => {
-                                        setPax(event.target.value)
-                                        clearFieldError('pax')
-                                    }}
-                                    placeholder="e.g. 4"
-                                    aria-invalid={Boolean(fieldErrors.pax)}
-                                    className={inputClass(Boolean(fieldErrors.pax))}
-                                />
-                                {fieldErrors.pax && (
-                                    <p className="mt-1.5 text-xs text-rose-600">
-                                        {fieldErrors.pax}
+                        <div className="rounded-xl border border-[rgba(0,0,0,0.08)] bg-white p-5">
+                            <div className="flex items-start gap-3">
+                                <span className="inline-grid size-10 shrink-0 place-items-center rounded-xl bg-[#0066FF] text-white shadow-[0_1px_2px_rgba(0,102,255,0.25)]">
+                                    <UsersRound className="size-5" aria-hidden="true" />
+                                </span>
+                                <div className="min-w-0">
+                                    <h3 className="text-sm font-semibold text-slate-900">
+                                        Guest Capacity &amp; Extra Charges
+                                    </h3>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        Set included guests and per-night additional head pricing.
                                     </p>
-                                )}
-                                <p className="mt-1.5 text-xs text-slate-500">
-                                    Guests above this count pay the additional-head fee.
-                                </p>
+                                </div>
                             </div>
 
-                            <div>
-                                <label
-                                    htmlFor="offer-additional-head-weekday"
-                                    className="text-xs font-semibold text-slate-600"
-                                >
-                                    Additional head &mdash; weekday
-                                </label>
-                                <div className="relative">
-                                    <span
-                                        aria-hidden="true"
-                                        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400"
+                            <div className="mt-5 space-y-5">
+                                <div>
+                                    <label
+                                        htmlFor="offer-pax"
+                                        className="text-xs font-semibold text-slate-600"
                                     >
-                                        &#8369;
-                                    </span>
+                                        Included guests (pax)
+                                    </label>
                                     <input
-                                        id="offer-additional-head-weekday"
+                                        id="offer-pax"
                                         type="number"
-                                        min="0"
-                                        step="0.01"
-                                        inputMode="decimal"
-                                        value={additionalHeadWeekdayPrice}
+                                        min="1"
+                                        max="1000"
+                                        step="1"
+                                        inputMode="numeric"
+                                        value={pax}
                                         onChange={(event) => {
-                                            setAdditionalHeadWeekdayPrice(
-                                                event.target.value,
-                                            )
-                                            clearFieldError(
-                                                'additional_head_weekday_price',
-                                            )
+                                            setPax(event.target.value)
+                                            clearFieldError('pax')
                                         }}
-                                        placeholder="50.00"
-                                        aria-invalid={Boolean(
-                                            fieldErrors.additional_head_weekday_price,
-                                        )}
-                                        className={`${inputClass(
-                                            Boolean(
-                                                fieldErrors.additional_head_weekday_price,
-                                            ),
-                                        )} pl-8`}
+                                        placeholder="e.g. 4"
+                                        aria-invalid={Boolean(fieldErrors.pax)}
+                                        className={inputClass(Boolean(fieldErrors.pax))}
                                     />
-                                </div>
-                                {fieldErrors.additional_head_weekday_price && (
-                                    <p className="mt-1.5 text-xs text-rose-600">
-                                        {
-                                            fieldErrors.additional_head_weekday_price
-                                        }
+                                    {fieldErrors.pax && (
+                                        <p className="mt-1.5 text-xs text-rose-600">
+                                            {fieldErrors.pax}
+                                        </p>
+                                    )}
+                                    <p className="mt-1.5 text-xs text-slate-500">
+                                        Guests above this count pay the additional-head fee.
                                     </p>
-                                )}
-                                <p className="mt-1.5 text-xs text-slate-500">
-                                    Per extra guest, per Mon&ndash;Thu night.
-                                </p>
-                            </div>
+                                </div>
 
-                            <div>
-                                <label
-                                    htmlFor="offer-additional-head-weekend"
-                                    className="text-xs font-semibold text-slate-600"
-                                >
-                                    Additional head &mdash; weekend
-                                </label>
-                                <div className="relative">
-                                    <span
-                                        aria-hidden="true"
-                                        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400"
-                                    >
-                                        &#8369;
-                                    </span>
-                                    <input
-                                        id="offer-additional-head-weekend"
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        inputMode="decimal"
-                                        value={additionalHeadWeekendPrice}
-                                        onChange={(event) => {
-                                            setAdditionalHeadWeekendPrice(
-                                                event.target.value,
-                                            )
-                                            clearFieldError(
-                                                'additional_head_weekend_price',
-                                            )
-                                        }}
-                                        placeholder="100.00"
-                                        aria-invalid={Boolean(
-                                            fieldErrors.additional_head_weekend_price,
+                                <div className="grid gap-5 sm:grid-cols-2">
+                                    <div>
+                                        <label
+                                            htmlFor="offer-additional-head-weekday"
+                                            className="text-xs font-semibold text-slate-600"
+                                        >
+                                            Additional head &mdash; weekday
+                                        </label>
+                                        <div className="relative">
+                                            <span
+                                                aria-hidden="true"
+                                                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400"
+                                            >
+                                                &#8369;
+                                            </span>
+                                            <input
+                                                id="offer-additional-head-weekday"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                inputMode="decimal"
+                                                value={additionalHeadWeekdayPrice}
+                                                onChange={(event) => {
+                                                    setAdditionalHeadWeekdayPrice(
+                                                        event.target.value,
+                                                    )
+                                                    clearFieldError(
+                                                        'additional_head_weekday_price',
+                                                    )
+                                                }}
+                                                placeholder="50.00"
+                                                aria-invalid={Boolean(
+                                                    fieldErrors.additional_head_weekday_price,
+                                                )}
+                                                className={`${inputClass(
+                                                    Boolean(
+                                                        fieldErrors.additional_head_weekday_price,
+                                                    ),
+                                                )} pl-8`}
+                                            />
+                                        </div>
+                                        {fieldErrors.additional_head_weekday_price && (
+                                            <p className="mt-1.5 text-xs text-rose-600">
+                                                {
+                                                    fieldErrors.additional_head_weekday_price
+                                                }
+                                            </p>
                                         )}
-                                        className={`${inputClass(
-                                            Boolean(
-                                                fieldErrors.additional_head_weekend_price,
-                                            ),
-                                        )} pl-8`}
-                                    />
+                                        <p className="mt-1.5 text-xs text-slate-500">
+                                            Per extra guest, per Mon&ndash;Thu night.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="offer-additional-head-weekend"
+                                            className="text-xs font-semibold text-slate-600"
+                                        >
+                                            Additional head &mdash; weekend
+                                        </label>
+                                        <div className="relative">
+                                            <span
+                                                aria-hidden="true"
+                                                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400"
+                                            >
+                                                &#8369;
+                                            </span>
+                                            <input
+                                                id="offer-additional-head-weekend"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                inputMode="decimal"
+                                                value={additionalHeadWeekendPrice}
+                                                onChange={(event) => {
+                                                    setAdditionalHeadWeekendPrice(
+                                                        event.target.value,
+                                                    )
+                                                    clearFieldError(
+                                                        'additional_head_weekend_price',
+                                                    )
+                                                }}
+                                                placeholder="100.00"
+                                                aria-invalid={Boolean(
+                                                    fieldErrors.additional_head_weekend_price,
+                                                )}
+                                                className={`${inputClass(
+                                                    Boolean(
+                                                        fieldErrors.additional_head_weekend_price,
+                                                    ),
+                                                )} pl-8`}
+                                            />
+                                        </div>
+                                        {fieldErrors.additional_head_weekend_price && (
+                                            <p className="mt-1.5 text-xs text-rose-600">
+                                                {
+                                                    fieldErrors.additional_head_weekend_price
+                                                }
+                                            </p>
+                                        )}
+                                        <p className="mt-1.5 text-xs text-slate-500">
+                                            Per extra guest, per Fri&ndash;Sun night.
+                                        </p>
+                                    </div>
                                 </div>
-                                {fieldErrors.additional_head_weekend_price && (
-                                    <p className="mt-1.5 text-xs text-rose-600">
-                                        {
-                                            fieldErrors.additional_head_weekend_price
-                                        }
-                                    </p>
-                                )}
-                                <p className="mt-1.5 text-xs text-slate-500">
-                                    Per extra guest, per Fri&ndash;Sun night.
-                                </p>
                             </div>
                         </div>
 
 
-                        <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-                            <legend className="px-1 text-xs font-jakarta-serif font-semibold text-slate-600">
-                                Sale / discount
-                            </legend>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                                One discount for weekday stays (Mon-Thu). Weekends use the regular price.
-                            </p>
-                            <div className="mt-3">
+                        <div className="rounded-xl border border-[rgba(0,0,0,0.08)] bg-white p-5">
+                            <div className="flex items-start gap-3">
+                                <span className="inline-grid size-10 shrink-0 place-items-center rounded-xl bg-[#0066FF] text-white shadow-[0_1px_2px_rgba(0,102,255,0.25)]">
+                                    <BadgePercent className="size-5" aria-hidden="true" />
+                                </span>
+                                <div className="min-w-0">
+                                    <h3 className="text-sm font-semibold text-slate-900">
+                                        Weekday Promo Pricing
+                                    </h3>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        One discount for weekday stays (Mon–Thu). Weekends use the regular price.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-5">
                                 {renderDayDiscount({
                                     group: 'weekday',
-                                    title: 'Discount',
-                                    hint: 'Mon-Thu',
                                     entry: weekdayDiscount,
                                     setEntry: setWeekdayDiscount,
                                     pricing: dayPricing.weekday,
                                 })}
                             </div>
-                        </fieldset>
+                        </div>
 
-                        <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-                            <legend className="text-xs font-jakarta-serif font-semibold text-slate-600">
-                                Room Features
-                            </legend>
-                            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-xl border border-[rgba(0,0,0,0.08)] bg-white p-5">
+                            <div className="flex items-start gap-3">
+                                <span className="inline-grid size-10 shrink-0 place-items-center rounded-xl bg-[#0066FF] text-white shadow-[0_1px_2px_rgba(0,102,255,0.25)]">
+                                    <ListChecks className="size-5" aria-hidden="true" />
+                                </span>
+                                <div className="min-w-0">
+                                    <h3 className="text-sm font-semibold text-slate-900">
+                                        Room Features
+                                    </h3>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        Select the amenities and features included in this offer.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-5 grid gap-2 sm:grid-cols-2">
                                 {roomFeatureOptions.map((option) => {
                                     const checked = amenities.includes(
                                         option.value,
@@ -1006,10 +1066,10 @@ const OfferFormModal = ({
                                     return (
                                         <label
                                             key={option.value}
-                                            className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition focus-within:border-[#006dfc] focus-within:ring-4 focus-within:ring-[#006dfc]/10 ${
+                                            className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition focus-within:border-[#0066FF] focus-within:ring-4 focus-within:ring-[#0066FF]/10 ${
                                                 checked
-                                                    ? 'border-[#006dfc] bg-[#006dfc]/5 text-[#003079]'
-                                                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                                                    ? 'border-[#0066FF]/30 bg-white text-slate-900 shadow-[0_1px_2px_rgba(0,102,255,0.06)]'
+                                                    : 'border-[rgba(0,0,0,0.08)] bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/80'
                                             } ${
                                                 submitting
                                                     ? 'pointer-events-none opacity-60'
@@ -1026,10 +1086,14 @@ const OfferFormModal = ({
                                                         event.target.checked,
                                                     )
                                                 }
-                                                className="size-4 shrink-0 accent-[#006dfc]"
+                                                className="size-4 shrink-0 accent-[#0066FF]"
                                             />
                                             <span
-                                                className="text-emerald-500"
+                                                className={`inline-grid size-7 shrink-0 place-items-center rounded-lg ${
+                                                    checked
+                                                        ? 'bg-[#0066FF]/10 text-[#0066FF]'
+                                                        : 'bg-slate-100 text-slate-500'
+                                                }`}
                                                 aria-hidden="true"
                                             >
                                                 {option.icon}
@@ -1046,7 +1110,7 @@ const OfferFormModal = ({
                                     {fieldErrors.amenities}
                                 </p>
                             )}
-                        </fieldset>
+                        </div>
 
                         <div>
                             <label
@@ -1073,34 +1137,26 @@ const OfferFormModal = ({
                             )}
                         </div>
 
-                        <div className="border-t border-slate-100 pt-5">
-                            <OfferImageManager
-                                images={images}
-                                primaryKey={primaryKey}
-                                onChange={setImages}
-                                onPrimaryChange={setPrimaryKey}
-                                disabled={submitting}
-                                error={fieldErrors.images}
-                            />
-                        </div>
                     </div>
 
-                    <footer className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                        {isEditing && (
+                    <footer className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-[rgba(0,0,0,0.06)] bg-white/95 px-5 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                        {isEditing ? (
                             <button
                                 type="button"
                                 onClick={() => onDelete(service)}
                                 disabled={submitting}
-                                className="inline-flex min-h-10 items-center justify-center rounded-xl border border-rose-200 bg-white px-4 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-40"
+                                className={`inline-flex min-h-11 items-center justify-center rounded-xl border border-rose-200 bg-white px-4 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-40 ${focusRing}`}
                             >
                                 <Trash2 className="mr-2 size-4" aria-hidden="true" />
                                 Delete
                             </button>
+                        ) : (
+                            <div />
                         )}
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[#006dfc] px-5 text-xs font-semibold text-white transition hover:bg-[#0058cc] disabled:opacity-60"
+                            className={`inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0066FF] px-5 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(0,102,255,0.25)] transition hover:bg-[#0057d6] disabled:opacity-60 ${focusRing}`}
                         >
                             {submitting && (
                                 <Loader2

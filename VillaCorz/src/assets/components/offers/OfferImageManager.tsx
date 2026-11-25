@@ -30,7 +30,7 @@ type OfferImageManagerProps = {
 }
 
 const focusRing =
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006dfc]'
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0066FF]'
 
 const createImageKey = () =>
     `new-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
@@ -111,15 +111,15 @@ const OfferImageManager = ({
         <div>
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h3 className="text-sm font-semibold text-slate-700">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0066FF]">
                         Service images
-                    </h3>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
                         Add up to {MAX_OFFER_IMAGES} images. Choose one as the
                         primary image.
                     </p>
                 </div>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                <span className="rounded-full border border-[#0066FF]/15 bg-[#0066FF]/5 px-3 py-1 text-xs font-semibold text-[#0066FF]">
                     {images.length} / {MAX_OFFER_IMAGES}
                 </span>
             </div>
@@ -142,7 +142,7 @@ const OfferImageManager = ({
                     type="button"
                     disabled={disabled || images.length >= MAX_OFFER_IMAGES}
                     onClick={() => inputRef.current?.click()}
-                    className={`inline-flex min-h-24 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-4 py-5 text-sm font-medium text-slate-600 transition hover:border-[#006dfc] hover:bg-[#006dfc]/5 hover:text-[#006dfc] disabled:cursor-not-allowed disabled:opacity-50 sm:w-48 ${focusRing}`}
+                    className={`inline-flex min-h-24 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#0066FF]/25 bg-[#0066FF]/[0.03] px-4 py-5 text-sm font-semibold text-slate-600 transition hover:border-[#0066FF]/45 hover:bg-[#0066FF]/[0.06] hover:text-[#0066FF] disabled:cursor-not-allowed disabled:opacity-50 sm:w-48 ${focusRing}`}
                 >
                     <ImagePlus className="size-5" aria-hidden="true" />
                     Add images
@@ -154,10 +154,10 @@ const OfferImageManager = ({
                     return (
                         <div
                             key={image.key}
-                            className={`group relative aspect-[4/3] w-full overflow-hidden rounded-xl border bg-slate-100 sm:w-48 ${
+                            className={`group relative aspect-[4/3] w-full overflow-hidden rounded-xl border bg-slate-100 shadow-[0_4px_14px_rgba(15,23,42,0.06)] sm:w-48 ${
                                 isPrimary
-                                    ? 'border-[#006dfc] ring-2 ring-[#006dfc]/20'
-                                    : 'border-slate-200'
+                                    ? 'border-[#0066FF] ring-2 ring-[#0066FF]/20'
+                                    : 'border-[rgba(0,0,0,0.08)]'
                             }`}
                         >
                             <img
@@ -179,12 +179,12 @@ const OfferImageManager = ({
                                     aria-pressed={isPrimary}
                                     className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold shadow-sm transition ${focusRing} ${
                                         isPrimary
-                                            ? 'bg-white text-[#006dfc]'
-                                            : 'bg-white/90 text-slate-600 hover:text-[#006dfc]'
+                                            ? 'bg-[#0066FF] text-white'
+                                            : 'bg-white/92 text-slate-600 hover:text-[#0066FF]'
                                     }`}
                                 >
                                     <Star
-                                        className={`size-3 ${isPrimary ? 'fill-[#006dfc]' : ''}`}
+                                        className={`size-3 ${isPrimary ? 'fill-white text-white' : ''}`}
                                         aria-hidden="true"
                                     />
                                     {isPrimary ? 'Primary' : 'Set primary'}
@@ -211,7 +211,7 @@ const OfferImageManager = ({
                                         }
                                     }}
                                     aria-label={`Remove image ${index + 1}`}
-                                    className={`inline-grid size-6 place-items-center rounded-full bg-white/90 text-slate-600 shadow-sm transition hover:bg-white hover:text-rose-600 ${focusRing}`}
+                                    className={`inline-grid size-7 place-items-center rounded-full bg-white/92 text-slate-600 shadow-sm transition hover:bg-white hover:text-rose-600 ${focusRing}`}
                                 >
                                     <Trash2 className="size-3.5" aria-hidden="true" />
                                 </button>
@@ -223,7 +223,7 @@ const OfferImageManager = ({
                                     disabled={disabled || index === 0}
                                     onClick={() => moveImage(index, -1)}
                                     aria-label={`Move image ${index + 1} earlier`}
-                                    className={`inline-grid size-7 place-items-center rounded-full bg-white/90 text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
+                                    className={`inline-grid size-7 place-items-center rounded-full bg-white/92 text-slate-700 shadow-sm transition hover:bg-white hover:text-[#0066FF] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
                                 >
                                     <ChevronLeft className="size-4" aria-hidden="true" />
                                 </button>
@@ -237,7 +237,7 @@ const OfferImageManager = ({
                                     disabled={disabled || index === images.length - 1}
                                     onClick={() => moveImage(index, 1)}
                                     aria-label={`Move image ${index + 1} later`}
-                                    className={`inline-grid size-7 place-items-center rounded-full bg-white/90 text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
+                                    className={`inline-grid size-7 place-items-center rounded-full bg-white/92 text-slate-700 shadow-sm transition hover:bg-white hover:text-[#0066FF] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
                                 >
                                     <ChevronRight className="size-4" aria-hidden="true" />
                                 </button>

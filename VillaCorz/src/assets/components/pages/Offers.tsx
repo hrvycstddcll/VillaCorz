@@ -20,7 +20,7 @@ import {
     Trash2,
     X,
 } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { money } from '../../../lib/format'
 import { phtDateKey } from '../../../lib/stayDateTime'
 import type { Service } from '../../../services/types'
@@ -36,7 +36,6 @@ import AdminEmptyState from '../admin/AdminEmptyState'
 import AdminFilterPills from '../admin/AdminFilterPills'
 import AdminStatStrip, { type AdminStat } from '../admin/AdminStatStrip'
 import AdminTable, { type AdminTableColumn } from '../admin/AdminTable'
-import AdminPageHeader from '../ui/InteractiveComponents/AdminPageHeader'
 import ConfirmDialog from '../offers/ConfirmDialog'
 import OfferFormModal from '../offers/OfferFormModal'
 
@@ -112,7 +111,7 @@ type OfferActionsMenuProps = {
     onDelete: (service: Service) => void
 }
 
-const menuItemClass = `flex min-h-11 w-full items-center gap-2 px-3 text-left text-xs font-medium text-slate-700 transition hover:bg-slate-50 ${focusRing}`
+const menuItemClass = `flex min-h-11 w-full items-center gap-2 px-3 text-left text-xs font-medium text-slate-700 transition hover:bg-[#0066FF]/10 hover:text-[#0066FF] ${focusRing}`
 
 const OfferActionsMenu = ({
     service,
@@ -241,7 +240,7 @@ const OfferActionsMenu = ({
                             type="button"
                             role="menuitem"
                             onClick={() => runAction(() => onDelete(service))}
-                            className={`${menuItemClass} text-rose-700 hover:bg-rose-50`}
+                            className={`${menuItemClass} text-rose-700`}
                         >
                             <Trash2 className="size-4" />
                             Delete
@@ -523,26 +522,47 @@ const Offers = () => {
     return (
         <main className="min-h-screen bg-white pb-12 text-slate-900">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-                <AdminPageHeader
-                    eyebrow="Administration / Catalogue"
-                    title="Manage offers"
-                    subtitle="Keep prices, performance, and booking availability in one working list."
-                    hero={{
-                        label: 'Active offers',
-                        value: metricsUnavailable ? '—' : numberFormatter.format(activeCount),
-                        href: metricsUnavailable ? undefined : '/manageOffers?status=active',
-                    }}
-                    action={
-                        <button
-                            type="button"
-                            onClick={openAddForm}
-                            className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#006dfc] px-4 text-xs font-semibold text-white hover:bg-[#0057c9] ${focusRing}`}
-                        >
-                            <Plus className="size-4" aria-hidden="true" />
-                            Add offer
-                        </button>
-                    }
-                />
+                <section className="flex min-w-0 flex-col justify-center rounded-[20px] bg-[#0066FF] p-6 text-white shadow-[0_12px_32px_rgba(0,102,255,0.22)] sm:p-8">
+                    <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                            <h1 className="text-left font-jakarta-serif text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl">
+                                <span className="block">Manage</span>
+                                <span className="block">offers</span>
+                            </h1>
+                            <p className="mt-2 max-w-xs text-pretty text-xs leading-5 text-white/85 sm:max-w-sm sm:text-sm sm:leading-6">
+                                Keep prices, performance, and booking availability in one working list.
+                            </p>
+                        </div>
+                        <div className="shrink-0 text-center sm:min-w-44">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/75">
+                                Active offers
+                            </p>
+                            {metricsUnavailable ? (
+                                <p className="mt-2 inline-block font-jakarta-serif text-[60px] font-extrabold leading-none tracking-tight tabular-nums">
+                                    —
+                                </p>
+                            ) : (
+                                <Link
+                                    to="/manageOffers?status=active"
+                                    className="mt-2 inline-block rounded-md font-jakarta-serif text-[60px] font-extrabold leading-none tracking-tight tabular-nums transition-colors hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                                >
+                                    {numberFormatter.format(activeCount)}
+                                </Link>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                <div className="flex justify-end">
+                    <button
+                        type="button"
+                        onClick={openAddForm}
+                        className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#0066FF]/30 bg-white px-4 text-xs font-semibold text-[#0066FF] hover:bg-[#0066FF]/5 ${focusRing}`}
+                    >
+                        <Plus className="size-4" aria-hidden="true" />
+                        Add offer
+                    </button>
+                </div>
 
                 <AdminStatStrip
                     stats={[
