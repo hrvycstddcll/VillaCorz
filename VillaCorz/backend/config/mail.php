@@ -1,5 +1,8 @@
 <?php
 
+$mailPassword = env('MAIL_PASSWORD');
+$hasGmailSmtpPassword = is_string($mailPassword) && $mailPassword !== '' && $mailPassword !== 'null';
+
 return [
 
     /*
@@ -14,7 +17,9 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER') === 'auto'
+        ? ($hasGmailSmtpPassword ? 'auto' : 'brevo')
+        : env('MAIL_MAILER', 'log'),
 
     /*
     |--------------------------------------------------------------------------
@@ -68,6 +73,15 @@ return [
         // HTTPS API mailer (works on networks that block outbound SMTP ports).
         'brevo' => [
             'transport' => 'brevo',
+        ],
+
+        'auto' => [
+            'transport' => 'failover',
+            'mailers' => [
+                'smtp',
+                'brevo',
+            ],
+            'retry_after' => 60,
         ],
 
         'sendmail' => [
