@@ -1,8 +1,5 @@
 <?php
 
-$mailPassword = env('MAIL_PASSWORD');
-$hasGmailSmtpPassword = is_string($mailPassword) && $mailPassword !== '' && $mailPassword !== 'null';
-
 return [
 
     /*
@@ -17,9 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER') === 'auto'
-        ? ($hasGmailSmtpPassword ? 'auto' : 'brevo')
-        : env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER', 'log'),
 
     /*
     |--------------------------------------------------------------------------
@@ -44,13 +39,13 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
-            'scheme' => env('MAIL_SCHEME') === 'tls' ? 'smtp' : env('MAIL_SCHEME'),
+            'scheme' => env('MAIL_SCHEME'),
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
-            'timeout' => (int) env('MAIL_TIMEOUT', 15),
+            'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
@@ -73,15 +68,6 @@ return [
         // HTTPS API mailer (works on networks that block outbound SMTP ports).
         'brevo' => [
             'transport' => 'brevo',
-        ],
-
-        'auto' => [
-            'transport' => 'failover',
-            'mailers' => [
-                'smtp',
-                'brevo',
-            ],
-            'retry_after' => 60,
         ],
 
         'sendmail' => [
