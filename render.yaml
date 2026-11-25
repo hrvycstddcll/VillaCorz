@@ -54,11 +54,21 @@ services:
       - key: QUEUE_CONNECTION
         value: sync
       - key: MAIL_MAILER
-        value: brevo
+        value: smtp
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: "465"
+      - key: MAIL_SCHEME
+        value: smtps
+      - key: MAIL_USERNAME
+        value: harvey.custodio.dacillo@gmail.com
+      - key: MAIL_PASSWORD
+        sync: false
       - key: MAIL_FROM_ADDRESS
-        sync: false
+        value: harvey.custodio.dacillo@gmail.com
       - key: MAIL_FROM_NAME
-        sync: false
+        value: VillaCorz
       - key: BREVO_API_KEY
         sync: false
       - key: CONTACT_MAIL_TO
