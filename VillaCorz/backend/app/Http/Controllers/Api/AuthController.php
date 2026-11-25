@@ -333,6 +333,22 @@ class AuthController extends Controller
             'password' => $credentials['password'],
         ];
 
+        $pending = PendingRegistration::where('email', $credentials['email'])->first();
+
+        if ($pending && $pending->expires_at->isPast()) {
+            $pending->delete();
+            $pending = null;
+        }
+
+        if ($pending) {
+            return response()->json([
+                'code' => 'verification_pending',
+                'message' => 'Please verify your email before logging in.',
+                'registration_id' => $pending->id,
+                'expires_at' => $pending->expires_at->toIso8601String(),
+            ], 422);
+        }
+
         if (! Auth::attempt($credentials)) {
             $normalizedEmail = $credentials['email'];
             $user = User::query()

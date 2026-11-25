@@ -144,6 +144,24 @@ class VerificationCodeDeliveryTest extends TestCase
             ->assertJsonPath('user.email', $registrationData['email']);
     }
 
+    public function test_login_returns_pending_verification_when_registration_is_unfinished(): void
+    {
+        Mail::fake();
+
+        $registrationData = $this->registrationData();
+        $registration = $this->postJson('/api/register', $registrationData)
+            ->assertOk()
+            ->json();
+
+        $this->postJson('/api/login', [
+            'email' => $registrationData['email'],
+            'password' => $registrationData['password'],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'verification_pending')
+            ->assertJsonPath('registration_id', $registration['registration_id']);
+    }
+
     public function test_expired_pending_registration_cannot_be_verified(): void
     {
         Mail::fake();

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import axios from 'axios'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../services/useAuth'
 import { authErrorMessage } from '../../../services/authErrors'
@@ -306,15 +307,52 @@ const Auth = () => {
 
         try {
             if (mode === 'login') {
-                const response = await login(email, password, keepSignedIn)
-                const authenticatedUser = response.data?.user as User | undefined
+                try {
+                    const response = await login(email, password, keepSignedIn)
+                    const authenticatedUser = response.data?.user as User | undefined
 
-                setUser(authenticatedUser ?? null)
-                navigate(
-                    getPostAuthDestination(authenticatedUser, location.state),
-                    { replace: true },
-                )
-                return
+                    setUser(authenticatedUser ?? null)
+                    navigate(
+                        getPostAuthDestination(authenticatedUser, location.state),
+                        { replace: true },
+                    )
+                    return
+                } catch (error) {
+                    const data = axios.isAxiosError(error)
+                        ? error.response?.data as {
+                            code?: string
+                            message?: string
+                            registration_id?: string
+                            expires_at?: string
+                        } | undefined
+                        : undefined
+                    const pendingId = data?.registration_id
+                    const pendingExpiresAt = Date.parse(data?.expires_at ?? '')
+
+                    if (
+                        data?.code === 'verification_pending'
+                        && typeof pendingId === 'string'
+                        && pendingId
+                        && Number.isFinite(pendingExpiresAt)
+                    ) {
+                        const pending: PendingVerification = {
+                            registrationId: pendingId,
+                            email,
+                            expiresAt: pendingExpiresAt,
+                            delivery: 'email',
+                            developmentCode: null,
+                            remember: keepSignedIn,
+                        }
+
+                        savePendingVerification(pending)
+                        setVerification(pending)
+                        setFeedback(data.message || 'Please verify your email before logging in.')
+                        setFeedbackType('error')
+                        return
+                    }
+
+                    throw error
+                }
             }
 
             const firstname = String(formData.get('firstName') || '').trim()
