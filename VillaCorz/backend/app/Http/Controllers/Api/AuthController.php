@@ -88,7 +88,6 @@ class AuthController extends Controller
             return response()->json([
                 'code' => 'mail_send_failed',
                 'message' => 'Unable to send the verification email. Please try again.',
-                'mail_error' => $this->mailErrorMessage($exception),
             ], 500);
         }
 
@@ -290,7 +289,6 @@ class AuthController extends Controller
             return response()->json([
                 'code' => 'mail_send_failed',
                 'message' => 'Unable to send the verification email. Please try again.',
-                'mail_error' => $this->mailErrorMessage($exception),
             ], 500);
         }
 
@@ -422,30 +420,6 @@ class AuthController extends Controller
     private function normalizeEmail(string $email): string
     {
         return mb_strtolower(trim($email));
-    }
-
-    private function mailErrorMessage(Throwable $exception): string
-    {
-        $message = preg_replace('/\s+/', ' ', $exception->getMessage()) ?: '';
-        $patterns = [
-            '/535.*$/i',
-            '/authentication failed.*$/i',
-            '/invalid credentials.*$/i',
-            '/connection timed out.*$/i',
-            '/connection refused.*$/i',
-            '/failed to connect.*$/i',
-            '/unsupported scheme.*$/i',
-            '/expected response code .*$/i',
-            '/smtp.*$/i',
-        ];
-
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $message, $matches)) {
-                return Str::limit(trim($matches[0]), 250);
-            }
-        }
-
-        return Str::limit(class_basename($exception), 250);
     }
 
     public function logout(Request $request)

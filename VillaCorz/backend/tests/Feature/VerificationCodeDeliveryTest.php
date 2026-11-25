@@ -238,8 +238,7 @@ class VerificationCodeDeliveryTest extends TestCase
             'registration_id' => $registration['registration_id'],
         ])
             ->assertStatus(500)
-            ->assertJsonPath('code', 'mail_send_failed')
-            ->assertJsonStructure(['mail_error']);
+            ->assertJsonPath('code', 'mail_send_failed');
 
         $this->postJson('/api/verify-otp', [
             'registration_id' => $registration['registration_id'],
