@@ -328,13 +328,21 @@ const Auth = () => {
             }
 
             const response = await register(firstname, lastname, email, password)
-            const registrationId = response.data?.registration_id
+            const payload = response.data as {
+                code?: string
+                message?: string
+                registration_id?: string
+                expires_at?: string
+                verification_delivery?: string
+                development_code?: string
+            } | undefined
+            const registrationId = payload?.registration_id
 
             if (typeof registrationId !== 'string' || !registrationId) {
-                throw new Error('Registration did not return a verification ID. Please try again.')
+                throw new Error(payload?.message || 'Registration did not return a verification ID. Please try again.')
             }
 
-            const expiresAt = Date.parse(response.data?.expires_at)
+            const expiresAt = Date.parse(payload?.expires_at ?? '')
             if (!Number.isFinite(expiresAt)) {
                 throw new Error('Registration did not return a valid expiry. Please try again.')
             }
@@ -343,10 +351,10 @@ const Auth = () => {
                 registrationId,
                 email,
                 expiresAt,
-                delivery: response.data?.verification_delivery === 'log' ? 'log' : 'email',
+                delivery: payload?.verification_delivery === 'log' ? 'log' : 'email',
                 developmentCode:
-                    typeof response.data?.development_code === 'string'
-                        ? response.data.development_code
+                    typeof payload?.development_code === 'string'
+                        ? payload.development_code
                         : null,
                 remember: keepSignedIn,
             }
