@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Download, Mail, RefreshCw, Save, Search, X } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
     exportActivityLogs,
     getActivityLogSummary,
@@ -29,7 +29,6 @@ import AdminEmptyState from '../admin/AdminEmptyState'
 import AdminFilterPills from '../admin/AdminFilterPills'
 import AdminStatStrip from '../admin/AdminStatStrip'
 import AdminTable, { type AdminTableColumn } from '../admin/AdminTable'
-import AdminPageHeader from '../ui/InteractiveComponents/AdminPageHeader'
 
 const pageSize = 20
 const reportOptions: Array<{ value: AdminReportKind | 'activity'; label: string }> = [
@@ -508,48 +507,52 @@ const Reports = () => {
     return (
         <main className="min-h-screen bg-white pb-12 text-slate-900">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-                <AdminPageHeader
-                    eyebrow="Administration / Reports"
-                    title="Reports"
-                    titleClassName="text-[#006dfc]"
-                    subtitle="Explore financial activity, stays, requests, guest feedback, and system events."
-                    hero={{
-                        label: 'Total events',
-                        value: activitySummary
-                            ? numberFormatter.format(activitySummary.total)
-                            : '—',
-                        href: '/reports?report=activity',
-                    }}
-                    action={
-                        <button
-                            type="button"
-                            onClick={() => void handleExport()}
-                            disabled={exporting}
-                            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#006dfc] px-4 text-xs font-semibold text-white hover:bg-[#0057c9] disabled:opacity-60 ${focusRing}`}
-                        >
-                            <Download className="size-4" aria-hidden="true" />
-                            {exporting ? 'Exporting…' : 'Export CSV'}
-                        </button>
-                    }
-                />
+                <section className="grid grid-cols-1 gap-6 border-b border-[rgba(0,0,0,0.06)] pb-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                    <div className="flex min-w-0 flex-col justify-center gap-6 rounded-[20px] bg-[#0066FF] p-6 text-white shadow-[0_12px_32px_rgba(0,102,255,0.22)] sm:p-8">
+                        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                                <h1 className="text-left font-jakarta-serif text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl">
+                                    <span className="block">Your</span>
+                                    <span className="block">Reports</span>
+                                </h1>
+                                <p className="mt-2 max-w-xs text-pretty text-xs leading-5 text-white/85 sm:max-w-sm sm:text-sm sm:leading-6">
+                                    Explore financial activity, stays, requests, guest feedback, and system events
+                                </p>
+                            </div>
+                            <div className="shrink-0 text-center sm:min-w-44">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/75">
+                                    Total events
+                                </p>
+                                <Link
+                                    to="/reports?report=activity"
+                                    className="mt-2 inline-block rounded-md font-jakarta-serif text-[60px] font-extrabold leading-none tracking-tight tabular-nums transition-colors hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                                >
+                                    {activitySummary
+                                        ? numberFormatter.format(activitySummary.total)
+                                        : '—'}
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
 
-                <div className="flex flex-col gap-4 border-b border-[rgba(0,0,0,0.06)] pb-4">
-                    <AdminFilterPills
-                        label="Report type"
-                        value={report}
-                        onChange={(value) =>
-                            updateParams({
-                                report: value,
-                                status: null,
-                                category: null,
-                                date_field: null,
-                            })
-                        }
-                        options={reportOptions}
-                    />
-                    <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-                        <div className="flex flex-wrap items-end gap-2">
-                            <label className="min-w-52">
+                    <div className="flex min-w-0 flex-col gap-4">
+                        <AdminFilterPills
+                            label="Report type"
+                            value={report}
+                            onChange={(value) =>
+                                updateParams({
+                                    report: value,
+                                    status: null,
+                                    category: null,
+                                    date_field: null,
+                                })
+                            }
+                            options={reportOptions}
+                            pill
+                        />
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <label className="min-w-0 flex-1">
                                 <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                     Search
                                 </span>
@@ -572,11 +575,11 @@ const Reports = () => {
                                                     ? 'Reference, name, or room'
                                                     : 'Reference or name'
                                         }
-                                        className={`h-11 w-full rounded-lg border border-[rgba(0,0,0,0.1)] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#006dfc] focus:ring-2 focus:ring-[#006dfc]/20 ${focusRing}`}
+                                        className={`h-11 w-full rounded-xl border border-[rgba(0,0,0,0.1)] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/20 ${focusRing}`}
                                     />
                                 </span>
                             </label>
-                            <label>
+                            <label className="w-full shrink-0 sm:w-36">
                                 <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                     {dateField === 'check_in' ? 'Check-in from' : 'From'}
                                 </span>
@@ -584,13 +587,14 @@ const Reports = () => {
                                     type="date"
                                     value={from}
                                     max={to || undefined}
+                                    placeholder="mm/dd/yyyy"
                                     onChange={(event) =>
                                         updateParams({ from: event.target.value || null })
                                     }
-                                    className={`h-11 rounded-lg border border-[rgba(0,0,0,0.1)] bg-white px-3 text-sm tabular-nums outline-none focus:border-[#006dfc] focus:ring-2 focus:ring-[#006dfc]/20 ${focusRing}`}
+                                    className={`h-11 w-full rounded-xl border border-[rgba(0,0,0,0.1)] bg-white px-3 text-sm tabular-nums outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/20 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 ${focusRing}`}
                                 />
                             </label>
-                            <label>
+                            <label className="w-full shrink-0 sm:w-36">
                                 <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                     {dateField === 'check_in' ? 'Check-in to' : 'To'}
                                 </span>
@@ -598,13 +602,15 @@ const Reports = () => {
                                     type="date"
                                     value={to}
                                     min={from || undefined}
+                                    placeholder="mm/dd/yyyy"
                                     onChange={(event) =>
                                         updateParams({ to: event.target.value || null })
                                     }
-                                    className={`h-11 rounded-lg border border-[rgba(0,0,0,0.1)] bg-white px-3 text-sm tabular-nums outline-none focus:border-[#006dfc] focus:ring-2 focus:ring-[#006dfc]/20 ${focusRing}`}
+                                    className={`h-11 w-full rounded-xl border border-[rgba(0,0,0,0.1)] bg-white px-3 text-sm tabular-nums outline-none focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/20 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 ${focusRing}`}
                                 />
                             </label>
                         </div>
+
                         <div className="flex flex-wrap items-center gap-2">
                             {[7, 30, 90].map((days) => (
                                 <button
@@ -631,35 +637,45 @@ const Reports = () => {
                             >
                                 Clear
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => void handleExport()}
+                                disabled={exporting}
+                                className={`ml-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#0066FF]/30 bg-white px-4 text-xs font-semibold text-[#0066FF] hover:bg-[#0066FF]/5 disabled:opacity-60 ${focusRing}`}
+                            >
+                                <Download className="size-4" aria-hidden="true" />
+                                {exporting ? 'Exporting…' : 'Export CSV'}
+                            </button>
                         </div>
+
+                        {statusOptions.length > 1 && (
+                            <AdminFilterPills
+                                label="Filter by status"
+                                value={status}
+                                onChange={(value) =>
+                                    updateParams({ status: value || null })
+                                }
+                                options={filterStatusOptions}
+                            />
+                        )}
+                        {report === 'activity' && (
+                            <AdminFilterPills
+                                label="Filter activity category"
+                                value={category}
+                                onChange={(value) =>
+                                    updateParams({
+                                        category: value === 'all' ? null : value,
+                                    })
+                                }
+                                options={[
+                                    { value: 'all', label: 'All events' },
+                                    { value: 'changes', label: 'Changes' },
+                                    { value: 'access', label: 'Access' },
+                                ]}
+                            />
+                        )}
                     </div>
-                    {statusOptions.length > 1 && (
-                        <AdminFilterPills
-                            label="Filter by status"
-                            value={status}
-                            onChange={(value) =>
-                                updateParams({ status: value || null })
-                            }
-                            options={filterStatusOptions}
-                        />
-                    )}
-                    {report === 'activity' && (
-                        <AdminFilterPills
-                            label="Filter activity category"
-                            value={category}
-                            onChange={(value) =>
-                                updateParams({
-                                    category: value === 'all' ? null : value,
-                                })
-                            }
-                            options={[
-                                { value: 'all', label: 'All events' },
-                                { value: 'changes', label: 'Changes' },
-                                { value: 'access', label: 'Access' },
-                            ]}
-                        />
-                    )}
-                </div>
+                </section>
 
                 <AdminStatStrip
                     stats={[

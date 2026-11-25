@@ -11,6 +11,8 @@ type AdminFilterPillsProps<Value extends string | number> = {
     options: AdminFilterOption<Value>[]
     value: Value
     onChange: (value: Value) => void
+    /** Styling only: renders each option as a rounded pill instead of a rounded rectangle. */
+    pill?: boolean
 }
 
 const AdminFilterPills = <Value extends string | number>({
@@ -18,11 +20,12 @@ const AdminFilterPills = <Value extends string | number>({
     options,
     value,
     onChange,
+    pill = false,
 }: AdminFilterPillsProps<Value>) => (
     <div
         role="group"
         aria-label={label}
-        className="flex max-w-full flex-wrap gap-1"
+        className={`flex max-w-full flex-wrap ${pill ? 'gap-0.5' : 'gap-1'}`}
     >
         {options.map((option) => {
             const selected = option.value === value
@@ -33,11 +36,13 @@ const AdminFilterPills = <Value extends string | number>({
                     type="button"
                     aria-pressed={selected}
                     onClick={() => onChange(option.value)}
-                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold transition-colors ${
-                        focusRing
-                    } ${
+                    className={`inline-flex min-h-11 items-center justify-center gap-2 text-xs font-semibold transition-colors ${
+                        pill ? 'rounded-lg px-2.5' : 'rounded-lg px-3'
+                    } ${focusRing} ${
                         selected
-                            ? 'bg-[#006dfc] text-white'
+                            ? pill
+                                ? 'bg-[#0066FF] text-white'
+                                : 'bg-[#006dfc] text-white'
                             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
                     }`}
                 >
