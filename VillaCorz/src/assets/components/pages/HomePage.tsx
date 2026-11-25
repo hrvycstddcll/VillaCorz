@@ -155,6 +155,7 @@ const HomePage = () => {
                     <DirectionalButton
                         fillColor="#006dfc"
                         textColor="#ffffff"
+                        onClick={() => navigate('/#about')}
                         className="w-full max-w-xs border-2 border-white bg-transparent px-4 py-3 font-poppins font-bold text-white sm:w-auto sm:px-8 sm:py-4"
                     >
                         EXPLORE
