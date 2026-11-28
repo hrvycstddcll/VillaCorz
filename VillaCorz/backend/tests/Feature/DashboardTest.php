@@ -359,6 +359,35 @@ class DashboardTest extends TestCase
         $this->assertNotEmpty($response->json('data.demand_forecast.forecast'));
     }
 
+    public function test_dashboard_retries_forecast_when_service_is_waking_up(): void
+    {
+        Http::fake([
+            '*' => Http::sequence()
+                ->push(['detail' => 'service unavailable'], 503)
+                ->push([
+                    'model' => 'sarimax',
+                    'forecast' => [[
+                        'date' => now()->addDay()->toDateString(),
+                        'expected_bookings' => 0,
+                        'expected_occupancy' => 0,
+                        'factor' => 1,
+                        'is_weekend' => false,
+                        'holiday' => null,
+                    ]],
+                    'backtest' => null,
+                    'multipliers' => ['weekend' => 1.22, 'holiday' => 1.45],
+                ]),
+        ]);
+
+        $response = $this->actingAs($this->makeUser('admin'))
+            ->getJson('/api/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.demand_forecast.model', 'sarimax');
+
+        Http::assertSentCount(2);
+        $this->assertNotEmpty($response->json('data.demand_forecast.forecast'));
+    }
+
     public function test_dashboard_uses_fallback_when_forecast_model_is_invalid(): void
     {
         $this->fakeSarimaxForecast(['model' => 'weekday_average']);

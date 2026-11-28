@@ -14,6 +14,7 @@ export const TOKEN_STORAGE_KEY = 'villacorz.token'
 export const USER_STORAGE_KEY = 'villacorz.user'
 export const REMEMBER_STORAGE_KEY = 'villacorz.remember'
 export const TOKEN_EXPIRY_STORAGE_KEY = 'villacorz.token_expires_at'
+export const TOKEN_FALLBACK_HEADER = 'X-VillaCorz-Token'
 
 const stores = () => (typeof window === 'undefined' ? null : {
     session: window.sessionStorage,
@@ -121,18 +122,47 @@ api.interceptors.request.use((config) => {
     const token = getAuthToken()
 
     if (token) {
-        config.headers.Authorization = `Bearer ${token}`
+        config.headers.set('Authorization', `Bearer ${token}`)
+        config.headers.set(TOKEN_FALLBACK_HEADER, token)
     }
 
     return config
 })
 
+const handleUnauthorized = () => {
+    if (typeof window === 'undefined') return
+
+    clearAuthState()
+    window.dispatchEvent(new CustomEvent('villacorz:unauthorized'))
+}
+
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        const body = response.data as { success?: unknown; message?: unknown } | null
+
+        if (body && typeof body === 'object' && body.success === false) {
+            const message = typeof body.message === 'string' ? body.message : 'Request failed.'
+
+            if (message === 'Unauthenticated.') {
+                handleUnauthorized()
+            }
+
+            return Promise.reject(
+                new axios.AxiosError(
+                    message,
+                    axios.AxiosError.ERR_BAD_RESPONSE,
+                    response.config,
+                    response.request,
+                    response,
+                ),
+            )
+        }
+
+        return response
+    },
     (error) => {
-        if (error.response?.status === 401 && typeof window !== 'undefined') {
-            clearAuthState()
-            window.dispatchEvent(new CustomEvent('villacorz:unauthorized'))
+        if (error.response?.status === 401) {
+            handleUnauthorized()
         }
 
         return Promise.reject(error)

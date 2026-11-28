@@ -775,25 +775,47 @@ class DashboardController extends Controller
             throw new HttpException(503, 'SARIMAX forecasting service is not configured.');
         }
 
-        try {
-            $response = Http::timeout(max(1, (int) config('forecasting.timeout', 4)))
-                ->acceptJson()
-                ->post($url.'/forecast', [
-                    'history' => $history,
-                    'holidays' => $holidays,
-                    'active_services' => max(1, $activeServiceCount),
-                    'horizon' => $horizon,
-                    'backtest_days' => $backtestDays,
-                    'include_holidays' => $includeHolidays,
-                    'include_weekends' => $includeWeekends,
-                    'as_of_date' => now()->toDateString(),
-                ]);
-        } catch (ConnectionException $exception) {
-            throw new HttpException(503, 'SARIMAX forecasting service is unavailable.', $exception);
+        $payload = [
+            'history' => $history,
+            'holidays' => $holidays,
+            'active_services' => max(1, $activeServiceCount),
+            'horizon' => $horizon,
+            'backtest_days' => $backtestDays,
+            'include_holidays' => $includeHolidays,
+            'include_weekends' => $includeWeekends,
+            'as_of_date' => now()->toDateString(),
+        ];
+        $timeout = max(1, (int) config('forecasting.timeout', 90));
+        $response = null;
+        $connectionException = null;
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            try {
+                $candidate = Http::timeout($timeout)
+                    ->acceptJson()
+                    ->post($url.'/forecast', $payload);
+
+                if ($candidate->successful()) {
+                    $response = $candidate;
+                    break;
+                }
+
+                if ($attempt === 2 || $candidate->status() < 500) {
+                    throw new HttpException(503, 'SARIMAX forecasting service returned an error.');
+                }
+            } catch (ConnectionException $exception) {
+                $connectionException = $exception;
+
+                if ($attempt === 2) {
+                    throw new HttpException(503, 'SARIMAX forecasting service is unavailable.', $exception);
+                }
+            }
+
+            usleep(500_000);
         }
 
-        if (! $response->successful()) {
-            throw new HttpException(503, 'SARIMAX forecasting service returned an error.');
+        if ($response === null) {
+            throw new HttpException(503, 'SARIMAX forecasting service is unavailable.', $connectionException);
         }
 
         $payload = $response->json();
